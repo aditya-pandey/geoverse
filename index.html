@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GeoVerse — The Living Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════ LOADER ══════════ -->
+<div id="loader">
+  <div class="loader-inner">
+    <div class="loader-orb">
+      <div class="orb-ring"></div>
+      <div class="orb-ring r2"></div>
+      <div class="orb-core">🌍</div>
+    </div>
+    <h1 class="loader-title">GEO<span>VERSE</span></h1>
+    <p class="loader-sub">The Living Atlas</p>
+    <div class="loader-bar"><div id="loaderFill"></div></div>
+    <p id="loaderMsg">Waking up the planet…</p>
+  </div>
+</div>
+
+<!-- ══════════ GLOBE ══════════ -->
+<div id="globeViz"></div>
+<div id="vignette"></div>
+
+<!-- ══════════ TOP BAR ══════════ -->
+<header id="topbar">
+  <div class="brand">
+    <span class="brand-globe">🌍</span>
+    <div class="brand-text">
+      <span class="brand-name">GEO<b>VERSE</b></span>
+      <span class="brand-tag">The Living Atlas</span>
+    </div>
+  </div>
+
+  <nav id="modeTabs">
+    <button class="mode-tab active" data-mode="explore">🧭 Explore</button>
+    <button class="mode-tab" data-mode="atlas">🗺️ Atlas</button>
+    <button class="mode-tab" data-mode="earth">🌋 Earth</button>
+    <button class="mode-tab" data-mode="quiz">🎯 Quiz</button>
+  </nav>
+
+  <div id="searchWrap">
+    <input id="searchInput" type="text" placeholder="Search any country…  ( / )" autocomplete="off" spellcheck="false" />
+    <div id="searchResults"></div>
+  </div>
+</header>
+
+<!-- ══════════ HUD ══════════ -->
+<div id="hudHint">Drag to spin · Scroll to zoom · Click a country to dive in</div>
+
+<div id="progressChip">
+  <div class="chip-label">🌐 <span id="visitedCount">0</span> / <span id="totalCount">0</span> countries explored</div>
+  <div class="chip-bar"><div id="chipFill"></div></div>
+</div>
+
+<div id="textureDock">
+  <button class="tex-btn active" data-tex="day" title="Daylight satellite">☀️</button>
+  <button class="tex-btn" data-tex="night" title="City lights at night">🌙</button>
+  <button class="tex-btn" data-tex="dark" title="Minimal dark">⚫</button>
+</div>
+
+<!-- ══════════ ATLAS CONTROLS ══════════ -->
+<div id="atlasDock" class="hidden">
+  <label>Paint the world by</label>
+  <div class="atlas-metrics">
+    <button class="metric-btn active" data-metric="population">👥 Population</button>
+    <button class="metric-btn" data-metric="gdp">💰 GDP</button>
+    <button class="metric-btn" data-metric="gdppc">💎 GDP per capita</button>
+    <button class="metric-btn" data-metric="life">❤️ Life expectancy</button>
+    <button class="metric-btn" data-metric="density">🏙️ Density</button>
+    <button class="metric-btn" data-metric="area">📐 Area</button>
+    <button class="metric-btn" data-metric="region">🌈 Regions</button>
+  </div>
+  <label class="atlas3d-row"><input type="checkbox" id="atlas3d" checked /> Extrude in 3D</label>
+  <div id="atlasReadout">Hover a country…</div>
+  <div id="legend"></div>
+</div>
+
+<!-- ══════════ EARTH (NERD) CONTROLS ══════════ -->
+<div id="earthDock" class="hidden">
+  <label>Physical layers</label>
+  <div class="atlas-metrics">
+    <button class="metric-btn layer-btn on" data-layer="oceans">🌊 Oceans &amp; Seas</button>
+    <button class="metric-btn layer-btn on" data-layer="regions">🏔️ Ranges, Deserts &amp; Plateaus</button>
+    <button class="metric-btn layer-btn on" data-layer="rivers">💧 Rivers</button>
+    <button class="metric-btn layer-btn" data-layer="lakes">🏞️ Lakes</button>
+    <button class="metric-btn layer-btn on" data-layer="wonders">✨ Natural Wonders</button>
+  </div>
+  <label>Go deeper</label>
+  <div class="atlas-metrics">
+    <button class="metric-btn" id="bigIdeasBtn">📚 Big Ideas of Geography</button>
+  </div>
+  <div id="earthHint">Click anything glowing — every ocean, range and wonder has a story.</div>
+</div>
+
+<!-- ══════════ COUNTRY PANEL ══════════ -->
+<aside id="panel" class="hidden">
+  <button id="panelClose" title="Close (Esc)">✕</button>
+  <div id="panelHeader">
+    <img id="panelFlag" alt="flag" />
+    <div>
+      <h2 id="panelName"></h2>
+      <p id="panelOfficial"></p>
+    </div>
+  </div>
+  <nav id="panelTabs">
+    <button class="ptab active" data-tab="overview">Overview</button>
+    <button class="ptab" data-tab="geography">Geography</button>
+    <button class="ptab" data-tab="history">History</button>
+    <button class="ptab" data-tab="states">States</button>
+  </nav>
+  <div id="panelBody"></div>
+</aside>
+
+<!-- ══════════ STATE VIEW BAR ══════════ -->
+<div id="stateBar" class="hidden">
+  <button id="stateBack">← Back to the world</button>
+  <span id="stateBarTitle"></span>
+</div>
+
+<!-- ══════════ QUIZ ══════════ -->
+<div id="quizSetup" class="hidden">
+  <div class="quiz-card setup">
+    <button class="quiz-close" id="quizSetupClose" title="Back to exploring (Esc)">✕</button>
+    <h2>🎯 Geography Challenge</h2>
+    <p class="quiz-sub">10 rounds. Build streaks. Beat your best.</p>
+    <label>Game</label>
+    <div class="seg wrap" id="quizTypeSeg">
+      <button class="seg-btn active" data-qtype="find">📍 Find the Country</button>
+      <button class="seg-btn" data-qtype="capital">🏛️ Guess the Capital</button>
+      <button class="seg-btn" data-qtype="flag">🚩 Flag Frenzy</button>
+    </div>
+    <label>Arena</label>
+    <div class="seg wrap" id="quizRegionSeg">
+      <button class="seg-btn active" data-region="World">🌍 World</button>
+      <button class="seg-btn" data-region="Africa">Africa</button>
+      <button class="seg-btn" data-region="Americas">Americas</button>
+      <button class="seg-btn" data-region="Asia">Asia</button>
+      <button class="seg-btn" data-region="Europe">Europe</button>
+      <button class="seg-btn" data-region="Oceania">Oceania</button>
+    </div>
+    <button id="quizStart">Start the challenge →</button>
+    <p class="quiz-best">Personal best: <b id="quizBestLabel">0</b> pts</p>
+  </div>
+</div>
+
+<div id="quizHud" class="hidden">
+  <div class="quiz-card hud">
+    <div class="quiz-meta">
+      <span id="quizRound">1/10</span>
+      <span id="quizScore">0 pts</span>
+      <span id="quizStreak">🔥 0</span>
+    </div>
+    <div id="quizPrompt"></div>
+    <div id="quizOptions" class="hidden"></div>
+    <div id="quizFeedback"></div>
+    <div class="quiz-actions">
+      <button id="quizSkip">Skip round</button>
+      <button id="quizQuit" class="quit">✕ Exit quiz</button>
+    </div>
+  </div>
+</div>
+
+<div id="quizResult" class="hidden">
+  <div class="quiz-card result">
+    <button class="quiz-close" id="quizResultClose" title="Back to exploring (Esc)">✕</button>
+    <div id="resultEmoji">🏆</div>
+    <h2 id="resultTitle"></h2>
+    <p id="resultStats"></p>
+    <div class="quiz-actions">
+      <button id="resultAgain">Play again</button>
+      <button id="resultExplore">Back to exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TOAST ══════════ -->
+<div id="toast" class="hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.32.2/dist/globe.gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
