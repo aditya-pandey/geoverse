@@ -67,6 +67,7 @@ const S = {
   earth: null,             // { marine, regions, lakes, rivers } once loaded
   earthLayers: { oceans: true, regions: true, rivers: true, lakes: false, wonders: true },
   wikiCache: new Map(),
+  lifePin: null,           // { __life, lat, lng, sp, uid } — 3D wildlife card on the globe
 };
 
 /* ───────────────────────── HELPERS ───────────────────────── */
@@ -154,7 +155,8 @@ function loaderStep(pct, msg) {
 
 async function loadData() {
   loaderStep(10, "Charting the continents…");
-  const topo = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then((r) => r.json());
+  // 50m resolution → 241 units incl. micro-states (Bahrain, Singapore, Malta, Monaco, Maldives…)
+  const topo = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json").then((r) => r.json());
   const features = topojson.feature(topo, topo.objects.countries).features;
 
   loaderStep(40, "Interviewing 195 countries…");
@@ -312,7 +314,10 @@ function initGlobe() {
       if (S.mode === "atlas") renderAtlasReadout(d);
       refreshPolys();
     })
-    .onPolygonClick((d, ev) => handleCountryClick(d, ev))
+    .onPolygonClick((d, ev, coords) => {
+      if (S.quiz?.type === "wonder") return quizWonderClick(coords);
+      handleCountryClick(d, ev);
+    })
     // labels layer — used by Earth mode
     .labelLat((l) => l.lat)
     .labelLng((l) => l.lng)
@@ -336,19 +341,13 @@ function initGlobe() {
     .pathLabel((p) => `<div class="globe-tip"><div class="gt-name">💧 ${p.name}</div><div class="gt-sub">river · click to learn</div></div>`)
     .onPathClick((p) => openEarthFeature({ text: p.name, kind: "river", emoji: "💧" }))
     .onPathHover((p) => { el.style.cursor = p ? "pointer" : "grab"; })
-    // html layer — natural wonders
+    // html layer — natural wonders + on-globe 3D wildlife cards
     .htmlLat((w) => w.lat)
     .htmlLng((w) => w.lng)
-    .htmlAltitude(0.012)
-    .htmlElement((w) => {
-      const div = document.createElement("div");
-      div.className = "wonder-pin";
-      div.textContent = w.emoji;
-      div.title = w.name;
-      div.onclick = (e) => { e.stopPropagation(); openEarthFeature({ text: w.name, kind: w.kind, emoji: w.emoji, wiki: w.wiki, lat: w.lat, lng: w.lng }); };
-      return div;
-    })
-    .onGlobeClick(() => {
+    .htmlAltitude((w) => w.__life ? 0.03 : 0.012)
+    .htmlElement((w) => w.__life ? buildLifeHolo(w) : buildWonderPin(w))
+    .onGlobeClick((coords) => {
+      if (S.quiz?.type === "wonder") return quizWonderClick(coords);
       if (S.stateView) return exitStateView();
       if (S.mode === "explore") closePanel();
     });
@@ -459,8 +458,12 @@ function cinematicFlyTo(d) {
   const targetAlt = viewAltitudeFor(d);
   const cur = S.globe.pointOfView();
   const cruise = Math.min(3.2, Math.max(cur.altitude, targetAlt + 1.0));
-  // camera lands slightly south-east of centre so the country sits clear of the info panel
-  const view = { lat: lat - 4, lng: lng + Math.min(9, targetAlt * 5), altitude: targetAlt };
+  // desktop: land south-east of centre so the country sits clear of the right-hand panel
+  // mobile: land south of centre so the country sits in the top half, above the bottom sheet
+  const mobile = matchMedia("(max-width: 600px)").matches;
+  const view = mobile
+    ? { lat: lat - targetAlt * 5.5, lng, altitude: Math.min(2.8, targetAlt * 1.18) }
+    : { lat: lat - 4, lng: lng + Math.min(9, targetAlt * 5), altitude: targetAlt };
 
   S.globe.pointOfView({ lat: cur.lat, lng: cur.lng, altitude: cruise }, 420);
   setTimeout(() => {
@@ -584,6 +587,7 @@ function setMode(mode) {
   if (mode === S.mode) { if (mode === "quiz" && !S.quiz) $("#quizSetup").classList.remove("hidden"); return; }
   if (S.mode === "quiz") endQuiz(true);
   if (S.mode === "earth") clearEarthLayers();
+  clearLifePin();
   exitStateView(false);
   closePanel();
   heroLightOff();
@@ -735,6 +739,10 @@ async function renderPanelTab(d) {
     const wiki = await fetchWikiFirst([wikiTitle(d)]);
     if (token !== S.panelToken) return;
     $("#ovWiki").innerHTML = wikiBlockHtml(wiki);
+  }
+
+  else if (tab === "wildlife") {
+    renderWildlife(d, body, token);
   }
 
   else if (tab === "geography" || tab === "history") {
@@ -968,27 +976,57 @@ const BIG_IDEAS = [
   ["🧊", "Glacier"], ["🏞️", "Drainage basin"], ["🕐", "Time zone"], ["🌐", "Equator"],
 ];
 
+// Every named class in the 50m regions layer → [display kind, colour, emoji].
+// (50m stores the class under `featureclass`; 110m used `featurecla`.)
+const REGION_KINDMAP = {
+  "Range/mtn":    ["mountain range", "#ffcf8a", "🏔️"],
+  "Desert":       ["desert", "#ffd8a1", "🏜️"],
+  "Plateau":      ["plateau", "#e8c39a", "🗻"],
+  "Basin":        ["basin", "#c9d7a6", "🗺️"],
+  "Plain":        ["plain", "#d7e3a6", "🌾"],
+  "Lowland":      ["lowland", "#d7e3a6", "🌾"],
+  "Tundra":       ["tundra", "#cfe6e0", "🥶"],
+  "Wetlands":     ["wetlands", "#9fe8c8", "🪷"],
+  "Delta":        ["river delta", "#9fe8ff", "💧"],
+  "Valley":       ["valley", "#d0e3a1", "🏞️"],
+  "Gorge":        ["gorge", "#d8b26e", "🪨"],
+  "Foothills":    ["foothills", "#e0c79a", "⛰️"],
+  "Coast":        ["coast", "#a5d8e2", "🏖️"],
+  "Island":       ["island", "#a5e2c8", "🏝️"],
+  "Island group": ["island group", "#a5e2c8", "🏝️"],
+  "Peninsula":    ["peninsula", "#b9e2a5", "🗺️"],
+  "Pen/cape":     ["cape", "#b9e2a5", "🗺️"],
+  "Isthmus":      ["isthmus", "#b9e2a5", "🗺️"],
+  "Geoarea":      ["region", "#c8cfe0", "🗺️"],
+  "Continent":    ["continent", "#c8cfe0", "🌍"],
+};
+
 function loadEarthData() {
   if (S.earth) return Promise.resolve(S.earth);
+  // 50m everywhere → ~120 named oceans/seas, ~525 ranges/deserts/plateaus, far more lakes.
   return Promise.all([
-    fetch(`${NE}/ne_110m_geography_marine_polys.geojson`).then((r) => r.json()),
-    fetch(`${NE}/ne_110m_geography_regions_polys.geojson`).then((r) => r.json()),
-    fetch(`${NE}/ne_110m_lakes.geojson`).then((r) => r.json()),
+    fetch(`${NE}/ne_50m_geography_marine_polys.geojson`).then((r) => r.json()),
+    fetch(`${NE}/ne_50m_geography_regions_polys.geojson`).then((r) => r.json()),
+    fetch(`${NE}/ne_50m_lakes.geojson`).then((r) => r.json()),
     fetch(`${NE}/ne_50m_rivers_lake_centerlines.geojson`).then((r) => r.json()),
   ]).then(([marine, regions, lakes, rivers]) => {
+    const cls = (f) => f.properties.featureclass || f.properties.featurecla || "";
     const label = (f, kind, color, emoji, sizeBase) => {
       const [lng, lat] = d3.geoCentroid(f);
       const sr = f.properties.scalerank ?? 5;
-      return { lat, lng, text: f.properties.name, kind, color, emoji, size: Math.max(0.55, sizeBase - sr * 0.13) };
+      return { lat, lng, text: f.properties.name, kind, color, emoji, size: Math.max(0.5, sizeBase - sr * 0.13) };
     };
+    const MARINE_EMOJI = { ocean: "🌊", sea: "🌊", gulf: "🌊", bay: "🚢", strait: "↔️", channel: "↔️", sound: "🌊", reef: "🐠", river: "💧" };
     const marineLabels = marine.features
       .filter((f) => f.properties.name)
-      .map((f) => label(f, (f.properties.featurecla || "ocean").toLowerCase(), "#7fd4ff", "🌊", 1.9));
-    const KINDMAP = { "Range/mtn": ["mountain range", "#ffcf8a", "🏔️"], "Desert": ["desert", "#ffd8a1", "🏜️"], "Plateau": ["plateau", "#e8c39a", "🗻"], "Peninsula": ["peninsula", "#b9e2a5", "🗺️"], "Basin": ["basin", "#c9d7a6", "🗺️"], "Island group": ["island group", "#a5e2c8", "🏝️"], "Delta": ["river delta", "#9fe8ff", "💧"], "Valley": ["valley", "#d0e3a1", "🏞️"], "Gorge": ["gorge", "#d8b26e", "🪨"], "Isthmus": ["isthmus", "#b9e2a5", "🗺️"] };
-    const regionLabels = regions.features
-      .filter((f) => f.properties.name && KINDMAP[f.properties.featurecla])
       .map((f) => {
-        const [kind, color, emoji] = KINDMAP[f.properties.featurecla];
+        const k = cls(f).toLowerCase();
+        return label(f, k || "ocean", k === "reef" ? "#9fe8c8" : "#7fd4ff", MARINE_EMOJI[k] || "🌊", 1.9);
+      });
+    const regionLabels = regions.features
+      .filter((f) => f.properties.name && REGION_KINDMAP[cls(f)])
+      .map((f) => {
+        const [kind, color, emoji] = REGION_KINDMAP[cls(f)];
         return label(f, kind, color, emoji, 1.5);
       });
     const lakeLabels = lakes.features
@@ -996,7 +1034,7 @@ function loadEarthData() {
       .map((f) => label(f, "lake", "#9fe8ff", "💧", 1.2));
     const riverPaths = [];
     for (const f of rivers.features) {
-      if (!f.properties.name || (f.properties.scalerank ?? 9) > 8) continue;
+      if (!f.properties.name) continue;
       const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
       for (const line of lines) {
         if (line.length < 2) continue;
@@ -1029,12 +1067,13 @@ function applyEarthLayers() {
   ];
   S.globe
     .labelsData(labels)
-    .pathsData(L.rivers ? S.earth.riverPaths : [])
-    .htmlElementsData(L.wonders ? WONDERS : []);
+    .pathsData(L.rivers ? S.earth.riverPaths : []);
+  refreshHtmlLayer();
 }
 
 function clearEarthLayers() {
-  S.globe.labelsData([]).pathsData([]).htmlElementsData([]);
+  S.globe.labelsData([]).pathsData([]);
+  refreshHtmlLayer();
 }
 
 function openEarthFeature(l) {
@@ -1075,6 +1114,272 @@ function openBigIdeas() {
       const wiki = await fetchWikiFirst([topic]);
       mount.innerHTML = `<div class="wiki-block"><b style="color:var(--gold)">${emoji} ${wiki?.title || topic}</b><br/><br/>${wikiBlockHtml(wiki)}</div>`;
     }));
+}
+
+/* ───────────────────────── WILDLIFE & FLORA ───────────────────────── */
+// n = name (used for Wikipedia + 3D search), e = emoji, t = type
+const A = (n, e, t) => ({ n, e, t });
+const MAMMAL = "mammal", BIRD = "bird", REPTILE = "reptile", SEA = "marine", PLANT = "plant", AMPH = "amphibian", INSECT = "insect";
+
+const WILDLIFE_BY_CCA3 = {
+  IND: [A("Bengal tiger","🐯",MAMMAL),A("Indian elephant","🐘",MAMMAL),A("Indian peafowl","🦚",BIRD),A("Indian rhinoceros","🦏",MAMMAL),A("King cobra","🐍",REPTILE),A("Asiatic lion","🦁",MAMMAL),A("Sacred lotus","🪷",PLANT),A("Banyan","🌳",PLANT)],
+  CHN: [A("Giant panda","🐼",MAMMAL),A("Golden snub-nosed monkey","🐒",MAMMAL),A("Red-crowned crane","🦤",BIRD),A("South China tiger","🐯",MAMMAL),A("Chinese alligator","🐊",REPTILE),A("Ginkgo","🌳",PLANT),A("Moso bamboo","🎋",PLANT)],
+  USA: [A("Bald eagle","🦅",BIRD),A("American bison","🦬",MAMMAL),A("Grizzly bear","🐻",MAMMAL),A("Gray wolf","🐺",MAMMAL),A("American alligator","🐊",REPTILE),A("Giant sequoia","🌲",PLANT),A("Saguaro","🌵",PLANT)],
+  BRA: [A("Jaguar","🐆",MAMMAL),A("Giant anteater","🐜",MAMMAL),A("Scarlet macaw","🦜",BIRD),A("Green anaconda","🐍",REPTILE),A("Capybara","🦫",MAMMAL),A("Golden lion tamarin","🐒",MAMMAL),A("Brazilwood","🌳",PLANT),A("Victoria amazonica","🪷",PLANT)],
+  AUS: [A("Red kangaroo","🦘",MAMMAL),A("Koala","🐨",MAMMAL),A("Platypus","🦫",MAMMAL),A("Emu","🦤",BIRD),A("Saltwater crocodile","🐊",REPTILE),A("Kookaburra","🐦",BIRD),A("Eucalyptus","🌳",PLANT),A("Golden wattle","🌼",PLANT)],
+  ZAF: [A("Lion","🦁",MAMMAL),A("African elephant","🐘",MAMMAL),A("Leopard","🐆",MAMMAL),A("Southern white rhino","🦏",MAMMAL),A("Cape buffalo","🐃",MAMMAL),A("Springbok","🦌",MAMMAL),A("King protea","🌸",PLANT),A("Baobab","🌳",PLANT)],
+  KEN: [A("Lion","🦁",MAMMAL),A("African elephant","🐘",MAMMAL),A("Masai giraffe","🦒",MAMMAL),A("Black rhinoceros","🦏",MAMMAL),A("Cheetah","🐆",MAMMAL),A("Greater flamingo","🦩",BIRD),A("Acacia","🌳",PLANT)],
+  TZA: [A("Lion","🦁",MAMMAL),A("Wildebeest","🐃",MAMMAL),A("African elephant","🐘",MAMMAL),A("Masai giraffe","🦒",MAMMAL),A("Cheetah","🐆",MAMMAL),A("Baobab","🌳",PLANT)],
+  IDN: [A("Sumatran tiger","🐯",MAMMAL),A("Bornean orangutan","🦧",MAMMAL),A("Komodo dragon","🦎",REPTILE),A("Javan rhinoceros","🦏",MAMMAL),A("Sumatran elephant","🐘",MAMMAL),A("Rafflesia","🌺",PLANT)],
+  RUS: [A("Siberian tiger","🐯",MAMMAL),A("Brown bear","🐻",MAMMAL),A("Eurasian lynx","🐈",MAMMAL),A("Reindeer","🦌",MAMMAL),A("Steller's sea eagle","🦅",BIRD),A("Siberian pine","🌲",PLANT)],
+  CAN: [A("Moose","🫎",MAMMAL),A("Canada lynx","🐈",MAMMAL),A("Polar bear","🐻‍❄️",MAMMAL),A("Beaver","🦫",MAMMAL),A("Common loon","🦆",BIRD),A("Sugar maple","🍁",PLANT)],
+  JPN: [A("Japanese macaque","🐒",MAMMAL),A("Red-crowned crane","🦤",BIRD),A("Sika deer","🦌",MAMMAL),A("Japanese giant salamander","🦎",AMPH),A("Koi","🐟",SEA),A("Cherry blossom","🌸",PLANT)],
+  MEX: [A("Jaguar","🐆",MAMMAL),A("Axolotl","🦎",AMPH),A("Golden eagle","🦅",BIRD),A("Vaquita","🐬",SEA),A("Spider monkey","🐒",MAMMAL),A("Monarch butterfly","🦋",INSECT),A("Agave","🌵",PLANT)],
+  EGY: [A("Dromedary camel","🐪",MAMMAL),A("Fennec fox","🦊",MAMMAL),A("Nile crocodile","🐊",REPTILE),A("Egyptian vulture","🦅",BIRD),A("Papyrus","🌾",PLANT),A("Date palm","🌴",PLANT)],
+  NPL: [A("Bengal tiger","🐯",MAMMAL),A("Snow leopard","🐆",MAMMAL),A("Red panda","🦝",MAMMAL),A("One-horned rhinoceros","🦏",MAMMAL),A("Himalayan monal","🐦",BIRD),A("Rhododendron","🌺",PLANT)],
+  GBR: [A("Red fox","🦊",MAMMAL),A("European badger","🦡",MAMMAL),A("Red deer","🦌",MAMMAL),A("European robin","🐦",BIRD),A("Atlantic puffin","🐧",BIRD),A("English oak","🌳",PLANT)],
+  DEU: [A("Red fox","🦊",MAMMAL),A("Wild boar","🐗",MAMMAL),A("Red deer","🦌",MAMMAL),A("White stork","🦤",BIRD),A("European oak","🌳",PLANT)],
+  FRA: [A("Red fox","🦊",MAMMAL),A("Alpine ibex","🐐",MAMMAL),A("Wild boar","🐗",MAMMAL),A("Golden eagle","🦅",BIRD),A("Lavender","💜",PLANT)],
+  ESP: [A("Iberian lynx","🐈",MAMMAL),A("Iberian wolf","🐺",MAMMAL),A("Spanish imperial eagle","🦅",BIRD),A("Brown bear","🐻",MAMMAL),A("Cork oak","🌳",PLANT)],
+  NOR: [A("Reindeer","🦌",MAMMAL),A("Arctic fox","🦊",MAMMAL),A("Moose","🫎",MAMMAL),A("Atlantic puffin","🐧",BIRD),A("Norway spruce","🌲",PLANT)],
+  ARG: [A("Jaguar","🐆",MAMMAL),A("Guanaco","🦙",MAMMAL),A("Andean condor","🦅",BIRD),A("Magellanic penguin","🐧",BIRD),A("Capybara","🦫",MAMMAL),A("Ombú","🌳",PLANT)],
+  PER: [A("Andean condor","🦅",BIRD),A("Llama","🦙",MAMMAL),A("Spectacled bear","🐻",MAMMAL),A("Vicuña","🦙",MAMMAL),A("Giant otter","🦦",MAMMAL),A("Cinchona","🌳",PLANT)],
+  CHL: [A("Puma","🐆",MAMMAL),A("Guanaco","🦙",MAMMAL),A("Andean condor","🦅",BIRD),A("Humboldt penguin","🐧",BIRD),A("Monkey puzzle tree","🌲",PLANT)],
+  COD: [A("Okapi","🦌",MAMMAL),A("Eastern gorilla","🦍",MAMMAL),A("Bonobo","🦧",MAMMAL),A("Forest elephant","🐘",MAMMAL),A("African teak","🌳",PLANT)],
+  MDG: [A("Ring-tailed lemur","🦝",MAMMAL),A("Fossa","🐈",MAMMAL),A("Panther chameleon","🦎",REPTILE),A("Indri","🐒",MAMMAL),A("Baobab","🌳",PLANT)],
+  THA: [A("Indochinese tiger","🐯",MAMMAL),A("Asian elephant","🐘",MAMMAL),A("Gaur","🐃",MAMMAL),A("White-handed gibbon","🐒",MAMMAL),A("Siamese fighting fish","🐟",SEA),A("Golden shower tree","🌼",PLANT)],
+  NZL: [A("Kiwi","🥝",BIRD),A("Kea","🦜",BIRD),A("Tuatara","🦎",REPTILE),A("Yellow-eyed penguin","🐧",BIRD),A("Silver fern","🌿",PLANT),A("Kauri","🌲",PLANT)],
+  SAU: [A("Arabian oryx","🦌",MAMMAL),A("Dromedary camel","🐪",MAMMAL),A("Arabian leopard","🐆",MAMMAL),A("Sand cat","🐈",MAMMAL),A("Date palm","🌴",PLANT)],
+  MNG: [A("Snow leopard","🐆",MAMMAL),A("Bactrian camel","🐫",MAMMAL),A("Przewalski's horse","🐎",MAMMAL),A("Golden eagle","🦅",BIRD),A("Gobi bear","🐻",MAMMAL)],
+  ETH: [A("Ethiopian wolf","🐺",MAMMAL),A("Gelada","🐒",MAMMAL),A("Walia ibex","🐐",MAMMAL),A("Lion","🦁",MAMMAL),A("Coffee plant","☕",PLANT)],
+  COL: [A("Andean condor","🦅",BIRD),A("Jaguar","🐆",MAMMAL),A("Spectacled bear","🐻",MAMMAL),A("Pink river dolphin","🐬",SEA),A("Cattleya orchid","🌸",PLANT)],
+};
+
+const WILDLIFE_BY_SUBREGION = {
+  "Eastern Africa": [A("Lion","🦁",MAMMAL),A("African elephant","🐘",MAMMAL),A("Giraffe","🦒",MAMMAL),A("Cheetah","🐆",MAMMAL),A("Greater flamingo","🦩",BIRD),A("Acacia","🌳",PLANT)],
+  "Western Africa": [A("African forest elephant","🐘",MAMMAL),A("Western gorilla","🦍",MAMMAL),A("Chimpanzee","🐒",MAMMAL),A("Hippopotamus","🦛",MAMMAL),A("Baobab","🌳",PLANT)],
+  "Middle Africa": [A("Western lowland gorilla","🦍",MAMMAL),A("Forest elephant","🐘",MAMMAL),A("Mandrill","🐒",MAMMAL),A("African grey parrot","🦜",BIRD),A("Okoumé","🌳",PLANT)],
+  "Southern Africa": [A("Lion","🦁",MAMMAL),A("African elephant","🐘",MAMMAL),A("Leopard","🐆",MAMMAL),A("Meerkat","🦡",MAMMAL),A("Baobab","🌳",PLANT)],
+  "Northern Africa": [A("Dromedary camel","🐪",MAMMAL),A("Fennec fox","🦊",MAMMAL),A("Barbary macaque","🐒",MAMMAL),A("Addax","🦌",MAMMAL),A("Date palm","🌴",PLANT)],
+  "South-Eastern Asia": [A("Asian elephant","🐘",MAMMAL),A("Malayan tiger","🐯",MAMMAL),A("Orangutan","🦧",MAMMAL),A("Proboscis monkey","🐒",MAMMAL),A("Rafflesia","🌺",PLANT)],
+  "Southern Asia": [A("Bengal tiger","🐯",MAMMAL),A("Asian elephant","🐘",MAMMAL),A("Leopard","🐆",MAMMAL),A("Indian peafowl","🦚",BIRD),A("Lotus","🪷",PLANT)],
+  "Eastern Asia": [A("Sika deer","🦌",MAMMAL),A("Asian black bear","🐻",MAMMAL),A("Red-crowned crane","🦤",BIRD),A("Raccoon dog","🦝",MAMMAL),A("Bamboo","🎋",PLANT)],
+  "Western Asia": [A("Arabian oryx","🦌",MAMMAL),A("Dromedary camel","🐪",MAMMAL),A("Persian leopard","🐆",MAMMAL),A("Golden eagle","🦅",BIRD),A("Date palm","🌴",PLANT)],
+  "Central Asia": [A("Snow leopard","🐆",MAMMAL),A("Bactrian camel","🐫",MAMMAL),A("Saiga antelope","🦌",MAMMAL),A("Golden eagle","🦅",BIRD)],
+  "South America": [A("Jaguar","🐆",MAMMAL),A("Andean condor","🦅",BIRD),A("Llama","🦙",MAMMAL),A("Capybara","🦫",MAMMAL),A("Scarlet macaw","🦜",BIRD),A("Cattleya orchid","🌸",PLANT)],
+  "Central America": [A("Jaguar","🐆",MAMMAL),A("Resplendent quetzal","🦜",BIRD),A("Baird's tapir","🐗",MAMMAL),A("Howler monkey","🐒",MAMMAL),A("Ceiba","🌳",PLANT)],
+  "Caribbean": [A("West Indian manatee","🦭",SEA),A("Cuban crocodile","🐊",REPTILE),A("Hispaniolan solenodon","🐭",MAMMAL),A("Green sea turtle","🐢",SEA),A("Royal palm","🌴",PLANT)],
+  "Northern America": [A("Bald eagle","🦅",BIRD),A("American bison","🦬",MAMMAL),A("Grizzly bear","🐻",MAMMAL),A("Moose","🫎",MAMMAL),A("Coast redwood","🌲",PLANT)],
+  "Northern Europe": [A("Red deer","🦌",MAMMAL),A("Reindeer","🦌",MAMMAL),A("Red fox","🦊",MAMMAL),A("Atlantic puffin","🐧",BIRD),A("Scots pine","🌲",PLANT)],
+  "Western Europe": [A("Red fox","🦊",MAMMAL),A("Red deer","🦌",MAMMAL),A("Wild boar","🐗",MAMMAL),A("Grey heron","🐦",BIRD),A("European oak","🌳",PLANT)],
+  "Southern Europe": [A("Iberian lynx","🐈",MAMMAL),A("Alpine ibex","🐐",MAMMAL),A("Golden eagle","🦅",BIRD),A("Loggerhead sea turtle","🐢",SEA),A("Olive tree","🫒",PLANT)],
+  "Eastern Europe": [A("European bison","🦬",MAMMAL),A("Grey wolf","🐺",MAMMAL),A("Brown bear","🐻",MAMMAL),A("White stork","🦤",BIRD),A("Silver birch","🌳",PLANT)],
+  "Australia and New Zealand": [A("Red kangaroo","🦘",MAMMAL),A("Koala","🐨",MAMMAL),A("Kiwi","🥝",BIRD),A("Emu","🦤",BIRD),A("Eucalyptus","🌳",PLANT)],
+  "Melanesia": [A("Birds-of-paradise","🐦",BIRD),A("Cassowary","🦤",BIRD),A("Tree kangaroo","🦘",MAMMAL),A("Coconut palm","🌴",PLANT)],
+  "Polynesia": [A("Green sea turtle","🐢",SEA),A("Humpback whale","🐋",SEA),A("Fruit bat","🦇",MAMMAL),A("Coconut palm","🌴",PLANT)],
+  "Micronesia": [A("Green sea turtle","🐢",SEA),A("Reef shark","🦈",SEA),A("Fruit bat","🦇",MAMMAL),A("Coconut palm","🌴",PLANT)],
+};
+
+const WILDLIFE_BY_REGION = {
+  Africa: [A("Lion","🦁",MAMMAL),A("African elephant","🐘",MAMMAL),A("Giraffe","🦒",MAMMAL),A("Hippopotamus","🦛",MAMMAL),A("Baobab","🌳",PLANT)],
+  Americas:[A("Jaguar","🐆",MAMMAL),A("Bald eagle","🦅",BIRD),A("Andean condor","🦅",BIRD),A("Capybara","🦫",MAMMAL),A("Ceiba","🌳",PLANT)],
+  Asia:   [A("Tiger","🐯",MAMMAL),A("Asian elephant","🐘",MAMMAL),A("Giant panda","🐼",MAMMAL),A("Snow leopard","🐆",MAMMAL),A("Bamboo","🎋",PLANT)],
+  Europe: [A("Red fox","🦊",MAMMAL),A("Red deer","🦌",MAMMAL),A("Brown bear","🐻",MAMMAL),A("Golden eagle","🦅",BIRD),A("European oak","🌳",PLANT)],
+  Oceania:[A("Red kangaroo","🦘",MAMMAL),A("Koala","🐨",MAMMAL),A("Cassowary","🦤",BIRD),A("Green sea turtle","🐢",SEA),A("Eucalyptus","🌳",PLANT)],
+};
+
+const TYPE_LABEL = { mammal: "Mammal", bird: "Bird", reptile: "Reptile", marine: "Marine life", plant: "Plant", amphibian: "Amphibian", insect: "Insect" };
+
+function wildlifeFor(d) {
+  const c = d.gv;
+  if (!c) return WILDLIFE_BY_REGION.Africa;
+  const specific = WILDLIFE_BY_CCA3[c.cca3];
+  if (specific && specific.length) return specific;
+  return WILDLIFE_BY_SUBREGION[c.subregion] || WILDLIFE_BY_REGION[c.region] || WILDLIFE_BY_REGION.Asia;
+}
+
+/* ── On-globe 3D wildlife: a holographic model card pinned to the planet ── */
+function buildWonderPin(w) {
+  const div = document.createElement("div");
+  div.className = "wonder-pin";
+  div.textContent = w.emoji;
+  div.title = w.name;
+  div.onclick = (e) => { e.stopPropagation(); openEarthFeature({ text: w.name, kind: w.kind, emoji: w.emoji, wiki: w.wiki, lat: w.lat, lng: w.lng }); };
+  return div;
+}
+
+function buildLifeHolo(w) {
+  const div = document.createElement("div");
+  div.className = "life-holo";
+  const src = `https://sketchfab.com/models/${w.uid}/embed?autospin=0.35&autostart=1&preload=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&ui_controls=0&ui_stop=0&transparent=1`;
+  div.innerHTML = `
+    <div class="holo-head">
+      <span class="holo-title">${w.sp.e} ${w.sp.n}</span>
+      <button class="holo-close" title="Dismiss">✕</button>
+    </div>
+    <iframe class="holo-frame" title="${w.sp.n} 3D" src="${src}"
+      allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
+    <div class="holo-beam"></div>`;
+  div.querySelector(".holo-close").onclick = (e) => { e.stopPropagation(); clearLifePin(); };
+  div.addEventListener("pointerdown", (e) => e.stopPropagation()); // don't spin the globe from the card
+  return div;
+}
+
+function refreshHtmlLayer() {
+  const els = [];
+  if (S.mode === "earth" && S.earthLayers.wonders) els.push(...WONDERS);
+  if (S.lifePin) els.push(S.lifePin);
+  S.globe.htmlElementsData(els);
+}
+
+function clearLifePin() {
+  if (!S.lifePin) return;
+  S.lifePin = null;
+  refreshHtmlLayer();
+}
+
+// Drop the species' interactive 3D model onto the globe at the country's location and dive to it.
+async function placeLifeOnGlobe(sp, countryD, btn) {
+  const label = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Summoning…"; }
+  try {
+    if (!placeLifeOnGlobe._uid) placeLifeOnGlobe._uid = new Map();
+    let uid = placeLifeOnGlobe._uid.get(sp.n);
+    if (!uid) {
+      uid = await sketchfabBest(sp);
+      if (uid) placeLifeOnGlobe._uid.set(sp.n, uid);
+    }
+    if (!uid) throw new Error("no model");
+
+    const { lat, lng } = centroidOf(countryD);
+    S.lifePin = { __life: true, lat, lng, sp, uid };
+    refreshHtmlLayer();
+    ringPulse(lat, lng, 3, "126,224,255");
+
+    const mobile = matchMedia("(max-width: 600px)").matches;
+    if (mobile) $("#panel").classList.add("hidden"); // free the whole screen for the show
+    const alt = Math.min(1.6, Math.max(0.85, viewAltitudeFor(countryD)));
+    S.globe.pointOfView({ lat: lat - alt * 6, lng, altitude: alt }, 1300);
+    pauseRotate();
+    toast(`${sp.e} ${sp.n} is standing on ${nameOf(countryD)} — drag inside the card to inspect it`);
+  } catch (e) {
+    toast(`⚠️ No 3D model found for ${sp.n}`);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = label; }
+}
+
+// Sketchfab categories keep the search on-species (relevance alone can pick a "Tiger" tank).
+const SF_CATEGORY = { plant: "nature-plants" }; // fauna → animals-pets (default below)
+
+// Skeletons, skulls, fossils & museum specimens — reject these; we want the living creature.
+const SF_REJECT = /skeleton|skull|\bbones?\b|fossil|specimen|cranium|dentary|\bjaw\b|\btooth\b|\bteeth\b|vertebra|anatom|ecorch|écorch|taxiderm|\bdead\b|carcass|\bmount(ed)?\b|dissect|[A-Z]{2,}:\s?[A-Z]{2,}|:\d{4,}/i;
+
+// One category-scoped search, returning relevant candidates only.
+async function sketchfabSearch(query, category) {
+  const url = `https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(query)}` +
+    (category ? `&categories=${category}` : "") + `&count=18`;
+  const j = await fetch(url).then((r) => r.json());
+  return j?.results || [];
+}
+
+// Best 3D model for a species: in-category & relevant, drop skeletons/specimens, then prefer most-liked.
+async function sketchfabBest(sp) {
+  const category = SF_CATEGORY[sp.t] || "animals-pets";
+  const lastWord = sp.n.split(" ").slice(-1)[0];
+  const pickBest = (results) => {
+    const live = results.filter((m) => !SF_REJECT.test(m.name || ""));
+    const pool = live.length ? live : results; // if everything looks anatomical, take what we have
+    pool.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+    return pool[0]?.uid || null;
+  };
+  // 1) full name in-category  2) key word in-category  3) full name, any category
+  for (const [q, cat] of [[sp.n, category], [lastWord, category], [sp.n, ""]]) {
+    const results = await sketchfabSearch(q, cat);
+    const uid = pickBest(results);
+    if (uid) return uid;
+  }
+  return null;
+}
+
+function renderWildlife(d, body, token) {
+  const country = nameOf(d);
+  const species = wildlifeFor(d);
+  const scope = d.gv && WILDLIFE_BY_CCA3[d.gv.cca3]?.length
+    ? country
+    : (d.gv?.subregion || d.gv?.region || "this region");
+  body.innerHTML = `
+    <p style="font-size:13px;color:var(--text-dim);line-height:1.55;margin-bottom:14px">
+      Iconic wildlife &amp; flora of <b style="color:var(--gold)">${scope}</b>. Tap a species to read about it — then spin its <b>interactive 3D model</b>.</p>
+    <div class="life-grid">
+      ${species.map((s, i) => `
+        <div class="life-card" data-i="${i}">
+          <div class="life-head">
+            <span class="life-emoji">${s.e}</span>
+            <div class="life-meta"><div class="life-name">${s.n}</div><div class="life-type">${TYPE_LABEL[s.t] || s.t}</div></div>
+            <span class="life-caret">▾</span>
+          </div>
+          <div class="life-detail"></div>
+        </div>`).join("")}
+    </div>`;
+
+  $$("#panelBody .life-card").forEach((card) => {
+    const head = card.querySelector(".life-head");
+    head.addEventListener("click", () => {
+      const open = card.classList.toggle("open");
+      if (open && !card.dataset.loaded) {
+        card.dataset.loaded = "1";
+        loadLifeDetail(card, species[+card.dataset.i], country);
+      }
+    });
+  });
+}
+
+async function loadLifeDetail(card, sp, country) {
+  const box = card.querySelector(".life-detail");
+  box.innerHTML = `<div class="loading-dots" style="padding:10px 0">Finding ${sp.n}</div>`;
+  const wiki = await fetchWikiFirst([sp.n, `${sp.n} (${sp.t})`, `${sp.n} (animal)`, `${sp.n} (plant)`]);
+  box.innerHTML = `
+    ${wiki?.thumb ? `<img class="life-photo" src="${wiki.thumb}" alt="${sp.n}" loading="lazy" />` : ""}
+    <p class="life-text">${wiki?.extract || "No encyclopedia summary available."}</p>
+    <div class="life-actions">
+      <button class="life-globe-btn">🌍 See it on the globe</button>
+      <button class="life-3d-btn">🧊 In panel</button>
+      ${wiki?.url ? `<a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Wikipedia →</a>` : ""}
+    </div>
+    <div class="life-viewer"></div>`;
+  card.querySelector(".life-globe-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (S.selected) placeLifeOnGlobe(sp, S.selected, e.currentTarget);
+  });
+  card.querySelector(".life-3d-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    loadLife3D(card, sp);
+  });
+}
+
+async function loadLife3D(card, sp) {
+  const mount = card.querySelector(".life-viewer");
+  const btn = card.querySelector(".life-3d-btn");
+  if (card.dataset.model3d) { // toggle off
+    mount.innerHTML = ""; card.dataset.model3d = "";
+    btn.textContent = "🧊 View in 3D"; return;
+  }
+  btn.textContent = "⏳ Loading model…"; btn.disabled = true;
+  mount.innerHTML = `<div class="loading-dots" style="padding:10px 0">Sculpting a 3D ${sp.n}</div>`;
+  try {
+    const uid = await sketchfabBest(sp);
+    if (!uid) throw new Error("no model");
+    const src = `https://sketchfab.com/models/${uid}/embed?autospin=0.4&autostart=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&transparent=1`;
+    mount.innerHTML = `<iframe class="life-iframe" title="${sp.n} 3D model" src="${src}"
+        allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+      <div class="life-3d-hint">Drag to rotate · scroll/pinch to zoom · models via Sketchfab</div>`;
+    card.dataset.model3d = "1";
+    btn.textContent = "✕ Hide 3D model";
+  } catch (e) {
+    mount.innerHTML = `<p class="life-text" style="color:var(--text-dim)">No 3D model found for ${sp.n} — try another species.</p>`;
+    btn.textContent = "🧊 View in 3D";
+  }
+  btn.disabled = false;
 }
 
 /* ───────────────────────── SEARCH ───────────────────────── */
@@ -1145,18 +1450,31 @@ function quizPool() {
     (S.quizRegion === "World" || f.gv.region === S.quizRegion));
 }
 
+const QUIZ_HINTS = {
+  find: "Click the country on the globe!",
+  wonder: "Click the spot on the globe — get within 700 km!",
+};
+
 function startQuiz() {
-  const pool = quizPool();
-  if (pool.length < 8) { toast("Not enough countries in that arena!"); return; }
+  let pool;
+  if (S.quizType === "wonder") {
+    pool = [...WONDERS];
+  } else {
+    pool = quizPool();
+    if (S.quizType === "capital" || S.quizType === "city") pool = pool.filter((f) => f.gv.capital?.[0]);
+    if (S.quizType === "borders") pool = pool.filter((f) => (f.gv.borders || []).filter((b) => S.byCca3.get(b)).length >= 2);
+    if (S.quizType === "duel") pool = pool.filter((f) => f.gv.population != null && f.gv.area);
+  }
+  if (pool.length < 8) { toast("Not enough countries in that arena — try 🌍 World!"); return; }
   S.quiz = {
     type: S.quizType, pool,
     used: new Set(), round: 0, score: 0, streak: 0, bestStreak: 0, correct: 0,
-    target: null, attempts: 0, locked: false,
+    target: null, attempts: 0, locked: false, explain: "",
   };
   $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
   $("#quizHud").classList.remove("hidden");
-  $("#hudHint").textContent = S.quizType === "find" ? "Click the country on the globe!" : "Pick the right answer!";
+  $("#hudHint").textContent = QUIZ_HINTS[S.quizType] || "Pick the right answer!";
   S.globe.pointOfView({ lat: 15, lng: 20, altitude: 2.6 }, 900);
   nextRound();
 }
@@ -1182,22 +1500,109 @@ function nextRound() {
   $("#quizFeedback").className = "";
 
   const optBox = $("#quizOptions");
+  const prompt = $("#quizPrompt");
+
   if (q.type === "find") {
     optBox.classList.add("hidden");
-    $("#quizPrompt").innerHTML = `<span class="qp-flag">${flagEmoji(t.gv.cca2)}</span> Find <b style="color:var(--gold)">${nameOf(t)}</b>`;
-  } else if (q.type === "capital") {
-    $("#quizPrompt").innerHTML = `<span class="qp-flag">${flagEmoji(t.gv.cca2)}</span> Capital of <b style="color:var(--gold)">${nameOf(t)}</b>?`;
-    const correct = t.gv.capital?.[0];
+    prompt.innerHTML = `<span class="qp-flag">${flagEmoji(t.gv.cca2)}</span> Find <b style="color:var(--gold)">${nameOf(t)}</b>`;
+  }
+
+  else if (q.type === "wonder") {
+    optBox.classList.add("hidden");
+    prompt.innerHTML = `<span class="qp-flag">${t.emoji}</span> Find <b style="color:var(--gold)">${t.name}</b> <span style="font-size:13px;color:var(--text-dim)">(${t.kind})</span>`;
+  }
+
+  else if (q.type === "capital") {
+    prompt.innerHTML = `<span class="qp-flag">${flagEmoji(t.gv.cca2)}</span> Capital of <b style="color:var(--gold)">${nameOf(t)}</b>?`;
+    const correct = t.gv.capital[0];
     const distractors = d3.shuffle(q.pool.filter((f) => f !== t && f.gv.capital?.[0] && f.gv.capital[0] !== correct).slice())
       .slice(0, 3).map((f) => f.gv.capital[0]);
+    q.explain = `❌ It's ${correct}.`;
     buildOptions(d3.shuffle([correct, ...distractors]), (o) => o === correct);
     flyTo(t, 1200);
-  } else { // flag
-    $("#quizPrompt").innerHTML = `<img src="${t.gv.flags.png}" alt="?" style="height:64px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.5)" /><br/>Whose flag is this?`;
-    const distractors = d3.shuffle(q.pool.filter((f) => f !== t).slice()).slice(0, 3).map((f) => nameOf(f));
+  }
+
+  else if (q.type === "city") {
+    const city = t.gv.capital[0];
+    prompt.innerHTML = `🏙️ <b style="color:var(--gold)">${city}</b> is the capital of…?`;
+    const distractors = d3.shuffle(q.pool.filter((f) => f !== t && f.gv.capital?.[0] !== city).slice()).slice(0, 3).map(nameOf);
+    q.explain = `❌ ${city} is the capital of ${nameOf(t)}.`;
+    buildOptions(d3.shuffle([nameOf(t), ...distractors]), (o) => o === nameOf(t));
+  }
+
+  else if (q.type === "borders") {
+    const neighbours = d3.shuffle((t.gv.borders || []).map((b) => S.byCca3.get(b)).filter(Boolean).slice()).slice(0, 3);
+    const nbSet = new Set(neighbours.map((n) => n.gv.cca3));
+    prompt.innerHTML = `🤝 Which country borders <b style="color:var(--gold)">${neighbours.map((n) => `${flagEmoji(n.gv.cca2)} ${nameOf(n)}`).join(", ")}</b>?`;
+    // distractors must NOT border every listed neighbour, or the round would have two right answers
+    const distractors = d3.shuffle(q.pool.filter((f) =>
+      f !== t && !nbSet.has(f.gv.cca3) &&
+      ![...nbSet].every((b) => (f.gv.borders || []).includes(b))
+    ).slice()).slice(0, 3).map(nameOf);
+    q.explain = `❌ It was ${nameOf(t)}.`;
+    buildOptions(d3.shuffle([nameOf(t), ...distractors]), (o) => o === nameOf(t));
+  }
+
+  else if (q.type === "duel") {
+    const metric = Math.random() < 0.55 ? "population" : "area";
+    let rival;
+    do { rival = q.pool[Math.floor(Math.random() * q.pool.length)]; } while (rival === t);
+    const val = (f) => metric === "population" ? f.gv.population : f.gv.area;
+    const winner = val(t) >= val(rival) ? t : rival;
+    const loser = winner === t ? rival : t;
+    q.target = winner;
+    q.explain = `❌ ${nameOf(winner)}: ${fmt.format(val(winner))} vs ${nameOf(loser)}: ${fmt.format(val(loser))}${metric === "area" ? " km²" : " people"}`;
+    prompt.innerHTML = `📏 Bigger <b style="color:var(--gold)">${metric === "population" ? "population 👥" : "area 📐"}</b>?`;
+    buildOptions(
+      d3.shuffle([t, rival].map((f) => `${flagEmoji(f.gv.cca2)} ${nameOf(f)}`)),
+      (o) => o.split(" ").slice(1).join(" ") === nameOf(winner) // strip flag emoji, exact match ("Niger" ≠ "Nigeria")
+    );
+  }
+
+  else { // flag
+    prompt.innerHTML = `<img src="${t.gv.flags.png}" alt="?" style="height:64px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.5)" /><br/>Whose flag is this?`;
+    const distractors = d3.shuffle(q.pool.filter((f) => f !== t).slice()).slice(0, 3).map(nameOf);
+    q.explain = `❌ That's the flag of ${nameOf(t)}.`;
     buildOptions(d3.shuffle([nameOf(t), ...distractors]), (o) => o === nameOf(t));
   }
   refreshPolys();
+}
+
+/* Wonder Hunt — click anywhere on the planet, judged by distance */
+function quizWonderClick(coords) {
+  const q = S.quiz;
+  if (!q || q.type !== "wonder" || q.locked || !coords) return;
+  const w = q.target;
+  const dist = haversine(coords, w);
+  const fb = $("#quizFeedback");
+
+  if (dist <= 700) {
+    q.locked = true;
+    const bonus = dist < 250 ? 40 : 0;
+    const pts = award(100 + bonus);
+    fb.textContent = `✅ +${pts} pts — only ${fmtFull.format(Math.round(dist))} km off${bonus ? " · bullseye!" : ""}`;
+    fb.className = "good";
+    ringPulse(w.lat, w.lng, 3.5, "61,220,132");
+    confetti({ particleCount: 90, spread: 75, origin: { x: 0.5, y: 0.35 }, colors: ["#3ddc84", "#ffd166", "#4db8ff"] });
+    setTimeout(nextRound, 1600);
+  } else {
+    q.attempts++;
+    if (q.attempts >= 3) {
+      q.locked = true;
+      q.streak = 0;
+      fb.innerHTML = `❌ It's here — <b>${w.name}</b>`;
+      fb.className = "bad";
+      ringPulse(w.lat, w.lng, 4, "255,209,102");
+      S.globe.pointOfView({ lat: w.lat, lng: w.lng, altitude: 1.1 }, 1100);
+      pauseRotate();
+      setTimeout(nextRound, 2500);
+    } else {
+      fb.innerHTML = `${fmtFull.format(Math.round(dist / 100) * 100)} km away — head ${bearingArrow(coords, w)}`;
+      fb.className = "bad";
+    }
+    $("#quizStreak").textContent = `🔥 ${q.streak}`;
+  }
+  $("#quizScore").textContent = `${q.score} pts`;
 }
 
 function buildOptions(options, isCorrect) {
@@ -1273,10 +1678,10 @@ function choiceAnswer(btn) {
   } else {
     btn.classList.add("wrong");
     q.streak = 0;
-    fb.textContent = q.type === "capital" ? `❌ It's ${q.target.gv.capital[0]}.` : `❌ That's the flag of ${nameOf(q.target)}.`;
+    fb.textContent = q.explain || "❌ Not quite.";
     fb.className = "bad";
   }
-  if (q.type === "flag") flyTo(q.target, 1100);
+  if (q.type !== "capital") flyTo(q.target, 1100); // capital already flew at round start
   $("#quizScore").textContent = `${q.score} pts`;
   $("#quizStreak").textContent = `🔥 ${q.streak}`;
   setTimeout(nextRound, 1600);
@@ -1293,6 +1698,15 @@ function skipRound() {
     $("#quizFeedback").innerHTML = `It was <b>${nameOf(q.target)}</b>`;
     $("#quizFeedback").className = "bad";
     setTimeout(nextRound, 2000);
+  } else if (q.type === "wonder") {
+    q.locked = true;
+    const w = q.target;
+    ringPulse(w.lat, w.lng, 4, "255,209,102");
+    S.globe.pointOfView({ lat: w.lat, lng: w.lng, altitude: 1.1 }, 1000);
+    pauseRotate();
+    $("#quizFeedback").innerHTML = `It's here — <b>${w.name}</b>`;
+    $("#quizFeedback").className = "bad";
+    setTimeout(nextRound, 2200);
   } else nextRound();
 }
 
@@ -1376,6 +1790,38 @@ function initUI() {
 
   $("#stateBack").addEventListener("click", () => exitStateView());
 
+  // Mobile: swipe the panel header downward to dismiss the bottom sheet
+  (function panelSwipe() {
+    const panel = $("#panel"), header = $("#panelHeader");
+    let y0 = null, dy = 0, dragging = false;
+    header.addEventListener("touchstart", (e) => {
+      if (!matchMedia("(max-width: 600px)").matches) return;
+      y0 = e.touches[0].clientY; dy = 0; dragging = true;
+      panel.style.transition = "none";
+    }, { passive: true });
+    header.addEventListener("touchmove", (e) => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      panel.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    header.addEventListener("touchend", () => {
+      if (!dragging) return;
+      dragging = false;
+      panel.style.transition = "transform .25s ease";
+      if (dy > 90) {
+        panel.style.transform = "translateY(110%)";
+        setTimeout(() => {
+          panel.classList.add("hidden");
+          panel.style.transform = ""; panel.style.transition = "";
+          if (!S.stateView) closePanel();
+        }, 240);
+      } else {
+        panel.style.transform = "";
+        setTimeout(() => { panel.style.transition = ""; }, 260);
+      }
+    });
+  })();
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "/" && document.activeElement !== $("#searchInput")) {
       e.preventDefault();
@@ -1384,6 +1830,7 @@ function initUI() {
     if (e.key === "Escape") {
       if (!$("#quizSetup").classList.contains("hidden") || !$("#quizResult").classList.contains("hidden")) setMode("explore");
       else if (S.quiz) endQuiz();
+      else if (S.lifePin) clearLifePin();
       else if (S.stateView) exitStateView();
       else if (!$("#panel").classList.contains("hidden")) closePanel();
     }
