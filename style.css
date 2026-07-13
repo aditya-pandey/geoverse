@@ -447,14 +447,230 @@ button { font-family: var(--font-display); cursor: pointer; border: none; backgr
 .globe-tip .gt-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
 /* ═══════════ RESPONSIVE ═══════════ */
+
+/* ─── Tablet (≤ 900px) ─── */
 @media (max-width: 900px) {
-  #topbar { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+  #topbar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
   .brand-tag { display: none; }
   #searchWrap { width: 100%; order: 3; }
   #modeTabs { margin: 0 0 0 auto; }
-  .mode-tab { padding: 8px 12px; font-size: 12.5px; }
+  .mode-tab { padding: 8px 13px; font-size: 13px; }
   #panel { top: auto; left: 10px; right: 10px; bottom: 10px; height: 62vh; width: auto; }
   #progressChip { display: none; }
   #hudHint { display: none; }
   #atlasDock, #earthDock { top: auto; bottom: 90px; left: 12px; width: 220px; max-height: 44vh; }
+}
+
+/* ─── Phone (≤ 600px) — full mobile overhaul ─── */
+@media (max-width: 600px) {
+
+  /* ── Top bar: brand left, search right ── */
+  #topbar {
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 52px;
+  }
+  .brand { flex-shrink: 0; }
+  .brand-globe { font-size: 22px; }
+  .brand-name { font-size: 14px; letter-spacing: 2px; }
+
+  /* ── Mode tabs → pinned bottom navigation bar ── */
+  #modeTabs {
+    position: fixed;
+    top: auto; bottom: 0; left: 0; right: 0;
+    margin: 0;
+    border-radius: 0;
+    padding: 5px 6px;
+    padding-bottom: calc(5px + env(safe-area-inset-bottom));
+    border: none;
+    border-top: 1px solid var(--stroke);
+    background: rgba(4, 6, 15, 0.96);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+  }
+  .mode-tab {
+    padding: 5px 2px;
+    font-size: 10px;
+    border-radius: 10px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1px;
+    line-height: 1.3;
+  }
+  .mode-tab.active { box-shadow: none; }
+
+  /* ── Search: fills remaining top-bar width ── */
+  #searchWrap { flex: 1; min-width: 0; width: auto; max-width: none; order: 0; }
+  #searchInput { padding: 8px 14px; font-size: 13px; }
+  #searchResults { max-height: 220px; }
+  .si-cap { display: none; }
+
+  /* ── Country panel: full-width bottom sheet ── */
+  #panel {
+    top: auto;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 0; right: 0; width: 100%; max-width: 100%;
+    height: 68vh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    animation: slideUp .4s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } }
+
+  /* drag handle indicator on panel */
+  #panel::before {
+    content: "";
+    position: absolute;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,.18);
+    pointer-events: none; z-index: 2;
+  }
+  #panelHeader { padding: 20px 14px 10px; gap: 10px; }
+  #panelName { font-size: 18px; padding-right: 26px; }
+  #panelFlag { width: 52px; height: 35px; }
+  #panelOfficial { font-size: 11px; }
+  #panelTabs { padding: 0 8px; gap: 0; }
+  .ptab { padding: 9px 7px; font-size: 12px; }
+  #panelBody { padding: 12px 14px 20px; }
+  .stat-grid { gap: 8px; }
+  .stat-card .sc-value { font-size: 15px; }
+  .wiki-block img.wiki-thumb { width: 90px; }
+
+  /* ── Atlas dock: horizontal bottom sheet, legend visible first ── */
+  #atlasDock {
+    top: auto;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 0; right: 0; width: 100%; max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    max-height: 46vh; overflow-y: hidden;
+    padding: 6px 14px 12px;
+    display: flex; flex-direction: column;
+    animation: slideUp .35s ease;
+  }
+  /* drag handle */
+  #atlasDock::before {
+    content: "";
+    display: block; flex-shrink: 0;
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,.18);
+    margin: 4px auto 8px;
+  }
+  /* hide the "Paint the world by" label to save space */
+  #atlasDock > label:first-of-type { display: none; }
+  /* readout + legend float to the top via CSS order */
+  #atlasReadout {
+    order: -2; flex-shrink: 0;
+    margin: 0 0 6px; padding: 8px 12px;
+    font-size: 12.5px; min-height: 32px;
+  }
+  #legend { order: -1; flex-shrink: 0; margin-bottom: 4px; }
+  /* metrics: horizontal scrolling row */
+  #atlasDock .atlas-metrics {
+    order: 10;
+    flex-direction: row; flex-wrap: nowrap;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; gap: 6px;
+    margin: 2px 0 6px; flex-shrink: 0;
+  }
+  #atlasDock .atlas-metrics::-webkit-scrollbar { display: none; }
+  .atlas3d-row { order: 20; margin: 4px 0 0 !important; font-size: 12px !important; }
+
+  /* ── Earth dock: horizontal layer toggles ── */
+  #earthDock {
+    top: auto;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 0; right: 0; width: 100%; max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    max-height: 46vh; overflow-y: auto;
+    padding: 6px 14px 12px;
+    display: flex; flex-direction: column;
+    animation: slideUp .35s ease;
+  }
+  #earthDock::before {
+    content: "";
+    display: block; flex-shrink: 0;
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,.18);
+    margin: 4px auto 8px;
+  }
+  #earthDock > label:first-of-type { display: none !important; }
+  #earthDock > label { font-size: 10px; margin-top: 4px; display: block !important; }
+  #earthDock .atlas-metrics {
+    flex-direction: row; flex-wrap: nowrap;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; gap: 6px;
+    margin: 4px 0 6px;
+  }
+  #earthDock .atlas-metrics::-webkit-scrollbar { display: none; }
+  #earthHint { font-size: 11px; margin-top: 6px; }
+
+  /* shared: all metric buttons are now horizontal pills */
+  .metric-btn {
+    flex: 0 0 auto; white-space: nowrap;
+    padding: 7px 11px; font-size: 12.5px;
+  }
+
+  /* ── Texture dock: above bottom nav ── */
+  #textureDock {
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    right: 10px;
+  }
+  .tex-btn { width: 36px; height: 36px; font-size: 15px; }
+
+  /* ── State bar: just below the topbar ── */
+  #stateBar {
+    top: 58px; left: 8px; right: 8px;
+    transform: none; border-radius: 14px;
+    padding: 8px 14px; font-size: 12px; gap: 8px;
+    flex-wrap: wrap;
+  }
+  @keyframes slideDown { from { transform: translateY(-16px); opacity: 0; } }
+  #stateBarTitle { font-size: 12px; }
+
+  /* ── Quiz setup: full-width modal ── */
+  .quiz-card.setup {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
+    padding: 22px 18px;
+  }
+  .quiz-card h2 { font-size: 21px; }
+  .quiz-sub { font-size: 13px; margin-bottom: 14px; }
+  .seg-btn { font-size: 12px; padding: 8px 10px; }
+  #quizStart { font-size: 15px; padding: 13px; margin-top: 20px; }
+  .quiz-best { font-size: 12px; margin-top: 12px; }
+
+  /* ── Quiz HUD: stretches below the topbar ── */
+  #quizHud {
+    top: 58px; left: 10px; right: 10px;
+    transform: none; width: auto;
+  }
+  .quiz-card.hud { padding: 14px 16px; width: 100%; }
+  #quizPrompt { font-size: 16px; }
+  .quiz-meta { font-size: 12px; margin-bottom: 10px; }
+  #quizOptions { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+  .q-opt { padding: 10px 8px; font-size: 12.5px; }
+  .quiz-actions { flex-wrap: wrap; gap: 6px; }
+  .quiz-actions button { padding: 7px 14px; font-size: 12px; }
+
+  /* ── Quiz result ── */
+  .quiz-card.result { width: calc(100vw - 20px); padding: 22px 18px; }
+  #resultEmoji { font-size: 50px; margin-bottom: 8px; }
+  #resultStats { font-size: 14px; }
+  #resultStats b { font-size: 17px; }
+
+  /* ── Toast: above bottom nav ── */
+  #toast { bottom: calc(66px + env(safe-area-inset-bottom)); }
+
+  /* ── Hide desktop-only elements ── */
+  #progressChip { display: none; }
+  #hudHint { display: none; }
 }
