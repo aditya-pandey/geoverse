@@ -836,6 +836,40 @@ async function getStates(cca2) {
 }
 
 /* ───────────────────── STATES: real 3D borders ───────────────────── */
+// geoBoundaries polygons are wound RFC7946-style (CCW outer rings); the globe renderer follows the
+// d3 convention, so a wrong-wound ring fills the REST of the planet (giant sphere-swallowing polygon).
+// Rewind every ring so the enclosed area is the small side.
+const ringArea = (ring) => d3.geoArea({ type: "Polygon", coordinates: [ring] });
+function rewindRings(rings) {
+  if (!rings?.length) return;
+  if (ringArea(rings[0]) > 2 * Math.PI) rings[0].reverse();          // outer ring encloses the state…
+  for (let i = 1; i < rings.length; i++) {
+    if (ringArea(rings[i]) < 2 * Math.PI) rings[i].reverse();        // …holes are wound the opposite way
+  }
+}
+function rewindGeom(geom) {
+  if (geom?.type === "Polygon") rewindRings(geom.coordinates);
+  else if (geom?.type === "MultiPolygon") geom.coordinates.forEach(rewindRings);
+}
+
+// Some "simplified" ADM1 files are still enormous — thin dense rings so the renderer never freezes.
+function slimGeom(geom, budget = 1500) {
+  const polys = geom?.type === "Polygon" ? [geom.coordinates] : geom?.type === "MultiPolygon" ? geom.coordinates : [];
+  const total = polys.reduce((s, p) => s + p.reduce((s2, r) => s2 + r.length, 0), 0);
+  const step = Math.ceil(total / budget);
+  if (step <= 1) return;
+  for (const p of polys) {
+    for (let i = 0; i < p.length; i++) {
+      const r = p[i];
+      if (r.length <= 12) continue;
+      const out = [];
+      for (let j = 0; j < r.length - 1; j += step) out.push(r[j]);
+      out.push(r[r.length - 1]); // keep the ring closed
+      if (out.length >= 4) p[i] = out;
+    }
+  }
+}
+
 async function loadAdm1(countryD) {
   const iso3raw = countryD.gv?.cca3;
   if (!iso3raw) return null;
@@ -853,7 +887,12 @@ async function loadAdm1(countryD) {
     if (!r.ok) throw new Error("no adm1");
     feats = (await r.json()).features;
   }
-  feats.forEach((f, i) => { f.__adm1 = true; f.__idx = i; });
+  feats.forEach((f, i) => {
+    f.__adm1 = true;
+    f.__idx = i;
+    slimGeom(f.geometry);   // keep the renderer fast on huge files
+    rewindGeom(f.geometry); // fix inverted polygons that swallow the globe
+  });
   S.adm1Cache.set(iso3, feats);
   return feats;
 }
