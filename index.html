@@ -7,9 +7,27 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>GeoVerse — The Living Atlas</title>
+<meta name="description" content="Spin a cinematic 3D globe: explore every country and its states, paint the world with live World Bank data, discover oceans, ranges and natural wonders, and challenge friends to geography games." />
+<link rel="canonical" href="https://aditya-pandey.github.io/geoverse/" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
+
+<!-- Social previews (LinkedIn · X · Discord · WhatsApp) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="GeoVerse" />
+<meta property="og:title" content="GeoVerse — The Living Atlas" />
+<meta property="og:description" content="A cinematic 3D globe for learning geography: countries, states, live data, wonders, wildlife and shareable challenges." />
+<meta property="og:url" content="https://aditya-pandey.github.io/geoverse/" />
+<meta property="og:image" content="https://aditya-pandey.github.io/geoverse/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="GeoVerse — a glowing 3D globe with the title The Living Atlas" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="GeoVerse — The Living Atlas" />
+<meta name="twitter:description" content="A cinematic 3D globe for learning geography: countries, states, live data, wonders, wildlife and shareable challenges." />
+<meta name="twitter:image" content="https://aditya-pandey.github.io/geoverse/og-image.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -36,42 +54,96 @@
 <!-- ══════════ TOP BAR ══════════ -->
 <header id="topbar">
   <div class="brand">
-    <span class="brand-globe">🌍</span>
+    <span class="brand-globe" aria-hidden="true">
+      <svg class="brand-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+        <path d="M2 12h20"></path>
+      </svg>
+    </span>
     <div class="brand-text">
       <span class="brand-name">GEO<b>VERSE</b></span>
       <span class="brand-tag">The Living Atlas</span>
     </div>
   </div>
 
-  <nav id="modeTabs">
-    <button class="mode-tab active" data-mode="explore">🧭 Explore</button>
-    <button class="mode-tab" data-mode="atlas">🗺️ Atlas</button>
-    <button class="mode-tab" data-mode="earth">🌋 Earth</button>
-    <button class="mode-tab" data-mode="quiz">🎯 Quiz</button>
+  <nav id="modeTabs" aria-label="Modes">
+    <button class="mode-tab active" data-mode="explore">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Explore</span>
+    </button>
+    <button class="mode-tab" data-mode="tours" id="toursTabBtn">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      <span>Tours</span>
+    </button>
+    <button class="mode-tab" data-mode="atlas">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+      <span>Atlas</span>
+    </button>
+    <button class="mode-tab" data-mode="earth">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+      <span>Earth</span>
+    </button>
+    <button class="mode-tab" data-mode="quiz">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Arcade</span>
+    </button>
   </nav>
 
   <div id="searchWrap">
-    <input id="searchInput" type="text" placeholder="Search any country…  ( / )" autocomplete="off" spellcheck="false" />
-    <div id="searchResults"></div>
+    <button id="searchTrigger" aria-label="Search countries, capitals, wonders, wildlife and tours" aria-haspopup="dialog">
+      <svg class="st-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span class="st-text">Search countries, wonders, tours…</span>
+      <kbd class="st-kbd" id="searchKbd">⌘K</kbd>
+    </button>
   </div>
 </header>
+
+<!-- ══════════ COMMAND PALETTE (⌘K / Ctrl+K) ══════════ -->
+<div id="palette" class="hidden" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="palette-card">
+    <div class="palette-field">
+      <svg class="st-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="searchInput" type="text" placeholder="Countries, capitals, oceans, ranges, wonders, tours…"
+        autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true"
+        aria-controls="searchResults" aria-autocomplete="list" />
+      <button id="paletteClose" class="palette-esc" aria-label="Close search">Esc</button>
+    </div>
+    <div id="searchResults" role="listbox" aria-label="Search results"></div>
+    <div id="paletteFoot">↑↓ to move · Enter to fly · Esc to close</div>
+  </div>
+</div>
 
 <!-- ══════════ HUD ══════════ -->
 <div id="hudHint">Drag to spin · Scroll to zoom · Click a country to dive in</div>
 
-<div id="progressChip">
-  <div class="chip-label">🌐 <span id="visitedCount">0</span> / <span id="totalCount">0</span> countries explored</div>
-  <div class="chip-bar"><div id="chipFill"></div></div>
-</div>
+<button id="progressChip" aria-expanded="false" aria-controls="progressPop" aria-label="Exploration progress">
+  <span class="chip-label">
+    <svg class="chip-globe-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+    <span id="visitedCount">0</span><span class="chip-of"> / <span id="totalCount">0</span></span><span class="chip-word"> countries explored</span>
+  </span>
+  <span class="chip-bar"><span id="chipFill"></span></span>
+</button>
+<div id="progressPop" class="hidden" role="dialog" aria-label="Exploration progress"></div>
 
 <div id="textureDock">
-  <button class="tex-btn active" data-tex="day" title="Daylight satellite">☀️</button>
-  <button class="tex-btn" data-tex="night" title="City lights at night">🌙</button>
-  <button class="tex-btn" data-tex="dark" title="Minimal dark">⚫</button>
+  <button class="tex-btn active" data-tex="day" title="Daylight satellite" aria-label="Daylight satellite globe">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+  </button>
+  <button class="tex-btn" data-tex="night" title="City lights at night" aria-label="City lights at night">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  </button>
+  <button class="tex-btn" data-tex="dark" title="Minimal dark" aria-label="Minimal dark globe">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20Z" fill="currentColor"/></svg>
+  </button>
+  <button class="tex-btn pin-toggle" id="pinToggle" title="Pins for tiny nations" aria-label="Show pins for tiny nations and islands" aria-pressed="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+  </button>
 </div>
 
 <!-- ══════════ ATLAS CONTROLS ══════════ -->
-<div id="atlasDock" class="hidden">
+<div id="atlasDock" class="hidden" aria-label="Data layer controls">
+  <div class="sheet-grip" aria-hidden="true"></div>
   <label>Paint the world by</label>
   <div class="atlas-metrics">
     <button class="metric-btn active" data-metric="population">👥 Population</button>
@@ -83,12 +155,13 @@
     <button class="metric-btn" data-metric="region">🌈 Regions</button>
   </div>
   <label class="atlas3d-row"><input type="checkbox" id="atlas3d" checked /> Extrude in 3D</label>
-  <div id="atlasReadout">Hover a country…</div>
+  <div id="atlasReadout" aria-live="polite">Hover a country…</div>
   <div id="legend"></div>
 </div>
 
 <!-- ══════════ EARTH (NERD) CONTROLS ══════════ -->
-<div id="earthDock" class="hidden">
+<div id="earthDock" class="hidden" aria-label="Physical geography layers">
+  <div class="sheet-grip" aria-hidden="true"></div>
   <label>Physical layers</label>
   <div class="atlas-metrics">
     <button class="metric-btn layer-btn on" data-layer="oceans">🌊 Oceans &amp; Seas</button>
@@ -105,24 +178,94 @@
 </div>
 
 <!-- ══════════ COUNTRY PANEL ══════════ -->
-<aside id="panel" class="hidden">
-  <button id="panelClose" title="Close (Esc)">✕</button>
+<aside id="panel" class="hidden" aria-label="Details">
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <button id="panelClose" title="Close (Esc)" aria-label="Close details panel">✕</button>
   <div id="panelHeader">
-    <img id="panelFlag" alt="flag" />
-    <div>
+    <img id="panelFlag" alt="" />
+    <div class="ph-text">
       <h2 id="panelName"></h2>
       <p id="panelOfficial"></p>
+      <div id="panelActions">
+        <button id="panelCompare" class="panel-act" aria-label="Compare with another country">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+          <span>Compare</span>
+        </button>
+      </div>
     </div>
   </div>
-  <nav id="panelTabs">
-    <button class="ptab active" data-tab="overview">Overview</button>
-    <button class="ptab" data-tab="geography">Geography</button>
-    <button class="ptab" data-tab="wildlife">🦁 Life</button>
-    <button class="ptab" data-tab="history">History</button>
-    <button class="ptab" data-tab="states">States</button>
+  <nav id="panelTabs" role="tablist" aria-label="Country sections">
+    <button class="ptab active" role="tab" aria-selected="true" data-tab="overview">Overview</button>
+    <button class="ptab" role="tab" aria-selected="false" data-tab="geography">Geography</button>
+    <button class="ptab" role="tab" aria-selected="false" data-tab="wildlife">Wildlife</button>
+    <button class="ptab" role="tab" aria-selected="false" data-tab="history">History</button>
+    <button class="ptab" role="tab" aria-selected="false" data-tab="states">States</button>
   </nav>
-  <div id="panelBody"></div>
+  <div id="panelBody" role="tabpanel"></div>
 </aside>
+
+<!-- ══════════ STORY TOURS MODAL ══════════ -->
+<div id="toursModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="toursModalTitle">
+  <div class="tours-card">
+    <button class="quiz-close" id="toursClose" title="Close tours (Esc)" aria-label="Close story tours">✕</button>
+    <div class="tour-pill-badge">GUIDED STORY EXPEDITIONS</div>
+    <h2 id="toursModalTitle">5-Minute Globe Expeditions</h2>
+    <p class="tours-sub">Cinematic camera journeys across Earth. Real photos, zero jargon, pure wonder.</p>
+    <div class="tours-grid" id="toursGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════ ACTIVE STORY TOUR HUD ══════════ -->
+<div id="tourActiveHud" class="hidden" role="region" aria-label="Guided Tour Experience">
+  <div class="tour-hud-card">
+    <div class="tour-hud-top">
+      <div class="th-meta">
+        <span class="th-tour-title" id="thTourTitle">Story Expedition</span>
+        <span class="th-stop-badge" id="thStopBadge">Stop 1 of 5</span>
+      </div>
+      <button id="tourExitBtn" class="tour-exit-btn" aria-label="Exit tour">✕</button>
+    </div>
+    <div class="th-photo-wrap" id="thPhotoWrap">
+      <img id="thPhoto" class="th-photo" alt="" />
+      <div class="th-photo-gradient"></div>
+      <div class="th-name-overlay">
+        <h3 id="thLocationName">Location</h3>
+        <span id="thLocationSub" class="th-country-tag">Region</span>
+      </div>
+    </div>
+    <div class="th-story-body">
+      <div class="story-spark-box">
+        <span class="spark-icon">✨</span>
+        <p id="thSparkText" class="spark-text"></p>
+      </div>
+      <div class="story-explain-box">
+        <div class="seb-label">How it works</div>
+        <p id="thExplainText" class="seb-text"></p>
+      </div>
+      <div class="story-scale-box" id="thScaleBox">
+        <div class="seb-label">Human-scale comparison</div>
+        <p id="thScaleText" class="seb-text"></p>
+      </div>
+    </div>
+    <div class="tour-hud-actions">
+      <button id="tourPrevBtn" class="tour-nav-btn prev">← Previous</button>
+      <button id="tourExploreBtn" class="tour-act-btn">Explore Here</button>
+      <button id="tourNextBtn" class="tour-nav-btn next">Next Stop →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TOUCH CHOROPLETH PREVIEW PILL (pointer: coarse) ══════════ -->
+<div id="touchPreviewPill" class="hidden" role="status" aria-live="polite">
+  <div class="tp-content">
+    <span class="tp-flag" id="tpFlag">🌐</span>
+    <div class="tp-info">
+      <div class="tp-name" id="tpName">Country Name</div>
+      <div class="tp-val" id="tpValue">Rank &amp; Value</div>
+    </div>
+  </div>
+  <button id="tpOpenBtn" class="tp-btn">Open Story →</button>
+</div>
 
 <!-- ══════════ STATE VIEW BAR ══════════ -->
 <div id="stateBar" class="hidden">
@@ -130,23 +273,76 @@
   <span id="stateBarTitle"></span>
 </div>
 
-<!-- ══════════ QUIZ ══════════ -->
-<div id="quizSetup" class="hidden">
+<!-- ══════════ QUIZ / ARCADE ══════════ -->
+<div id="quizSetup" class="hidden" role="dialog" aria-modal="true" aria-labelledby="quizSetupTitle">
   <div class="quiz-card setup">
-    <button class="quiz-close" id="quizSetupClose" title="Back to exploring (Esc)">✕</button>
-    <h2>🎯 Geography Challenge</h2>
-    <p class="quiz-sub">10 rounds. Build streaks. Beat your best.</p>
-    <label>Game</label>
-    <div class="seg wrap" id="quizTypeSeg">
-      <button class="seg-btn active" data-qtype="find">📍 Find the Country</button>
-      <button class="seg-btn" data-qtype="capital">🏛️ Guess the Capital</button>
-      <button class="seg-btn" data-qtype="flag">🚩 Flag Frenzy</button>
-      <button class="seg-btn" data-qtype="city">🏙️ City → Country</button>
-      <button class="seg-btn" data-qtype="borders">🤝 Name the Neighbour</button>
-      <button class="seg-btn" data-qtype="duel">📏 Bigger or Smaller</button>
-      <button class="seg-btn" data-qtype="wonder">✨ Wonder Hunt</button>
+    <button class="quiz-close" id="quizSetupClose" title="Back to exploring (Esc)" aria-label="Close arcade setup">✕</button>
+    <div class="arcade-badge">3D GLOBE ARCADE</div>
+    <h2 id="quizSetupTitle">Geography Arcade</h2>
+    <p class="quiz-sub">Use the interactive 3D planet as your controller. Build streaks and challenge friends.</p>
+    <div id="challengeBanner" class="hidden" role="status"></div>
+
+    <label class="section-label">Arcade Game Mode</label>
+    <div class="arcade-mode-grid" id="arcadeModeGrid">
+      <button class="arcade-card active" data-arcade="mystery">
+        <div class="ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="ac-content">
+          <div class="ac-title">3-Clue Mystery Hunt</div>
+          <div class="ac-desc">Hot/Cold radar. 3 progressive story clues. Click the globe!</div>
+        </div>
+        <span class="ac-tag">Mode A</span>
+      </button>
+
+      <button class="arcade-card" data-arcade="chain">
+        <div class="ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        </div>
+        <div class="ac-content">
+          <div class="ac-title">Higher or Lower: Chain</div>
+          <div class="ac-desc">Connect countries across glowing arcs in an endless streak.</div>
+        </div>
+        <span class="ac-tag">Mode B</span>
+      </button>
+
+      <button class="arcade-card" data-arcade="pinpoint">
+        <div class="ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="ac-content">
+          <div class="ac-title">Pinpoint Drop</div>
+          <div class="ac-desc">Target accuracy test. Drop your pin as close as possible.</div>
+        </div>
+        <span class="ac-tag">Mode C</span>
+      </button>
+
+      <button class="arcade-card" data-arcade="blitz">
+        <div class="ac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="ac-content">
+          <div class="ac-title">Classic Trivia Blitz</div>
+          <div class="ac-desc">10-round regional multiple choice with camera flights.</div>
+        </div>
+        <span class="ac-tag">Mode D</span>
+      </button>
     </div>
-    <label>Arena</label>
+
+    <div id="blitzTypeWrap" class="hidden">
+      <label class="section-label">Trivia Focus</label>
+      <div class="seg wrap" id="quizTypeSeg">
+        <button class="seg-btn active" data-qtype="find">📍 Find Country</button>
+        <button class="seg-btn" data-qtype="capital">🏛️ Guess Capital</button>
+        <button class="seg-btn" data-qtype="flag">🚩 Flag Frenzy</button>
+        <button class="seg-btn" data-qtype="city">🏙️ City → Country</button>
+        <button class="seg-btn" data-qtype="borders">🤝 Neighbour</button>
+        <button class="seg-btn" data-qtype="duel">📏 Bigger/Smaller</button>
+        <button class="seg-btn" data-qtype="wonder">✨ Wonder Hunt</button>
+      </div>
+    </div>
+
+    <label class="section-label">Arena</label>
     <div class="seg wrap" id="quizRegionSeg">
       <button class="seg-btn active" data-region="World">🌍 World</button>
       <button class="seg-btn" data-region="Africa">Africa</button>
@@ -155,34 +351,94 @@
       <button class="seg-btn" data-region="Europe">Europe</button>
       <button class="seg-btn" data-region="Oceania">Oceania</button>
     </div>
-    <button id="quizStart">Start the challenge →</button>
-    <p class="quiz-best">Personal best: <b id="quizBestLabel">0</b> pts</p>
+
+    <label class="section-label">Difficulty</label>
+    <div class="seg" id="quizDiffSeg">
+      <button class="seg-btn" data-diff="E">🌱 Easy</button>
+      <button class="seg-btn active" data-diff="N">⚖️ Normal</button>
+      <button class="seg-btn" data-diff="H">🔥 Hard</button>
+    </div>
+
+    <button id="quizStart">Start Arcade Challenge →</button>
+    <p class="quiz-best">Best here: <b id="quizBestLabel">0</b> pts · Overall: <b id="quizBestOverall">0</b> pts</p>
   </div>
 </div>
 
 <div id="quizHud" class="hidden">
   <div class="quiz-card hud">
     <div class="quiz-meta">
-      <span id="quizRound">1/10</span>
-      <span id="quizScore">0 pts</span>
-      <span id="quizStreak">🔥 0</span>
+      <span id="quizRound" class="mono-num">1/10</span>
+      <span id="quizScore" class="mono-num">0 pts</span>
+      <span id="quizStreak" class="mono-num">🔥 0</span>
     </div>
     <div id="quizPrompt"></div>
+
+    <!-- Mode A: Mystery Hunt Clues -->
+    <div id="mysteryCluesBox" class="mystery-clues hidden">
+      <div class="clue-item" id="mysteryClue1"><span class="clue-pts">300 pts</span><span class="clue-text" id="mysteryClueText1">Clue 1...</span></div>
+      <div class="clue-item locked" id="mysteryClue2"><span class="clue-pts">200 pts</span><span class="clue-text" id="mysteryClueText2">Locked clue</span></div>
+      <div class="clue-item locked" id="mysteryClue3"><span class="clue-pts">100 pts</span><span class="clue-text" id="mysteryClueText3">Locked clue</span></div>
+    </div>
+
+    <!-- Mode B: Higher or Lower Chain Card -->
+    <div id="chainBox" class="chain-box hidden">
+      <div class="chain-comparison">
+        <div class="chain-card base" id="chainBaseCard">
+          <div class="cc-badge">Current Country</div>
+          <div class="cc-name" id="chainBaseName">—</div>
+          <div class="cc-stat mono-num" id="chainBaseStat">—</div>
+          <div class="cc-bar-wrap"><div class="cc-bar-fill" id="chainBaseBar"></div></div>
+        </div>
+        <div class="chain-vs">VS</div>
+        <div class="chain-card target" id="chainTargetCard">
+          <div class="cc-badge">Next Target</div>
+          <div class="cc-name" id="chainTargetName">—</div>
+          <div class="cc-stat mono-num" id="chainTargetStat">???</div>
+          <div class="cc-buttons">
+            <button class="chain-btn higher" id="chainHigherBtn">▲ MORE</button>
+            <button class="chain-btn lower" id="chainLowerBtn">▼ FEWER / SMALLER</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode C: Pinpoint Drop Meter -->
+    <div id="pinpointBox" class="pinpoint-box hidden">
+      <div class="pinpoint-target-info">
+        <div class="pt-label">Target Location</div>
+        <div class="pt-name" id="pinpointTargetName">—</div>
+        <div class="pt-hint" id="pinpointTargetHint">Click anywhere on the 3D globe as close as possible!</div>
+      </div>
+      <div class="pinpoint-meter hidden" id="pinpointMeter">
+        <div class="pm-dist mono-num" id="pinpointDistance">0 km</div>
+        <div class="pm-score mono-num" id="pinpointScore">+0 pts</div>
+      </div>
+    </div>
+
+    <!-- Mode D / Classic Options -->
     <div id="quizOptions" class="hidden"></div>
     <div id="quizFeedback"></div>
+    <div id="quizStoryFact" class="quiz-story-fact hidden"></div>
+
     <div class="quiz-actions">
       <button id="quizSkip">Skip round</button>
-      <button id="quizQuit" class="quit">✕ Exit quiz</button>
+      <button id="quizQuit" class="quit">✕ Exit arcade</button>
     </div>
   </div>
 </div>
 
-<div id="quizResult" class="hidden">
+<div id="quizResult" class="hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
   <div class="quiz-card result">
-    <button class="quiz-close" id="quizResultClose" title="Back to exploring (Esc)">✕</button>
-    <div id="resultEmoji">🏆</div>
+    <button class="quiz-close" id="quizResultClose" title="Back to exploring (Esc)" aria-label="Close results">✕</button>
+    <div id="resultEmoji" aria-hidden="true">🏆</div>
     <h2 id="resultTitle"></h2>
     <p id="resultStats"></p>
+    <div class="share-row">
+      <button id="resultChallenge" class="share-btn">🔗 Challenge a Friend</button>
+      <button id="resultShare" class="share-btn">📋 Share Scorecard</button>
+    </div>
+    <div class="review-h">Round review — tap any place to explore it</div>
+    <ol id="resultReview"></ol>
     <div class="quiz-actions">
       <button id="resultAgain">Play again</button>
       <button id="resultExplore">Back to exploring</button>
@@ -191,7 +447,7 @@
 </div>
 
 <!-- ══════════ TOAST ══════════ -->
-<div id="toast" class="hidden"></div>
+<div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.32.2/dist/globe.gl.min.js"></script>
