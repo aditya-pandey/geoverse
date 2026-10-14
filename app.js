@@ -97,7 +97,7 @@ const S = {
   compare: null,           // { a, b } countries in head-to-head mode
   comparePick: false,      // waiting for the user to choose country B
   micro: [],               // pins for micro-states & small islands
-  pins: store.get("gv-pins", true),
+  pins: store.get("gv-pins-v2", false),
   paused: false,           // render loop paused (tab hidden / full-screen modal)
   searchIndex: null,
 };
@@ -768,6 +768,7 @@ function startStoryTour(tourId) {
   clearCompare();
   endQuiz(true);
   S.activeTour = { tour, stopIndex: 0 };
+  $("#tourActiveHud .tour-hud-card")?.classList.remove("collapsed");
   $("#tourActiveHud")?.classList.remove("hidden");
   renderActiveTourStop();
 }
@@ -796,9 +797,9 @@ async function renderActiveTourStop() {
   $("#thExplainText").textContent = s.explain;
   $("#thScaleText").textContent = s.scale;
 
-  // Animate globe camera smoothly to this stop
+  // Animate globe camera smoothly to this stop using viewFor so it's framed in the clear stage
   pauseRotate();
-  S.globe.pointOfView({ lat: s.lat, lng: s.lng, altitude: s.alt }, 1400);
+  S.globe.pointOfView(viewFor(s.lat, s.lng, s.alt * stageZoom()), 1400);
   ringPulse(s.lat, s.lng, 3.5, "56,189,248");
 
   // Fetch real Wikipedia photo asynchronously
@@ -1165,7 +1166,7 @@ function pauseRotate() {
 function flyTo(d, ms = 1300, altScale = 1) {
   pauseRotate();
   const { lat, lng } = centroidOf(d);
-  S.globe.pointOfView({ lat, lng, altitude: viewAltitudeFor(d) * altScale }, ms);
+  S.globe.pointOfView(viewFor(lat, lng, viewAltitudeFor(d) * altScale * stageZoom()), ms);
 }
 
 /* ── Stage-aware framing ──
@@ -1179,11 +1180,31 @@ function stageInsets() {
   if (isMobile()) {
     ins.top = $("#topbar").offsetHeight;
     ins.bottom = navHeight() + tallestSheet();
+    const tourHud = $("#tourActiveHud");
+    if (tourHud && !tourHud.classList.contains("hidden")) {
+      ins.bottom = Math.max(ins.bottom, navHeight() + tourHud.offsetHeight + 10);
+    }
+    const qHud = $("#quizHud");
+    if (qHud && !qHud.classList.contains("hidden")) {
+      ins.bottom = Math.max(ins.bottom, navHeight() + qHud.offsetHeight + 10);
+    }
   } else {
-    ins.top = 64;
+    ins.top = 70;
     if (panelVisible()) ins.right = innerWidth - $("#panel").getBoundingClientRect().left;
     const dock = ["#atlasDock", "#earthDock"].map($).find((x) => !x.classList.contains("hidden"));
-    if (dock) ins.left = dock.getBoundingClientRect().right;
+    if (dock) ins.left = Math.max(ins.left, dock.getBoundingClientRect().right);
+    const tourHud = $("#tourActiveHud");
+    if (tourHud && !tourHud.classList.contains("hidden")) {
+      const r = tourHud.getBoundingClientRect();
+      if (r.left < innerWidth / 2) ins.left = Math.max(ins.left, r.right + 24);
+      else ins.right = Math.max(ins.right, innerWidth - r.left + 24);
+    }
+    const qHud = $("#quizHud");
+    if (qHud && !qHud.classList.contains("hidden")) {
+      const r = qHud.getBoundingClientRect();
+      if (r.left < innerWidth / 2) ins.left = Math.max(ins.left, r.right + 24);
+      else ins.right = Math.max(ins.right, innerWidth - r.left + 24);
+    }
   }
   return ins;
 }
@@ -2708,10 +2729,9 @@ function initMicroStates() {
 
 const isMicro = (d) => S.microSet?.has(d);
 
-// Pins only where picking a country is the task (not in Earth mode, state view, or answer-button quizzes)
+// Pins only where picking a country is the task (never in tours or quiz modes)
 function microActive() {
-  if (!S.pins || S.stateView || S.mode === "earth") return false;
-  if (S.mode === "quiz") return S.quiz?.type === "find";
+  if (!S.pins || S.stateView || S.mode === "earth" || S.activeTour || S.mode === "quiz") return false;
   return true;
 }
 
@@ -2746,9 +2766,10 @@ function microNear(ev) {
 
 function setPins(on) {
   S.pins = on;
+  store.set("gv-pins-v2", on);
   store.set("gv-pins", on);
-  $("#pinToggle").classList.toggle("active", on);
-  $("#pinToggle").setAttribute("aria-pressed", String(on));
+  $("#pinToggle")?.classList.toggle("active", on);
+  $("#pinToggle")?.setAttribute("aria-pressed", String(on));
   refreshHtmlLayer();
 }
 
@@ -3674,9 +3695,10 @@ function startQuiz() {
   };
   $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
+  $("#quizHud .quiz-card.hud")?.classList.remove("collapsed");
   $("#quizHud").classList.remove("hidden");
   $("#hudHint").textContent = QUIZ_HINTS[arcadeMode] || QUIZ_HINTS[type] || "Play with the 3D globe!";
-  S.globe.pointOfView({ lat: 15, lng: 20, altitude: 2.6 }, 900);
+  S.globe.pointOfView(viewFor(15, 20, 2.6 * stageZoom()), 900);
   refreshHtmlLayer();
   scheduleUrl();
   nextRound();
@@ -4597,6 +4619,44 @@ function initUI() {
   $("#toursTabBtn")?.addEventListener("click", openStoryToursModal);
   $("#toursClose")?.addEventListener("click", closeStoryToursModal);
   $("#tourExitBtn")?.addEventListener("click", exitStoryTour);
+  $("#tourMinBtn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const card = $("#tourActiveHud .tour-hud-card");
+    if (!card) return;
+    const isCollapsed = card.classList.toggle("collapsed");
+    $("#tourMinBtn").title = isCollapsed ? "Expand story card" : "Minimize story card";
+    if (S.activeTour) {
+      const s = S.activeTour.tour.stops[S.activeTour.stopIndex];
+      if (s) S.globe.pointOfView(viewFor(s.lat, s.lng, s.alt * stageZoom()), 600);
+    }
+  });
+  $("#tourActiveHud .tour-hud-top")?.addEventListener("click", (e) => {
+    if (e.target.closest("button")) return;
+    const card = $("#tourActiveHud .tour-hud-card");
+    if (card && card.classList.contains("collapsed")) {
+      card.classList.remove("collapsed");
+      if (S.activeTour) {
+        const s = S.activeTour.tour.stops[S.activeTour.stopIndex];
+        if (s) S.globe.pointOfView(viewFor(s.lat, s.lng, s.alt * stageZoom()), 600);
+      }
+    }
+  });
+
+  $("#quizMinBtn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const card = $("#quizHud .quiz-card.hud");
+    if (!card) return;
+    const isCollapsed = card.classList.toggle("collapsed");
+    $("#quizMinBtn").title = isCollapsed ? "Expand arcade HUD" : "Minimize arcade HUD";
+  });
+  $("#quizHud .quiz-card.hud")?.addEventListener("click", (e) => {
+    if (e.target.closest("button") || e.target.closest(".q-opt")) return;
+    const card = $("#quizHud .quiz-card.hud");
+    if (card && card.classList.contains("collapsed")) {
+      card.classList.remove("collapsed");
+    }
+  });
+
   $("#tourPrevBtn")?.addEventListener("click", () => {
     if (S.activeTour && S.activeTour.stopIndex > 0) {
       S.activeTour.stopIndex--;

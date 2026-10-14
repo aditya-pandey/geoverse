@@ -134,7 +134,7 @@
   <button class="tex-btn" data-tex="dark" title="Minimal dark" aria-label="Minimal dark globe">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20Z" fill="currentColor"/></svg>
   </button>
-  <button class="tex-btn pin-toggle" id="pinToggle" title="Pins for tiny nations" aria-label="Show pins for tiny nations and islands" aria-pressed="true">
+  <button class="tex-btn pin-toggle" id="pinToggle" title="Pins for tiny nations" aria-label="Show pins for tiny nations and islands" aria-pressed="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
   </button>
 </div>
@@ -222,7 +222,12 @@
         <span class="th-stop-badge mono-num" id="thStopBadge">01 / 05</span>
         <span class="th-coords-badge mono-num" id="thCoordsBadge">0.00° N, 0.00° E</span>
       </div>
-      <button id="tourExitBtn" class="tour-exit-btn" aria-label="Exit tour">✕</button>
+      <div class="th-controls">
+        <button id="tourMinBtn" class="tour-min-btn" aria-label="Minimize or expand story card" title="Minimize / Expand">
+          <svg class="min-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button id="tourExitBtn" class="tour-exit-btn" aria-label="Exit tour" title="Exit expedition">✕</button>
+      </div>
     </div>
     <div class="th-photo-wrap" id="thPhotoWrap">
       <img id="thPhoto" class="th-photo" alt="" />
@@ -373,6 +378,11 @@
       <span id="quizRound" class="mono-num">1/10</span>
       <span id="quizScore" class="mono-num">0 pts</span>
       <span id="quizStreak" class="mono-num">🔥 0</span>
+      <div class="quiz-hud-controls">
+        <button id="quizMinBtn" class="quiz-min-btn" aria-label="Minimize or expand quiz card" title="Minimize / Expand">
+          <svg class="min-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+      </div>
     </div>
     <div id="quizPrompt"></div>
 

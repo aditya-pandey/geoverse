@@ -835,20 +835,32 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 
 /* Active Tour Floating HUD */
 #tourActiveHud {
-  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 35;
-  width: 480px; max-width: calc(100vw - 24px);
-  pointer-events: auto; animation: slideUp .4s cubic-bezier(.2,.9,.3,1);
+  position: fixed;
+  top: 84px;
+  left: 24px;
+  z-index: 35;
+  width: 400px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 110px);
+  pointer-events: auto;
+  animation: slideInLeft .35s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 .tour-hud-card {
   background: var(--glass-card); border: 1px solid var(--stroke-bright);
   border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6);
   backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
   display: flex; flex-direction: column;
+  transition: all .25s ease;
 }
 .tour-hud-top {
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 16px; border-bottom: 1px solid var(--stroke);
   background: rgba(0,0,0,0.25);
+  cursor: pointer;
 }
 .th-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .th-tour-title { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -857,11 +869,31 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
   font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
   background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--accent);
 }
+.th-controls { display: flex; align-items: center; gap: 6px; }
+.tour-min-btn, .quiz-min-btn {
+  width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--text-dim); background: rgba(255,255,255,.08); transition: all .2s;
+}
+.tour-min-btn:hover, .quiz-min-btn:hover { background: rgba(255,255,255,.16); color: var(--text); }
 .tour-exit-btn {
   width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font-size: 13px; color: var(--text-dim); background: rgba(255,255,255,.08); transition: all .2s;
 }
 .tour-exit-btn:hover { background: rgba(244, 63, 94, 0.3); color: #fff; }
+.min-icon-svg { width: 14px; height: 14px; stroke: currentColor; transition: transform .25s ease; }
+
+/* Collapsed State for Tour HUD */
+.tour-hud-card.collapsed .th-photo-wrap,
+.tour-hud-card.collapsed .th-story-body,
+.tour-hud-card.collapsed .tour-hud-actions {
+  display: none !important;
+}
+.tour-hud-card.collapsed .tour-hud-top {
+  border-bottom: none;
+}
+.tour-hud-card.collapsed .min-icon-svg {
+  transform: rotate(180deg);
+}
 .th-photo-wrap {
   position: relative; width: 100%; height: 160px; background: #06080D; overflow: hidden;
 }
@@ -1017,15 +1049,57 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 .quiz-best b { color: var(--gold); }
 
 #quizHud {
-  position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 22;
+  position: fixed;
+  top: 84px;
+  left: 24px;
+  z-index: 22;
   pointer-events: none;
+  animation: slideInLeft .35s cubic-bezier(.2,.9,.3,1);
 }
-.quiz-card.hud { padding: 20px 26px; width: 460px; max-width: calc(100vw - 32px); pointer-events: auto; }
-.quiz-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin-bottom: 12px; font-family: var(--font-display); }
+.quiz-card.hud {
+  padding: 18px 22px;
+  width: 390px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  pointer-events: auto;
+  text-align: left;
+  transition: all .25s ease;
+}
+.quiz-card.hud::-webkit-scrollbar { width: 4px; }
+.quiz-card.hud::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+.quiz-meta { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin-bottom: 12px; font-family: var(--font-display); }
+.quiz-hud-controls { display: flex; align-items: center; gap: 6px; }
 #quizScore { color: var(--gold); font-weight: 700; }
 #quizStreak { color: #ff9f43; font-weight: 700; }
-#quizPrompt { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.35; }
+#quizPrompt { font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.35; }
 #quizPrompt .qp-flag { font-size: 28px; margin-right: 8px; vertical-align: -3px; }
+
+/* Collapsed State for Quiz HUD */
+.quiz-card.hud.collapsed {
+  width: auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  max-height: none;
+  overflow: visible;
+}
+.quiz-card.hud.collapsed .quiz-meta {
+  margin-bottom: 0;
+  gap: 12px;
+}
+.quiz-card.hud.collapsed #quizPrompt,
+.quiz-card.hud.collapsed #mysteryCluesBox,
+.quiz-card.hud.collapsed #chainBox,
+.quiz-card.hud.collapsed #pinpointBox,
+.quiz-card.hud.collapsed #quizOptions,
+.quiz-card.hud.collapsed #quizFeedback,
+.quiz-card.hud.collapsed #quizStoryFact,
+.quiz-card.hud.collapsed .quiz-actions {
+  display: none !important;
+}
+.quiz-card.hud.collapsed .min-icon-svg {
+  transform: rotate(180deg);
+}
 #quizFeedback { min-height: 22px; margin-top: 10px; font-size: 14px; font-weight: 500; }
 #quizFeedback.good { color: var(--green); }
 #quizFeedback.bad { color: var(--red); }
@@ -1504,14 +1578,34 @@ body[data-mode="quiz"] .micro-pin::after { display: none; } /* no spoilers mid-q
   #quizStart { font-size: 15px; padding: 14px; margin-top: 20px; }
   .quiz-best { font-size: 12px; margin-top: 12px; }
 
-  #quizHud { top: calc(58px + env(safe-area-inset-top)); left: 10px; right: 10px; transform: none; width: auto; }
-  .quiz-card.hud { padding: 14px 16px; width: 100%; }
-  #quizPrompt { font-size: 16px; }
-  .quiz-meta { font-size: 12px; margin-bottom: 10px; }
-  #quizOptions { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
-  .q-opt { padding: 12px 8px; font-size: 13px; min-height: 46px; }
+  #quizHud {
+    top: calc(58px + env(safe-area-inset-top));
+    left: 10px; right: 10px;
+    transform: none;
+    width: auto;
+    max-width: none;
+  }
+  .quiz-card.hud { padding: 14px 16px; width: 100%; max-height: 44dvh; }
+  .quiz-card.hud.collapsed { max-height: none; width: auto; align-self: flex-start; }
+  #quizPrompt { font-size: 15px; }
+  .quiz-meta { font-size: 12px; margin-bottom: 8px; }
+  #quizOptions { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .q-opt { padding: 10px 8px; font-size: 12.5px; min-height: 42px; }
   .quiz-actions { flex-wrap: wrap; gap: 6px; }
-  .quiz-actions button { padding: 10px 16px; font-size: 12.5px; min-height: 42px; }
+  .quiz-actions button { padding: 8px 14px; font-size: 12px; min-height: 38px; }
+
+  #tourActiveHud {
+    top: auto;
+    bottom: calc(var(--nav-h, 60px) + 8px);
+    left: 10px; right: 10px;
+    width: auto;
+    max-width: none;
+    max-height: 48dvh;
+    animation: slideUp .35s ease;
+  }
+  .tour-hud-card { max-height: 48dvh; }
+  .tour-hud-card.collapsed { max-height: none; }
+  .th-photo-wrap { height: 120px; }
 
   .quiz-card.result { width: 100%; padding: 22px 16px; max-height: calc(100dvh - var(--nav-h) - 20px); }
   #resultEmoji { font-size: 48px; margin-bottom: 6px; }
