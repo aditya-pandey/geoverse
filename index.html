@@ -25,9 +25,7 @@
 <meta name="twitter:title" content="GeoVerse — The Living Atlas" />
 <meta name="twitter:description" content="A cinematic 3D globe for learning geography: countries, states, live data, wonders, wildlife and shareable challenges." />
 <meta name="twitter:image" content="https://aditya-pandey.github.io/geoverse/og-image.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -221,7 +219,8 @@
     <div class="tour-hud-top">
       <div class="th-meta">
         <span class="th-tour-title" id="thTourTitle">Story Expedition</span>
-        <span class="th-stop-badge" id="thStopBadge">Stop 1 of 5</span>
+        <span class="th-stop-badge mono-num" id="thStopBadge">01 / 05</span>
+        <span class="th-coords-badge mono-num" id="thCoordsBadge">0.00° N, 0.00° E</span>
       </div>
       <button id="tourExitBtn" class="tour-exit-btn" aria-label="Exit tour">✕</button>
     </div>
@@ -229,6 +228,10 @@
       <img id="thPhoto" class="th-photo" alt="" />
       <div class="th-photo-gradient"></div>
       <div class="th-name-overlay">
+        <div class="th-badge-row">
+          <span class="th-chapter-tag" id="thChapterTag">CHAPTER 01</span>
+          <span class="th-type-tag" id="thTypeTag">GEOLOGY</span>
+        </div>
         <h3 id="thLocationName">Location</h3>
         <span id="thLocationSub" class="th-country-tag">Region</span>
       </div>
@@ -239,7 +242,7 @@
         <p id="thSparkText" class="spark-text"></p>
       </div>
       <div class="story-explain-box">
-        <div class="seb-label">How it works</div>
+        <div class="seb-label">Why it exists here</div>
         <p id="thExplainText" class="seb-text"></p>
       </div>
       <div class="story-scale-box" id="thScaleBox">
@@ -249,8 +252,8 @@
     </div>
     <div class="tour-hud-actions">
       <button id="tourPrevBtn" class="tour-nav-btn prev">← Previous</button>
-      <button id="tourExploreBtn" class="tour-act-btn">Explore Here</button>
-      <button id="tourNextBtn" class="tour-nav-btn next">Next Stop →</button>
+      <button id="tourExploreBtn" class="tour-act-btn">Explore Country</button>
+      <button id="tourNextBtn" class="tour-nav-btn next">Next Chapter →</button>
     </div>
   </div>
 </div>

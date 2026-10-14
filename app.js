@@ -474,9 +474,9 @@ function generateWonderStory(w) {
 /* ───────────────────── GUIDED 5-MINUTE STORY EXPEDITIONS ───────────────────── */
 const STORY_TOURS = [
   {
-    id: "volcanoes-pacific",
-    title: "Why Volcanoes Circle the Pacific?",
-    subtitle: "The Ring of Fire",
+    id: "ring-of-fire",
+    title: "The Ring of Fire",
+    subtitle: "Tectonic fury, deep trenches, and volcanic islands",
     icon: "🌋",
     duration: "5 MINS",
     description: "Follow colliding tectonic plates releasing trapped ocean water into molten magma across 450+ roaring volcanoes.",
@@ -492,13 +492,23 @@ const STORY_TOURS = [
         wiki: "Mount Fuji",
       },
       {
+        name: "Mariana Trench",
+        country: "Pacific Ocean",
+        type: "Deepest Subduction Trench",
+        lat: 11.349, lng: 142.199, alt: 1.25,
+        spark: "The deepest abyss on the planet, plunging 11 kilometers down into pitch-black freezing trenches.",
+        explain: "The ancient, dense Pacific plate is driven down into the Earth's mantle beneath the Mariana plate at a deep subduction zone.",
+        scale: "If Mount Everest were placed at the bottom, its peak would still be submerged under 2,000 meters of water.",
+        wiki: "Mariana Trench",
+      },
+      {
         name: "Krakatoa",
         country: "Indonesia",
         type: "Volcanic Caldera Island",
         lat: -6.102, lng: 105.423, alt: 1.15,
         spark: "In 1883, Krakatoa exploded with the loudest sound ever recorded by humanity—heard 4,800 km away.",
         explain: "Cold seawater poured into the subterranean magma chamber, triggering a colossal steam explosion that blew two-thirds of the island off the map.",
-        scale: "The sound wave circled the entire globe four times before dying out.",
+        scale: "The atmospheric sound wave circled the entire globe four times before dying out.",
         wiki: "Krakatoa",
       },
       {
@@ -513,54 +523,24 @@ const STORY_TOURS = [
       },
       {
         name: "Mauna Loa",
-        country: "Hawaii, United States",
+        country: "United States",
         type: "Colossal Shield Volcano",
         lat: 19.479, lng: -155.602, alt: 1.25,
         spark: "From its underwater base on the sea floor, Mauna Loa is taller than Mount Everest.",
-        explain: "Unlike Ring of Fire subduction volcanoes, Hawaii sits over a stationary volcanic 'hotspot' in the middle of the Pacific plate that oozes fluid basaltic lava.",
+        explain: "Unlike Ring of Fire subduction volcanoes, Hawaii sits over a stationary mantle hotspot in the Pacific plate that oozes fluid basaltic lava.",
         scale: "Measured from its sea-floor base to summit, it stands over 9,170 meters tall.",
         wiki: "Mauna Loa",
-      },
-      {
-        name: "Mount St. Helens",
-        country: "United States",
-        type: "Cascades Stratovolcano",
-        lat: 46.191, lng: -122.195, alt: 1.15,
-        spark: "In 1980, the entire northern face of this mountain slid away in the largest landslide in recorded history.",
-        explain: "Trapped magma bulged the mountain's north flank sideways by 150 meters before an earthquake released the pressure, triggering a supersonic lateral blast.",
-        scale: "Blew down 600 square kilometers of old-growth forest in less than 3 minutes.",
-        wiki: "Mount St. Helens",
       },
     ]
   },
   {
-    id: "extreme-survival",
-    title: "How Animals Survive Extreme Cold & Heat",
-    subtitle: "Creatures of the Extremes",
+    id: "life-extremes",
+    title: "Life at the Extremes",
+    subtitle: "The hottest, coldest, highest, and driest inhabited places on Earth",
     icon: "❄️",
     duration: "5 MINS",
-    description: "From sub-zero Antarctic glacial ice to 50°C red desert dunes, discover evolutionary marvels of climate adaptation.",
+    description: "From sub-zero Siberian permafrost to boiling Ethiopian acid cauldrons, discover evolutionary marvels of extreme adaptation.",
     stops: [
-      {
-        name: "Perito Moreno Glacier",
-        country: "Argentina",
-        type: "Patagonian Ice Sheet",
-        lat: -50.495, lng: -73.137, alt: 1.2,
-        spark: "One of the few glaciers on Earth that remains in dynamic equilibrium, advancing forward into icy turquoise waters.",
-        explain: "Fueled by constant Pacific storms dumping massive snow on the Southern Patagonian Ice Field, feeding ice that compacts and flows downhill under gravity.",
-        scale: "Its towering front wall rises 74 meters above the water and descends 170 meters below.",
-        wiki: "Perito Moreno Glacier",
-      },
-      {
-        name: "Galápagos Islands",
-        country: "Ecuador",
-        type: "Marine Iguana Habitat",
-        lat: -0.777, lng: -91.142, alt: 1.15,
-        spark: "The world's only marine lizard—it swims in cold ocean currents and sneezes out white crusts of pure sea salt.",
-        explain: "Specialized cranial glands filter salt from its bloodstream so it can graze on underwater algae in cold upwelling Humboldt currents without dehydrating.",
-        scale: "Can dive up to 20 meters deep and hold its breath underwater for nearly an hour.",
-        wiki: "Marine iguana",
-      },
       {
         name: "Atacama Desert",
         country: "Chile",
@@ -572,94 +552,114 @@ const STORY_TOURS = [
         wiki: "Atacama Desert",
       },
       {
-        name: "Himalayas & Mount Everest",
-        country: "Nepal / China",
-        type: "Snow Leopard Realm",
+        name: "Mount Everest & Himalayas",
+        country: "Nepal",
+        type: "High-Altitude Death Zone",
         lat: 27.988, lng: 86.925, alt: 1.2,
-        spark: "The 'Ghost of the Mountains' navigates near-vertical cliffs with paws that act as natural snowshoes and a tail as long as its body.",
-        explain: "Enlarged nasal cavities warm freezing mountain air before it reaches the lungs, while its thick, smoky fur provides camouflage against granite cliffs.",
-        scale: "Can leap up to 15 meters in a single horizontal bound across mountain chasms.",
-        wiki: "Snow leopard",
+        spark: "The rooftop of planet Earth, where sea lily fossils near the summit prove it was once the floor of an ancient ocean.",
+        explain: "The Indian tectonic plate is colliding into Eurasia at 5 cm per year, crumpling continental crust skyward into vertical rock and ice walls.",
+        scale: "At 8,848 m, air pressure is only one-third of sea level, pushing human physiology to its ultimate threshold.",
+        wiki: "Mount Everest",
       },
       {
-        name: "Gobi Desert",
-        country: "Mongolia",
-        type: "Bactrian Camel Territory",
-        lat: 43.5, lng: 104.5, alt: 1.25,
-        spark: "Can effortlessly survive temperatures swinging from -40°C in winter blizzards to +45°C in scorching summer heat.",
-        explain: "Two fat-filled humps insulate against heat and break down into metabolic water; wide leathery footpads prevent sinking into loose gravel.",
-        scale: "Can drink 110 liters of water in just 10 minutes when reaching a desert oasis.",
-        wiki: "Bactrian camel",
+        name: "Oymyakon / Siberia",
+        country: "Russia",
+        type: "Coldest Inhabited Realm",
+        lat: 63.46, lng: 142.78, alt: 1.25,
+        spark: "The coldest permanently inhabited settlement on Earth, with recorded winter temperatures plunging to -71.2°C.",
+        explain: "Sitting in a deep mountain valley far from warming oceans, dense freezing air sinks into the valley floor creating permanent temperature inversions.",
+        scale: "Temperatures are so extreme that boiling water thrown into the air instantly vaporizes into ice crystals.",
+        wiki: "Oymyakon",
+      },
+      {
+        name: "Danakil Depression",
+        country: "Ethiopia",
+        type: "Geothermal Acid Cauldron",
+        lat: 14.24, lng: 40.30, alt: 1.2,
+        spark: "A surreal neon landscape of bubbling acid lakes, sulfur chimneys, and blinding white mineral crusts.",
+        explain: "Located where three tectonic rifts are pulling the Horn of Africa apart, magma warms subterranean groundwater that dissolves ancient marine salt beds.",
+        scale: "One of the hottest places on Earth year-round, with daytime temperatures regularly exceeding 50°C.",
+        wiki: "Danakil Depression",
+      },
+      {
+        name: "Perito Moreno Glacier",
+        country: "Argentina",
+        type: "Patagonian Ice Sheet",
+        lat: -50.495, lng: -73.137, alt: 1.2,
+        spark: "One of the few glaciers on Earth that remains in dynamic equilibrium, advancing forward into icy turquoise waters.",
+        explain: "Fueled by constant Pacific storms dumping massive snow on the Southern Patagonian Ice Field, feeding ice that compacts and flows downhill under gravity.",
+        scale: "Its towering front wall rises 74 meters above the water and descends 170 meters below.",
+        wiki: "Perito Moreno Glacier",
       },
     ]
   },
   {
-    id: "alien-earth",
-    title: "Places That Look Like Another Planet",
-    subtitle: "Earth's Alien Landscapes",
-    icon: "🪐",
+    id: "isolated-realms",
+    title: "Evolution's Isolated Realms",
+    subtitle: "Galápagos, Madagascar, Socotra, Amazon, and Antarctica",
+    icon: "🦎",
     duration: "5 MINS",
-    description: "Travel to giant blinding salt mirrors, fairy chimney canyons, and azure sinkholes that seem beamed in from outer space.",
+    description: "Journey to deep-sea islands and primordial sanctuaries where life evolved undisturbed in wondrous, alien isolation.",
     stops: [
       {
-        name: "Salar de Uyuni",
-        country: "Bolivia",
-        type: "World's Largest Salt Flat",
-        lat: -20.13, lng: -67.49, alt: 1.15,
-        spark: "A blinding white expanse of salt so vast and flat that satellite scientists use it to calibrate orbital radar instruments.",
-        explain: "Ancient prehistoric lakes evaporated over millennia in an endorheic mountain basin, leaving behind 10,000 square kilometers of mineral salts.",
-        scale: "When rain falls, the thin film of water turns the landscape into a 10,000 km² mirror reflecting pure sky.",
-        wiki: "Salar de Uyuni",
+        name: "Galápagos Islands",
+        country: "Ecuador",
+        type: "Volcanic Archipelago Sanctuary",
+        lat: -0.777, lng: -91.142, alt: 1.15,
+        spark: "The world's living laboratory of natural selection, home to swimming marine iguanas and giant 400 kg tortoises.",
+        explain: "Formed by underwater volcanic hotspots 1,000 km off the South American coast, animals arrived on driftwood rafts and adapted to unique island niches.",
+        scale: "Inspired Charles Darwin's theory of evolution after he observed how finch beak shapes varied from island to island.",
+        wiki: "Galápagos Islands",
       },
       {
-        name: "Cappadocia",
-        country: "Turkey",
-        type: "Fairy Chimney Badlands",
-        lat: 38.643, lng: 34.827, alt: 1.15,
-        spark: "Thousands of surreal stone towers and underground cities carved out of soft volcanic ash deposits.",
-        explain: "Ancient eruptions blanketed the region in volcanic tuff. Rain and wind eroded the soft tuff faster than the harder basalt caps, leaving slender pillars.",
-        scale: "Ancient humans carved multi-level underground cities here that sheltered up to 20,000 people.",
-        wiki: "Cappadocia",
+        name: "Madagascar",
+        country: "Madagascar",
+        type: "Primordial Island Realm",
+        lat: -18.766, lng: 46.869, alt: 1.25,
+        spark: "Over 90% of all wildlife found here exists nowhere else on Earth, including 100+ species of playful lemurs and ancient baobab trees.",
+        explain: "Split away from the Indian subcontinent 88 million years ago, allowing prehistoric plants and animals to evolve in complete geographic quarantine.",
+        scale: "Often called Earth's 'Eighth Continent' because its biodiversity is so utterly unique from Africa.",
+        wiki: "Madagascar",
       },
       {
-        name: "Pamukkale",
-        country: "Turkey",
-        type: "Cotton Castle Travertine Cascades",
-        lat: 37.924, lng: 29.121, alt: 1.15,
-        spark: "A cascading white mountain of turquoise hot spring infinity pools that looks like an ice palace in the Mediterranean sun.",
-        explain: "Mineral-rich thermal spring waters bubbling up from deep faults supersaturate with calcium carbonate, crystallizing as gleaming white travertine pools.",
-        scale: "Flowing thermal waters have laid down these white terraces continuously for over 14,000 years.",
-        wiki: "Pamukkale",
+        name: "Socotra Archipelago",
+        country: "Yemen",
+        type: "The Alien Island of Arabia",
+        lat: 12.463, lng: 53.823, alt: 1.15,
+        spark: "A surreal landscape of umbrella-shaped Dragon's Blood trees whose red sap was prized as ancient medicine and dye.",
+        explain: "Tectonically separated from the Horn of Africa over 20 million years ago, its hyper-arid limestone plateaus forced flora to evolve strange succulent adaptations.",
+        scale: "One-third of its 825 plant species are found nowhere else on planet Earth.",
+        wiki: "Socotra",
       },
       {
-        name: "Great Blue Hole",
-        country: "Belize",
-        type: "Submarine Sinkhole",
-        lat: 17.316, lng: -87.535, alt: 1.15,
-        spark: "A near-perfect circular abyss 318 meters across, plunging straight down into dark cobalt blue ocean waters.",
-        explain: "Originally formed as a dry limestone cave system during the last ice age; rising sea levels flooded the cave, collapsing its limestone roof.",
-        scale: "Plunges 124 meters down into absolute darkness with giant underwater stalactites.",
-        wiki: "Great Blue Hole",
+        name: "Amazon Rainforest Basin",
+        country: "Brazil",
+        type: "Planetary Biodiversity Engine",
+        lat: -3.119, lng: -60.021, alt: 1.25,
+        spark: "Contains 10% of all known species on Earth and produces 20% of the world's river discharge through dense canopy ecosystems.",
+        explain: "A warm, hyper-moist equatorial climate sustained by 'flying rivers'—vapor clouds generated by tree transpiration that cycle rainwater endlessly across the basin.",
+        scale: "A single square kilometer of Amazon rainforest can harbor more than 1,000 tree species and 40,000 insect species.",
+        wiki: "Amazon rainforest",
       },
       {
-        name: "Zhangjiajie",
-        country: "China",
-        type: "Quartz-Sandstone Pillars",
-        lat: 29.315, lng: 110.434, alt: 1.15,
-        spark: "Over 3,000 towering sandstone pillars rising through misty cloud forests, inspiring the floating mountains of Avatar.",
-        explain: "Centuries of physical weathering by ice expansion in winter and dense plant roots in summer split solid sandstone along natural vertical joint lines.",
-        scale: "The tallest natural stone column rises over 1,080 meters straight out of the valley floor.",
-        wiki: "Zhangjiajie National Forest Park",
+        name: "Antarctica Ice Sheet",
+        country: "Antarctica",
+        type: "Polar Desert Sanctuary",
+        lat: -75.25, lng: -0.07, alt: 1.35,
+        spark: "The coldest, driest, and windiest continent on Earth, where Emperor penguins huddle through four months of pitch-black polar night.",
+        explain: "Locked beneath an ice sheet up to 4.8 km thick, surrounded by the turbulent Antarctic Circumpolar Current that blocks warm equatorial waters.",
+        scale: "Holds 70% of the world's freshwater and 90% of all terrestrial ice on Earth.",
+        wiki: "Antarctica",
       },
     ]
   },
   {
-    id: "river-cities",
-    title: "How Giant Rivers Built Human Cities",
-    subtitle: "Liquid Highways of Civilization",
+    id: "great-rivers",
+    title: "Great Rivers & Civilizations",
+    subtitle: "How the Nile, Amazon, Ganges, Yangtze, and Danube shaped human history",
     icon: "💧",
     duration: "5 MINS",
-    description: "Discover how freshwater arteries carved through continents and laid the geographic foundation for modern human metropolises.",
+    description: "Discover how freshwater arteries carved through continents and laid the geographic foundation for human civilizations.",
     stops: [
       {
         name: "Nile River & Cairo",
@@ -683,7 +683,7 @@ const STORY_TOURS = [
       },
       {
         name: "Ganges & Sundarbans",
-        country: "India / Bangladesh",
+        country: "India",
         type: "Sacred Glacial Delta",
         lat: 22.5, lng: 89.0, alt: 1.25,
         spark: "The greatest mangrove delta on Earth, where glacial meltwater creates home for swimming Royal Bengal tigers.",
@@ -692,8 +692,18 @@ const STORY_TOURS = [
         wiki: "Ganges",
       },
       {
+        name: "Yangtze River & Three Gorges",
+        country: "China",
+        type: "Cradle of East Asian Civilization",
+        lat: 30.827, lng: 111.002, alt: 1.25,
+        spark: "Asia's longest river, flowing 6,300 km from the roof of Tibet through majestic limestone canyons to Shanghai.",
+        explain: "Cutting through towering mountain folds, it drains one-fifth of China's land area and has supported wet-rice civilization and trade for over 7,000 years.",
+        scale: "The river basin produces 40% of China's GDP and is home to nearly one-third of its population.",
+        wiki: "Yangtze",
+      },
+      {
         name: "Danube River & European Capitals",
-        country: "Europe (Austria / Hungary)",
+        country: "Austria",
         type: "Continental Trade Artery",
         lat: 48.208, lng: 16.373, alt: 1.2,
         spark: "Flows eastward through 10 countries and four national capitals—Vienna, Bratislava, Budapest, and Belgrade.",
@@ -701,19 +711,22 @@ const STORY_TOURS = [
         scale: "Spans 2,850 kilometers, linking Western and Eastern European cultures for thousands of years.",
         wiki: "Danube",
       },
-      {
-        name: "Mississippi River & New Orleans",
-        country: "United States",
-        type: "North American Basin Gateway",
-        lat: 29.951, lng: -90.071, alt: 1.25,
-        spark: "Drains 41% of the continental United States, funneling agriculture from 31 states down into the Gulf of Mexico.",
-        explain: "The fourth-longest river system on Earth collects runoff between the Rocky Mountains and the Appalachians, depositing massive deltas in the Gulf.",
-        scale: "A single drop of water falling in Minnesota takes about 90 days to travel the entire river to the Gulf.",
-        wiki: "Mississippi River",
-      },
     ]
   }
 ];
+
+function findCountryForStop(s) {
+  if (!s || !s.country || !S.countries) return null;
+  const parts = s.country.split(/[/,·]/).map((p) => p.trim());
+  for (const part of parts) {
+    const direct = S.countries.find((c) => {
+      const nm = nameOf(c);
+      return nm.toLowerCase() === part.toLowerCase() || nm.toLowerCase().includes(part.toLowerCase());
+    });
+    if (direct) return direct;
+  }
+  return null;
+}
 
 function openStoryToursModal() {
   const modal = $("#toursModal");
@@ -766,8 +779,17 @@ async function renderActiveTourStop() {
   const s = tour.stops[stopIndex];
   if (!s) return;
 
+  const pad = (n) => String(n).padStart(2, "0");
   $("#thTourTitle").textContent = tour.title;
-  $("#thStopBadge").textContent = `Stop ${stopIndex + 1} of ${tour.stops.length}`;
+  if ($("#thStopBadge")) $("#thStopBadge").textContent = `${pad(stopIndex + 1)} / ${pad(tour.stops.length)}`;
+  if ($("#thCoordsBadge")) {
+    const latStr = `${Math.abs(s.lat).toFixed(2)}° ${s.lat >= 0 ? "N" : "S"}`;
+    const lngStr = `${Math.abs(s.lng).toFixed(2)}° ${s.lng >= 0 ? "E" : "W"}`;
+    $("#thCoordsBadge").textContent = `${latStr}, ${lngStr}`;
+  }
+  if ($("#thChapterTag")) $("#thChapterTag").textContent = `CHAPTER ${pad(stopIndex + 1)}`;
+  if ($("#thTypeTag")) $("#thTypeTag").textContent = (s.type || "GEOGRAPHY").toUpperCase();
+
   $("#thLocationName").textContent = s.name;
   $("#thLocationSub").textContent = `${s.country} · ${s.type}`;
   $("#thSparkText").textContent = s.spark;
@@ -796,7 +818,21 @@ async function renderActiveTourStop() {
   // Update navigation buttons
   $("#tourPrevBtn").disabled = stopIndex === 0;
   $("#tourPrevBtn").style.opacity = stopIndex === 0 ? "0.4" : "1";
-  $("#tourNextBtn").textContent = stopIndex === tour.stops.length - 1 ? "Finish Expedition 🏆" : "Next Stop →";
+  $("#tourNextBtn").textContent = stopIndex === tour.stops.length - 1 ? "Finish Expedition 🏆" : "Next Chapter →";
+
+  // Wire Explore Country button
+  const expBtn = $("#tourExploreBtn");
+  if (expBtn) {
+    expBtn.onclick = () => {
+      const targetCountry = findCountryForStop(s);
+      if (targetCountry) {
+        exitStoryTour();
+        selectCountry(targetCountry);
+      } else {
+        toast(`Exploring ${s.name}`);
+      }
+    };
+  }
 
   // Arcs between current and next stop
   refreshArcs();
@@ -1716,33 +1752,74 @@ async function openInfoPanel({ title, subtitle, emoji, wikiTitles, flagUrl, flag
   showPanelTabs(false);
   $("#panelHeader").style.setProperty("--flagbg", flagUrl ? `url('${flagUrl}')` : "none");
   setPanelFlag(flagUrl, flagName);
-  $("#panelName").textContent = `${emoji ? emoji + " " : ""}${title}`;
+  $("#panelName").textContent = title;
   $("#panelOfficial").textContent = subtitle || "";
 
   const ws = generateWonderStory({ name: title, kind: subtitle });
-  const storyHtml = ws ? `
-    <div class="story-spark-box">
-      <div class="spark-icon">✨</div>
-      <div class="spark-text">${ws.spark}</div>
-    </div>
-    <div class="story-explain-box">
-      <div class="seb-label">How it works</div>
-      <div class="seb-text">${ws.howItWorks}</div>
-    </div>
-    <div class="story-scale-box">
-      <div class="seb-label">Human-scale perspective</div>
-      <div class="seb-text">${ws.scale}</div>
-    </div>
-  ` : "";
+  const lat = related?.lat != null ? related.lat : null;
+  const lng = related?.lng != null ? related.lng : null;
+  const coordsStr = (lat != null && lng != null)
+    ? `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lng).toFixed(2)}° ${lng >= 0 ? "E" : "W"}`
+    : "Geodetic Reference";
+
+  const depthElevation = (title.includes("Trench") || subtitle?.includes("Trench")) ? "-11,034 m (Abyss)"
+    : (title.includes("Everest") ? "+8,848 m (Peak)"
+    : (subtitle?.includes("Volcano") ? "Active Volcanic"
+    : (subtitle?.includes("Canyon") ? "1,800 m Depth"
+    : (subtitle?.includes("Glacier") ? "Ice Sheet" : "Natural Wonder"))));
+
+  const biomeType = (subtitle?.includes("Ocean") || subtitle?.includes("Sea") || subtitle?.includes("Water")) ? "Marine Aquatic"
+    : (subtitle?.includes("Desert") ? "Hyper-Arid Desert"
+    : (subtitle?.includes("Rainforest") ? "Tropical Rainforest"
+    : (subtitle?.includes("Glacier") ? "Subpolar Glacial"
+    : (subtitle?.includes("Mountain") || subtitle?.includes("Range") ? "Alpine Montane" : "Global Biosphere"))));
+
+  const geoStatus = (title.includes("Everest") || title.includes("Canyon") || title.includes("Barrier Reef") || title.includes("Galápagos"))
+    ? "UNESCO World Heritage"
+    : (subtitle?.includes("Volcano") ? "Active Tectonic Rift" : "Geographic Landmark");
 
   $("#panelBody").innerHTML = `
-    <div class="story-photo-banner" id="infoPhotoBanner" style="display:none">
-      <img id="infoPhotoImg" alt="${esc(title)}" loading="lazy" />
-      <div class="story-photo-credit">Wikipedia</div>
+    <div class="field-notes-box">
+      <div class="field-badge amber">EXPLORER FIELD NOTES · ${esc((subtitle || "GEOGRAPHY").toUpperCase())}</div>
+      <div class="story-photo-banner" id="infoPhotoBanner" style="display:none">
+        <img id="infoPhotoImg" alt="${esc(title)}" loading="lazy" />
+        <div class="story-photo-credit">Wikimedia Commons</div>
+      </div>
+
+      <div class="telemetry-strip">
+        <div class="telemetry-item">
+          <span class="ti-label">Coordinates</span>
+          <span class="ti-val accent mono-num">${coordsStr}</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="ti-label">Elevation / Depth</span>
+          <span class="ti-val mono-num">${depthElevation}</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="ti-label">Biome Realm</span>
+          <span class="ti-val emerald">${biomeType}</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="ti-label">Geological Status</span>
+          <span class="ti-val violet">${geoStatus}</span>
+        </div>
+      </div>
+
+      <div class="story-spark-box">
+        <div class="spark-icon">✨</div>
+        <div class="spark-text">${ws.spark}</div>
+      </div>
+      <div class="story-explain-box">
+        <div class="seb-label">Why it exists here</div>
+        <div class="seb-text">${ws.howItWorks}</div>
+      </div>
+      <div class="story-scale-box">
+        <div class="seb-label">Human-Scale Perspective</div>
+        <div class="seb-text">${ws.scale}</div>
+      </div>
     </div>
-    ${storyHtml}
-    ${related ? `<div id="relCountries"><div class="section-h">Countries it touches</div><div class="loading-dots">Tracing borders</div></div>` : ""}
-    <div class="wiki-block" id="infoWiki"><div class="loading-dots">Consulting the archives</div></div>`;
+    ${related ? `<div id="relCountries"><div class="section-h">Connected Countries</div><div class="loading-dots">Tracing borders</div></div>` : ""}
+    <div class="wiki-block" id="infoWiki"><div class="loading-dots">Consulting geographic archives</div></div>`;
   scheduleUrl();
   if (related) {
     // geometry work runs after the camera flight has started, so it never stutters the animation
@@ -1919,20 +1996,36 @@ async function renderPanelTab(d) {
     const curr = c?.currencies ? Object.values(c.currencies).map((x) => `${x.name}${x.symbol ? " (" + x.symbol + ")" : ""}`) : [];
     const borders = (c?.borders || []).map((b) => S.byCca3.get(b)).filter(Boolean);
     const story = generateCountryStory(d);
+    const centroid = centroidOf(d);
+    const coordsStr = `${Math.abs(centroid.lat).toFixed(1)}° ${centroid.lat >= 0 ? "N" : "S"}, ${Math.abs(centroid.lng).toFixed(1)}° ${centroid.lng >= 0 ? "E" : "W"}`;
 
     body.innerHTML = `
       <div class="story-photo-banner" id="countryPhotoBanner" style="display:none">
         <img id="countryPhotoImg" alt="${nameOf(d)}" loading="lazy" />
-        <div class="story-photo-credit">Wikipedia</div>
+        <div class="story-photo-credit">Wikimedia Commons</div>
       </div>
-      <div class="story-spark-box">
-        <div class="spark-icon">✨</div>
-        <div class="spark-text">${story.spark}</div>
+
+      <div class="geo-identity-card">
+        <div class="gic-eyebrow">GEOGRAPHIC IDENTITY · ${c?.region ? c.region.toUpperCase() : "GLOBAL"}</div>
+        <h3 class="gic-spark">${story.spark}</h3>
+        <p class="gic-explain">${story.howItWorks}</p>
       </div>
-      <div class="story-explain-box">
-        <div class="seb-label">How it works</div>
-        <div class="seb-text">${story.howItWorks}</div>
+
+      <div class="telemetry-strip" style="margin-bottom:14px">
+        <div class="telemetry-item">
+          <span class="ti-label">Centroid Coordinates</span>
+          <span class="ti-val accent mono-num">${coordsStr}</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="ti-label">Climate Realm</span>
+          <span class="ti-val emerald">${c?.subregion || c?.region || "Continental"}</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="ti-label">Flight Distance Scale</span>
+          <span class="ti-val amber">${story.flightHours || (c?.area > 1e6 ? "~4-6h across" : "~1-2h across")}</span>
+        </div>
       </div>
+
       ${story.humanScales.length ? `
         <div class="human-scale-grid">
           ${story.humanScales.map((hs) => `
@@ -1941,6 +2034,7 @@ async function renderPanelTab(d) {
               <div class="hs-val">${hs.val}</div>
             </div>`).join("")}
         </div>` : ""}
+
       <div class="stat-grid">
         ${statCard("Capital", c?.capital?.[0] || "—")}
         ${statCard("Population", c?.population != null ? fmt.format(c.population) : "—")}
@@ -1948,11 +2042,21 @@ async function renderPanelTab(d) {
         ${statCard("Density", density ? density + " /km²" : "—")}
         ${statCard("Region", c ? `${c.region}${c.subregion ? " · " + c.subregion : ""}` : "—", true)}
       </div>
+
+      <div style="margin: 10px 0 16px;">
+        <button id="overviewCompareBtn" class="tour-nav-btn next" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;padding:11px 16px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+          <span>Compare ${nameOf(d)} with another country</span>
+        </button>
+      </div>
+
       ${c ? `<div class="section-h">Global ranks — tap one to map it</div><div class="rank-row" id="rankRow">${rankBadgesHtml(d)}</div>` : ""}
       ${langs.length ? `<div class="section-h">Languages</div><div class="pill-row">${langs.map((l) => `<span class="pill">${l}</span>`).join("")}</div>` : ""}
       ${curr.length ? `<div class="section-h">Currency</div><div class="pill-row">${curr.map((l) => `<span class="pill gold">${l}</span>`).join("")}</div>` : ""}
       ${borders.length ? `<div class="section-h">Neighbours — click to hop</div><div class="pill-row">${borders.map((b) => `<button class="pill click" data-cca3="${b.gv.cca3}">${flagEmoji(b.gv.cca2)} ${nameOf(b)}</button>`).join("")}</div>` : ""}
       <div class="wiki-block" id="ovWiki"><div class="loading-dots">Reading the encyclopedia</div></div>`;
+
+    $("#overviewCompareBtn")?.addEventListener("click", () => startCompare(d));
     $$("#panelBody .pill.click").forEach((p) =>
       p.addEventListener("click", () => selectCountry(S.byCca3.get(p.dataset.cca3))));
     wireRankBadges(d);
@@ -2569,9 +2673,23 @@ function buildWonderPin(w) {
   div.className = "wonder-pin";
   div.title = `${w.name} (${w.kind})`;
   div.setAttribute("role", "button");
+  div.setAttribute("tabindex", "0");
   div.setAttribute("aria-label", `${w.name} (${w.kind})`);
-  div.innerHTML = `<span class="wonder-pulse"></span><span class="wonder-pin-core">${wonderSvg(w.kind)}</span>`;
-  div.onclick = (e) => { e.stopPropagation(); openEarthFeature({ text: w.name, kind: w.kind, emoji: w.emoji, wiki: w.wiki, lat: w.lat, lng: w.lng }); };
+  div.innerHTML = `
+    <span class="wonder-pulse"></span>
+    <span class="wonder-pin-core"><span class="telemetry-dot"></span></span>
+    <span class="wonder-label">${esc(w.name)}<small>${esc(w.kind)}</small></span>
+  `;
+  div.onclick = (e) => {
+    e.stopPropagation();
+    openEarthFeature({ text: w.name, kind: w.kind, emoji: w.emoji, wiki: w.wiki, lat: w.lat, lng: w.lng });
+  };
+  div.onkeydown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      div.click();
+    }
+  };
   return anchorWrap(div);
 }
 
@@ -2779,27 +2897,58 @@ function renderWildlife(d, body, token) {
 
 async function loadLifeDetail(card, sp, country) {
   const box = card.querySelector(".life-detail");
-  box.innerHTML = `<div class="loading-dots" style="padding:10px 0">Finding ${sp.n}</div>`;
+  box.innerHTML = `<div class="loading-dots" style="padding:10px 0">Consulting field guide for ${sp.n}</div>`;
   const wiki = await fetchWikiFirst([sp.n, `${sp.n} (${sp.t})`, `${sp.n} (animal)`, `${sp.n} (plant)`]);
   const firstSentence = wiki?.extract ? wiki.extract.split(/(?<=[.!?])\s+/)[0] : "";
-  const remainingText = wiki?.extract && firstSentence ? wiki.extract.slice(firstSentence.length).trim() : (wiki?.extract || "No encyclopedia summary available.");
+  const remainingText = wiki?.extract && firstSentence ? wiki.extract.slice(firstSentence.length).trim() : (wiki?.extract || "Native species of this biogeographic realm.");
+
+  const taxon = TYPE_LABEL[sp.t] || sp.t || "Fauna";
+  const conservationStatus = (sp.n.includes("Tiger") || sp.n.includes("Panda") || sp.n.includes("Rhino") || sp.n.includes("Gorilla") || sp.n.includes("Leopard"))
+    ? "IUCN: Endangered"
+    : (sp.n.includes("Bear") || sp.n.includes("Elephant") || sp.n.includes("Lion") || sp.n.includes("Cheetah") ? "IUCN: Vulnerable" : "IUCN: Protected");
+
+  const biomeType = (sp.t === "marine" || sp.n.includes("Whale") || sp.n.includes("Shark") || sp.n.includes("Seal"))
+    ? "Marine & Coastal"
+    : (sp.n.includes("Camel") ? "Arid Deserts & Steppe"
+    : (sp.n.includes("Penguin") || sp.n.includes("Bear") ? "Polar & Glacial Ice"
+    : (sp.n.includes("Jaguar") || sp.n.includes("Monkey") ? "Equatorial Rainforest" : "Temperate & Montane")));
 
   box.innerHTML = `
+    <div class="field-badge emerald">WILDLIFE FIELD NOTES · ${esc(taxon.toUpperCase())}</div>
     ${wiki?.thumb ? `
-      <div class="story-photo-banner" style="height:140px;margin-bottom:10px">
+      <div class="story-photo-banner" style="height:150px;margin-bottom:10px">
         <img src="${wiki.thumb}" alt="${sp.n}" loading="lazy" />
-        <div class="story-photo-credit">Wikipedia</div>
+        <div class="story-photo-credit">Wikimedia Commons</div>
       </div>` : ""}
+    
+    <div class="telemetry-strip" style="margin-bottom:12px">
+      <div class="telemetry-item">
+        <span class="ti-label">Classification</span>
+        <span class="ti-val emerald">${esc(taxon)}</span>
+      </div>
+      <div class="telemetry-item">
+        <span class="ti-label">Conservation</span>
+        <span class="ti-val amber">${conservationStatus}</span>
+      </div>
+      <div class="telemetry-item">
+        <span class="ti-label">Native Biome</span>
+        <span class="ti-val accent">${biomeType}</span>
+      </div>
+    </div>
+
     ${firstSentence ? `
       <div class="story-spark-box" style="margin-bottom:10px">
         <div class="spark-icon">✨</div>
         <div class="spark-text">${firstSentence}</div>
       </div>` : ""}
-    ${remainingText ? `<p class="life-text">${remainingText}</p>` : ""}
+    <div class="story-explain-box" style="margin-bottom:10px">
+      <div class="seb-label">Adaptation to Terrain & Climate</div>
+      <p class="seb-text">${remainingText}</p>
+    </div>
     <div class="life-actions">
-      <button class="life-globe-btn">🌍 See it on the globe</button>
-      <button class="life-3d-btn">🧊 In panel</button>
-      ${wiki?.url ? `<a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Wikipedia →</a>` : ""}
+      <button class="life-globe-btn">🌍 See on 3D Globe</button>
+      <button class="life-3d-btn">🧊 Interactive 3D Model</button>
+      ${wiki?.url ? `<a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Encyclopedia Archive →</a>` : ""}
     </div>
     <div class="life-viewer"></div>`;
   card.querySelector(".life-globe-btn").addEventListener("click", (e) => {
@@ -4344,7 +4493,7 @@ async function applyUrl() {
     }
     if (S.stateView) exitStateView();
 
-    const country = S.byCca3.get(p.get("country"));
+    const country = S.byCca3.get(p.get("country")) || S.byCca3.get(p.get("c"));
     const rival = S.byCca3.get(p.get("compare"));
     const wonder = p.get("wonder");
     if (country) {
