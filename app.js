@@ -1059,6 +1059,8 @@ function initGlobe() {
       priority: (f) => (f.gv?.cca3 === "IND" ? 1 : 0),
       liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
       textures: { biome: "data/biome.jpg", relief: "data/relief.png" },
+      perfMeter: new URLSearchParams(location.search).has("fps"), // ?fps=1 → on-screen performance meter
+      onContextLost: (lost) => toast(lost ? "⏸️ The device paused the 3D view — restoring…" : "✨ Back in 3D", 2600),
     })
     .polygonsData(S.features)
     .onPolygonHover((d) => {
@@ -1625,9 +1627,11 @@ function renderProgressPop() {
         const [t, r, df] = k.split("|");
         return `<span>${QUIZ_TYPE_LABEL[t] || t} · ${r} · ${DIFF_LABEL[df] || df}: <b>${v}</b></span>`;
       }).join("")}</div>` : ""}
-    <button class="pp-fly">🎲 Fly to an unexplored country</button>`;
+    <button class="pp-fly">🎲 Fly to an unexplored country</button>
+    <button class="pp-credits">About &amp; credits</button>`;
   $("#progressPop .pp-close").addEventListener("click", closeProgressPop);
   $("#progressPop .pp-fly").addEventListener("click", flyToUnexplored);
+  $("#progressPop .pp-credits").addEventListener("click", () => { closeProgressPop(); openCredits(); });
 }
 
 function toggleProgressPop() {
@@ -1637,6 +1641,12 @@ function toggleProgressPop() {
   pop.classList.toggle("hidden", !open);
   $("#progressChip").setAttribute("aria-expanded", String(open));
 }
+
+function openCredits() {
+  $("#creditsModal").classList.remove("hidden");
+  $("#creditsClose").focus();
+}
+function closeCredits() { $("#creditsModal").classList.add("hidden"); }
 
 function closeProgressPop() {
   $("#progressPop").classList.add("hidden");
@@ -2639,7 +2649,7 @@ function buildArcBadge(a) {
 function buildLifeHolo(w) {
   const div = document.createElement("div");
   div.className = "life-holo";
-  const src = `https://sketchfab.com/models/${w.uid}/embed?autospin=0.35&autostart=1&preload=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&ui_controls=0&ui_stop=0&transparent=1`;
+  const src = `https://sketchfab.com/models/${w.model.uid}/embed?autospin=0.35&autostart=1&preload=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&ui_controls=0&ui_stop=0&transparent=1`;
   div.innerHTML = `
     <div class="holo-head">
       <span class="holo-title">${w.sp.e} ${w.sp.n}</span>
@@ -2647,6 +2657,7 @@ function buildLifeHolo(w) {
     </div>
     <iframe class="holo-frame" title="${w.sp.n} 3D" src="${src}"
       allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
+    ${modelCredit(w.model)}
     <div class="holo-beam"></div>`;
   div.querySelector(".holo-close").setAttribute("aria-label", `Dismiss the ${w.sp.n} 3D model`);
   div.querySelector(".holo-close").onclick = (e) => { e.stopPropagation(); clearLifePin(); };
@@ -2769,16 +2780,11 @@ async function placeLifeOnGlobe(sp, countryD, btn) {
   const label = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Summoning…"; }
   try {
-    if (!placeLifeOnGlobe._uid) placeLifeOnGlobe._uid = new Map();
-    let uid = placeLifeOnGlobe._uid.get(sp.n);
-    if (!uid) {
-      uid = await sketchfabBest(sp);
-      if (uid) placeLifeOnGlobe._uid.set(sp.n, uid);
-    }
-    if (!uid) throw new Error("no model");
+    const model = await sketchfabBest(sp);
+    if (!model) throw new Error("no model");
 
     const { lat, lng } = centroidOf(countryD);
-    S.lifePin = { __kind: "life", lat, lng, sp, uid };
+    S.lifePin = { __kind: "life", lat, lng, sp, model };
     refreshHtmlLayer();
     ringPulse(lat, lng, 3, "126,224,255");
 
@@ -2812,22 +2818,37 @@ async function sketchfabSearch(query, category) {
 }
 
 // Best 3D model for a species: in-category & relevant, drop skeletons/specimens, then prefer most-liked.
+// → { uid, name, author, authorUrl, license, url } — credits travel with the model (many are CC BY)
+const modelCache = new Map();
 async function sketchfabBest(sp) {
+  if (modelCache.has(sp.n)) return modelCache.get(sp.n);
   const category = SF_CATEGORY[sp.t] || "animals-pets";
   const lastWord = sp.n.split(" ").slice(-1)[0];
   const pickBest = (results) => {
     const live = results.filter((m) => !SF_REJECT.test(m.name || ""));
     const pool = live.length ? live : results; // if everything looks anatomical, take what we have
     pool.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
-    return pool[0]?.uid || null;
+    const m = pool[0];
+    return m?.uid ? {
+      uid: m.uid, name: m.name || sp.n,
+      author: m.user?.displayName || m.user?.username || "a Sketchfab artist",
+      authorUrl: m.user?.profileUrl || "https://sketchfab.com",
+      license: m.license?.label || "",
+      url: m.viewerUrl || `https://sketchfab.com/3d-models/${m.uid}`,
+    } : null;
   };
   // 1) full name in-category  2) key word in-category  3) full name, any category
   for (const [q, cat] of [[sp.n, category], [lastWord, category], [sp.n, ""]]) {
-    const results = await sketchfabSearch(q, cat);
-    const uid = pickBest(results);
-    if (uid) return uid;
+    const model = pickBest(await sketchfabSearch(q, cat));
+    if (model) { modelCache.set(sp.n, model); return model; }
   }
   return null;
+}
+
+// "Tiger" by Jungle Jim · CC Attribution · Sketchfab — shown under every embedded model
+function modelCredit(m) {
+  return `<div class="model-credit">“<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>” by
+    <a href="${esc(m.authorUrl)}" target="_blank" rel="noopener">${esc(m.author)}</a>${m.license ? ` · ${esc(m.license)}` : ""} · Sketchfab</div>`;
 }
 
 function renderWildlife(d, body, token) {
@@ -2939,12 +2960,13 @@ async function loadLife3D(card, sp) {
   btn.textContent = "⏳ Loading model…"; btn.disabled = true;
   mount.innerHTML = `<div class="loading-dots" style="padding:10px 0">Sculpting a 3D ${sp.n}</div>`;
   try {
-    const uid = await sketchfabBest(sp);
-    if (!uid) throw new Error("no model");
-    const src = `https://sketchfab.com/models/${uid}/embed?autospin=0.4&autostart=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&transparent=1`;
+    const model = await sketchfabBest(sp);
+    if (!model) throw new Error("no model");
+    const src = `https://sketchfab.com/models/${model.uid}/embed?autospin=0.4&autostart=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&transparent=1`;
     mount.innerHTML = `<iframe class="life-iframe" title="${sp.n} 3D model" src="${src}"
         allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-      <div class="life-3d-hint">Drag to rotate · scroll/pinch to zoom · models via Sketchfab</div>`;
+      <div class="life-3d-hint">Drag to rotate · scroll/pinch to zoom</div>
+      ${modelCredit(model)}`;
     card.dataset.model3d = "1";
     btn.textContent = "✕ Hide 3D model";
   } catch (e) {
@@ -4516,6 +4538,7 @@ function initRenderGuards() {
 
 /* ───────────────────────── KEYBOARD ───────────────────────── */
 function handleEscape() {
+  if (!$("#creditsModal").classList.contains("hidden")) return closeCredits();
   if (!$("#toursModal")?.classList.contains("hidden")) return closeStoryToursModal();
   if (S.activeTour) return exitStoryTour();
   if (!$("#progressPop").classList.contains("hidden")) return closeProgressPop();
@@ -4572,6 +4595,16 @@ function initUI() {
     toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
   });
   $("#soundToggle")?.addEventListener("click", () => setSound(!S.sound));
+  const brand = $(".brand");
+  if (brand) {
+    Object.assign(brand, { tabIndex: 0, title: "About GeoVerse & credits" });
+    brand.setAttribute("role", "button");
+    brand.setAttribute("aria-label", "About GeoVerse and credits");
+    brand.addEventListener("click", openCredits);
+    brand.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCredits(); } });
+  }
+  $("#creditsClose").addEventListener("click", closeCredits);
+  $("#creditsModal").addEventListener("click", (e) => { if (e.target.id === "creditsModal") closeCredits(); });
   $("#namesToggle")?.addEventListener("click", () => {
     setNames(!S.names);
     toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
@@ -4773,6 +4806,8 @@ function initUI() {
     }));
   } catch (err) {
     console.error(err);
-    loaderStep(100, "⚠️ Couldn't reach map data — check your internet connection and refresh.");
+    loaderStep(100, String(err?.message).includes("WEBGL_UNAVAILABLE")
+      ? "⚠️ This browser can't draw 3D right now (WebGL is off or unsupported). Try another browser, or turn on hardware acceleration."
+      : "⚠️ Couldn't reach map data — check your internet connection and refresh.");
   }
 })();

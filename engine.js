@@ -24,13 +24,20 @@ const ICE = "#e9f1f7";
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-function create(container, { countries, extraLand = [], neighbors = [], priority = () => 0, liftOf = () => 0, textures = {} }) {
+function create(container, { countries, extraLand = [], neighbors = [], priority = () => 0, liftOf = () => 0, textures = {}, perfMeter = false, onContextLost = null }) {
   const G = globalThis.GeoCore;
   const isPhone = matchMedia("(max-width: 768px)").matches || matchMedia("(pointer: coarse)").matches;
   const lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
 
   /* ── renderer, scene, camera ── */
-  const renderer = new THREE.WebGLRenderer({ antialias: !lowMem, powerPreference: "high-performance" });
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: !lowMem, powerPreference: "high-performance" });
+  } catch (e) {
+    throw new Error("WEBGL_UNAVAILABLE");
+  }
+  // WebGL 1 (old browsers): a simpler land shader — no terrain texture or relief, but everything works
+  const LITE = renderer.capabilities.isWebGL2 === false;
   const maxDpr = () => Math.min(devicePixelRatio || 1, isPhone ? 2 : 2);
   renderer.setPixelRatio(maxDpr());
   renderer.setClearColor(0x070b14, 1);
@@ -99,6 +106,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   function makeLandMat(tex, extrude, { overlay = overlayTex, hover = uHover, terrain = uTerrain } = {}) {
     return new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
+      defines: LITE ? { LITE: "" } : {},
       uniforms: {
         uColours: { value: tex }, uOverlay: { value: overlay }, uHoverId: hover, uTerrain: terrain,
         uBiome, uRelief, uReliefK, uLight: { value: lightDir }, uHeights: { value: heightTex }, uExtrude: extrude,
@@ -116,8 +124,15 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
         const float PI = 3.141592653589793;
         void main(){
           vec2 idUv = vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5);
-          // equirectangular lookup from the surface direction (same axes as the rest of the engine)
           vec3 n0 = normalize(vN);
+        #ifdef LITE
+          vec3 c = texture2D(uColours, idUv).rgb;
+          vec4 o = texture2D(uOverlay, idUv);
+          c = mix(c, o.rgb, o.a);
+          if (abs(vId - uHoverId) < .5) c = mix(c, vec3(1.), .28);
+          vec3 n = n0;
+        #else
+          // equirectangular lookup from the surface direction (same axes as the rest of the engine)
           vec2 uv = vec2(fract((PI * 1.5 - atan(n0.z, n0.x)) / (2. * PI)), asin(clamp(n0.y, -1., 1.)) / PI + .5);
           // seam-safe derivatives: take whichever of u / u+½ doesn't jump at the 180° line
           vec2 uv2 = vec2(fract(uv.x + .5), uv.y);
@@ -136,6 +151,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
           vec3 east = normalize(cross(vec3(0., 1., 0.), n0) + vec3(1e-5, 0., 0.));
           vec3 north = cross(n0, east);
           vec3 n = normalize(n0 - uReliefK * ((hE - hC) * east + (hN - hC) * north));
+        #endif
 
           vec3 v = normalize(cameraPosition - vW);
           float l = .74 + .26 * max(dot(n0, uLight), 0.) + (dot(n, uLight) - dot(n0, uLight)) * 1.4;
@@ -889,6 +905,25 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     dirty = true;
   }
 
+  /* ── ?fps=1: a small performance meter for checking real devices ── */
+  let meter = null;
+  if (perfMeter) {
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;left:8px;top:calc(8px + env(safe-area-inset-top));z-index:999;padding:6px 9px;border-radius:8px;" +
+      "font:600 11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d8f5d0;background:rgba(0,0,0,.72);pointer-events:none;white-space:pre";
+    document.body.appendChild(box);
+    let n = 0, cpu = 0, worst = 0, since = performance.now();
+    meter = (now, drew, ms = 0) => {
+      if (drew) { n++; cpu += ms; worst = Math.max(worst, ms); }
+      if (now - since < 500) return;
+      const secs = (now - since) / 1000, info = renderer.info.render;
+      box.textContent = n
+        ? `${Math.round(n / secs)} fps  ·  ${(cpu / n).toFixed(1)} ms avg, ${worst.toFixed(1)} worst\n${info.calls} draw calls  ·  ${Math.round(info.triangles / 1000)}k tris  ·  DPR ${renderer.getPixelRatio().toFixed(2)}${LITE ? "  ·  WebGL1 lite" : ""}`
+        : `idle — not drawing (saves battery)\nDPR ${renderer.getPixelRatio().toFixed(2)}${LITE ? "  ·  WebGL1 lite" : ""}`;
+      n = 0; cpu = 0; worst = 0; since = now;
+    };
+  }
+
   /* ── map style: clean political (default) or biome terrain, plus relief shading for both ── */
   const texLoader = new THREE.TextureLoader();
   function loadTex(url, colour) {
@@ -904,7 +939,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   }
   let terrainTarget = 0, biomeReady = false, biomeLoading = null;
   function setMapStyle(style) {
-    terrainTarget = style === "terrain" ? 1 : 0;
+    terrainTarget = style === "terrain" && !LITE ? 1 : 0;
     if (terrainTarget && !biomeLoading && textures.biome) {
       biomeLoading = loadTex(textures.biome, true)
         .then((t) => { uBiome.value = t; biomeReady = true; dirty = true; })
@@ -920,14 +955,14 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     return true;
   }
   // relief streams in just after the first frame, so it never delays the globe appearing
-  if (textures.relief) {
+  if (textures.relief && !LITE) {
     setTimeout(() => {
       loadTex(textures.relief, false).then((t) => { uRelief.value = t; uReliefK.value = 6; dirty = true; }).catch(() => {});
     }, 250);
   }
 
   /* ── frame loop: render on demand, 30 fps when idle, adaptive resolution ── */
-  let dirty = true, paused = false, last = performance.now(), frameAvg = 1 / 60, dprTimer = 0, raf = 0;
+  let dirty = true, paused = false, contextLost = false, last = performance.now(), frameAvg = 1 / 60, dprTimer = 0, raf = 0;
   const overlayDpr = Math.min(devicePixelRatio || 1, 2);
   function resize() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
@@ -944,6 +979,17 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   }
   addEventListener("resize", resize);
   resize();
+  renderer.domElement.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault(); // tell the browser we want it back
+    contextLost = true;
+    onContextLost?.(true);
+  });
+  renderer.domElement.addEventListener("webglcontextrestored", () => {
+    contextLost = false;
+    colourTex.needsUpdate = overlayTex.needsUpdate = heightTex.needsUpdate = true;
+    dirty = true;
+    onContextLost?.(false);
+  });
 
   function adaptResolution(dt) {
     frameAvg += (dt - frameAvg) * 0.05;
@@ -958,7 +1004,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const camRight = new THREE.Vector3();
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    if (paused) return;
+    if (paused || contextLost) return;
     const idle = now - lastInput > 2500 && !flight && zoomTo == null;
     if (now - last < (idle ? 1000 / 30 : 1000 / 60) - 3) return;
     const dt = Math.min(0.1, (now - last) / 1000);
@@ -984,14 +1030,16 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     let arcsOn = false;
     for (const o of arcObjs) if (o.userData.speed) { o.material.dashOffset -= o.userData.speed * dt; arcsOn = true; }
 
-    if (!(dirty || moving || ringsOn || arcsOn || barsOn || styleOn || controls.autoRotate)) return;
+    if (!(dirty || moving || ringsOn || arcsOn || barsOn || styleOn || controls.autoRotate)) { meter?.(now, false); return; }
     dirty = false;
+    const t0 = performance.now();
     // soft key light just above-left of the viewer, so the visible face is always nicely lit
     camRight.crossVectors(camera.up, camera.position).normalize();
     lightDir.copy(camera.position).normalize().addScaledVector(camera.up, 0.55).addScaledVector(camRight, 0.35).normalize();
     renderer.render(scene, camera);
     drawOverlay();
     placeHtml();
+    meter?.(now, true, performance.now() - t0);
     if (!idle) adaptResolution(dt);
   }
   raf = requestAnimationFrame(frame);
