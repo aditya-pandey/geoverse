@@ -134,6 +134,7 @@
   <button class="tex-btn" data-tex="dark" title="Minimal dark" aria-label="Minimal dark globe">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20Z" fill="currentColor"/></svg>
   </button>
+  <button class="tex-btn names-toggle" id="namesToggle" title="Country names" aria-label="Show country names on the globe" aria-pressed="true">Aa</button>
   <button class="tex-btn pin-toggle" id="pinToggle" title="Pins for tiny nations" aria-label="Show pins for tiny nations and islands" aria-pressed="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
   </button>
@@ -462,8 +463,34 @@
 <!-- ══════════ TOAST ══════════ -->
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.32.2/dist/globe.gl.min.js"></script>
+<!-- Globe engine: the current globe.gl one, or the new lean engine with ?engine=v2 (remembered until ?engine=v1) -->
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search).get("engine"), e = q;
+  try {
+    if (q === "v1" || q === "v2") localStorage.setItem("gv-engine", JSON.stringify(q));
+    e = e || JSON.parse(localStorage.getItem("gv-engine") || '"v1"');
+  } catch (err) { e = e || "v1"; }
+  window.GV_ENGINE = e === "v2" ? "v2" : "v1";
+  function load(src, module) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      if (module) s.type = "module";
+      s.src = src; s.async = false; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  window.GV_LIBS = window.GV_ENGINE === "v2"
+    ? Promise.all([load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"), load("engine-core.js"), load("engine.js", true)])
+    : Promise.all([load("https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"), load("https://cdn.jsdelivr.net/npm/globe.gl@2.32.2/dist/globe.gl.min.js")]);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>

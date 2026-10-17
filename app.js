@@ -53,6 +53,9 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
 };
 
+// Globe engine: "v2" = the new lean engine (preview via ?engine=v2), "v1" = globe.gl
+const V2 = window.GV_ENGINE === "v2";
+
 /* ───────────────────────── STATE ───────────────────────── */
 const S = {
   globe: null,
@@ -98,6 +101,7 @@ const S = {
   comparePick: false,      // waiting for the user to choose country B
   micro: [],               // pins for micro-states & small islands
   pins: store.get("gv-pins-v2", false),
+  names: store.get("gv-names", true), // country names on the globe (new engine)
   paused: false,           // render loop paused (tab hidden / full-screen modal)
   searchIndex: null,
 };
@@ -945,6 +949,11 @@ async function loadData() {
   }
 
   S.features = features.filter((f) => f.properties.name !== "Antarctica");
+  S.antarctica = features.find((f) => f.properties.name === "Antarctica") || null;
+  // which countries share a border (indices into S.features) — the new engine colours neighbours differently
+  const keep = new Map(S.features.map((f) => [features.indexOf(f), S.features.indexOf(f)]));
+  const nb = topojson.neighbors(topo.objects.countries.geometries);
+  S.neighbors = S.features.map((f) => nb[features.indexOf(f)].map((j) => keep.get(j)).filter((j) => j !== undefined));
 
   // Official Survey of India boundary for India (world view)
   loaderStep(68, "Redrawing India, officially…");
@@ -983,6 +992,7 @@ function polyBaseColor(d) {
   if (S.mode === "earth") return "rgba(120,170,255,0.04)";
 
   if (d === S.selected) return "rgba(255,209,102,0.65)";
+  if (V2) return null; // clean political palette; the new engine draws hover itself
   if (d === S.hoverD) return hexA(REGION_COLORS[d.gv?.region] || "#8fa3c8", 0.6);
   return hexA(REGION_COLORS[d.gv?.region] || "#8fa3c8", 0.28);
 }
@@ -1036,11 +1046,21 @@ function refreshPolys() {
     .polygonAltitude(polyAltitude)
     .polygonStrokeColor(polyStroke)
     .polygonLabel(polyLabel);
+  if (V2) S.globe.outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
 }
 
 function initGlobe() {
   const el = $("#globeViz");
-  S.globe = Globe()(el)
+  S.globe = (V2
+    ? GeoEngine.create(el, {
+        countries: S.features,
+        extraLand: S.antarctica ? [S.antarctica] : [],
+        neighbors: S.neighbors,
+        // the official India outline overlaps neighbouring claims: draw it a hair above, and pick it first
+        priority: (f) => (f.gv?.cca3 === "IND" ? 1 : 0),
+        liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
+      })
+    : Globe()(el))
     .width(innerWidth)
     .height(innerHeight)
     .globeImageUrl(TEXTURES.day)
@@ -1089,7 +1109,7 @@ function initGlobe() {
     .labelAltitude(0.008)
     .labelResolution(2)
     .labelLabel((l) => `<div class="globe-tip"><div class="gt-name">${l.emoji || ""} ${titleCase(l.text)}</div><div class="gt-sub">${l.kind} · click to learn</div></div>`)
-    .onLabelClick((l) => openEarthFeature(l))
+    .onLabelClick((l) => (l.f ? handleCountryClick(l.f) : openEarthFeature(l)))
     .onLabelHover((l) => { el.style.cursor = l ? "pointer" : "grab"; })
     // paths layer — rivers
     .pathPoints((p) => p.pts)
@@ -1125,6 +1145,25 @@ function initGlobe() {
       if (S.mode === "atlas") $("#touchPreviewPill")?.classList.add("hidden");
     });
 
+  if (V2) {
+    S.globe
+      // painted pins: wonders (emoji badges) and tiny nations (dots) — big tap targets, no DOM per pin
+      .markerLat((m) => m.lat)
+      .markerLng((m) => m.lng)
+      .markerIcon((m) => (m.__kind === "micro" ? null : m.emoji))
+      .markerCountry((m) => (m.__kind === "micro" ? m.f : null))
+      .markerLabel((m) => m.__kind === "micro"
+        ? polyLabel(m.f)
+        : `<div class="globe-tip"><div class="gt-name">${m.emoji} ${esc(m.name)}</div><div class="gt-sub">${esc(m.kind)} · click to learn</div></div>`)
+      .onMarkerHover((m) => { el.style.cursor = m ? "pointer" : "grab"; })
+      .onMarkerClick((m, e) => (m.__kind === "micro"
+        ? handleCountryClick(m.f, e)
+        : openEarthFeature({ text: m.name, kind: m.kind, emoji: m.emoji, wiki: m.wiki, lat: m.lat, lng: m.lng })))
+      // country names are decoration (clicks go to the country beneath); physical features are clickable
+      .labelClickable((l) => !l.f)
+      .labelItalic((l) => !!l.water);
+  }
+
   refreshPolys();
   S.globe.pointOfView({ lat: 12, lng: 25, altitude: 4.5 });
 
@@ -1155,6 +1194,7 @@ function pauseRotate() {
   S.globe.controls().autoRotate = false;
   clearTimeout(S.idleTimer);
   S.idleTimer = setTimeout(() => {
+    if (V2 && (S.selected || panelVisible())) return;
     if (!S.stateView && (S.mode === "explore" || S.mode === "earth")) {
       const c = S.globe.controls();
       c.autoRotateSpeed = S.selected ? 0.18 : 0.42; // slow "hero orbit" when a country is open
@@ -1251,7 +1291,7 @@ function frameCountry(d, ms = 1000) {
 const CLOUDS_URL = "https://raw.githubusercontent.com/turban/webgl-earth/master/images/fair_clouds_4k.png";
 
 function initFx() {
-  if (!window.THREE) return; // graceful: app works without the FX layer
+  if (V2 || !window.THREE) return; // graceful: app works without the FX layer (the new engine has its own look)
   S.fx = { lightGoal: 0, seq: 0 };
 
   // Warm spotlight that blooms over a selected country
@@ -1312,6 +1352,17 @@ function ringPulse(lat, lng, maxR = 4, color = "255,209,102") {
 
 // Two-stage camera: rise above the world, then dive onto the country.
 function cinematicFlyTo(d) {
+  if (V2) {
+    pauseRotate();
+    const { lat, lng } = centroidOf(d);
+    // framed on the next frame, once the drawer / sheet is on screen
+    requestAnimationFrame(() => S.globe.pointOfView(viewFor(lat, lng, viewAltitudeFor(d) * stageZoom()), 1600));
+    clearTimeout(cinematicFlyTo._t);
+    cinematicFlyTo._t = setTimeout(() => {
+      if (S.selected === d) ringPulse(lat, lng, Math.max(2.2, Math.min(9, Math.sqrt(d.gv?.area || 3e5) / 260)));
+    }, 1450);
+    return;
+  }
   const seq = S.fx ? ++S.fx.seq : 0;
   pauseRotate();
   const { lat, lng } = centroidOf(d);
@@ -2262,6 +2313,7 @@ async function loadAdm1(countryD) {
 
 async function enterStateView(countryD) {
   if (S.stateView) return;
+  if (V2) { toast("🗺️ State borders move to the new engine in Stage 3 — switch back with ?engine=v1"); return; }
   const btn = $("#btn3dStates");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Drawing state borders…"; }
   let adm1;
@@ -2803,12 +2855,44 @@ function buildLifeHolo(w) {
 
 function refreshHtmlLayer() {
   if (!S.globe) return;
+  if (V2) {
+    const pins = [];
+    if (S.mode === "earth" && S.earthLayers.wonders) pins.push(...WONDERS);
+    if (microActive()) pins.push(...S.micro);
+    S.globe.markersData(pins);
+    S.globe.htmlElementsData([S.compare?.badge, S.lifePin].filter(Boolean));
+    refreshLabels();
+    return;
+  }
   const els = [];
   if (S.mode === "earth" && S.earthLayers.wonders) els.push(...WONDERS);
   if (microActive()) els.push(...S.micro);
   if (S.compare?.badge) els.push(S.compare.badge);
   if (S.lifePin) els.push(S.lifePin);
   S.globe.htmlElementsData(els);
+}
+
+function countryLabels() {
+  return uniqueCountries().map((f) => {
+    const [lat, lng] = f.gv.latlng?.length === 2 ? f.gv.latlng : [centroidOf(f).lat, centroidOf(f).lng];
+    // bigger countries get bigger names and show from further away
+    return { f, lat, lng, text: nameOf(f), size: clamp(0.45 + Math.log10(f.gv.area || 1) * 0.22, 0.5, 1.9), color: "#1f2f42" };
+  });
+}
+
+// Country names on the globe (new engine): explore & atlas — never in quizzes, they'd give answers away
+function refreshLabels() {
+  if (!V2 || !S.globe || S.mode === "earth") return; // Earth mode shows physical-feature labels instead
+  const show = S.names && !S.stateView && S.mode !== "quiz" && !S.activeTour;
+  S.globe.labelsData(show ? (S.countryLabels ??= countryLabels()) : []);
+}
+
+function setNames(on) {
+  S.names = on;
+  store.set("gv-names", on);
+  $("#namesToggle")?.classList.toggle("active", on);
+  $("#namesToggle")?.setAttribute("aria-pressed", String(on));
+  refreshLabels();
 }
 
 function clearLifePin() {
@@ -4610,6 +4694,10 @@ function onKey(e) {
 function initUI() {
   $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $$(".tex-btn[data-tex]").forEach((b) => b.addEventListener("click", () => setTexture(b.dataset.tex)));
+  $("#namesToggle")?.addEventListener("click", () => {
+    setNames(!S.names);
+    toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
+  });
   $("#pinToggle").addEventListener("click", () => {
     setPins(!S.pins);
     toast(S.pins ? "📍 Pins on — tiny nations & islands are easy to tap" : "📍 Pins hidden");
@@ -4776,8 +4864,14 @@ function initUI() {
 /* ───────────────────────── BOOT ───────────────────────── */
 (async function boot() {
   try {
-    await loadData();
+    await Promise.all([loadData(), window.GV_LIBS]);
     document.body.dataset.mode = S.mode;
+    document.body.classList.toggle("engine-v2", V2);
+    if (V2) {
+      $("#enginePill")?.remove();
+      document.body.insertAdjacentHTML("beforeend",
+        `<a id="enginePill" class="engine-pill" href="?engine=v1" title="Switch back to the current globe">New engine preview · <u>switch back</u></a>`);
+    }
     initGlobe();
     initFx();
     initMicroStates();
@@ -4785,6 +4879,7 @@ function initUI() {
     initSheets();
     initRenderGuards();
     setPins(S.pins);
+    if (V2) setNames(S.names);
     updateProgress();
     renderAtlasReadout(null);
     loaderStep(100, "Ready for lift-off 🚀");
