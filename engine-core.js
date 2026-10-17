@@ -164,6 +164,35 @@
     return new Float32Array(seg);
   }
 
+  /**
+   * Side walls for 3D bars: a quad per (densified) outline edge. Bottom vertices have aTop = 0,
+   * top ones aTop = 1 — the shader lifts the top by that country's height. aN = the wall's facing.
+   */
+  function buildWalls(features, { idOf = (f, i) => i + 1, r = 1.0005, edgeDeg = 1 } = {}) {
+    const pos = [], ids = [], top = [], nrm = [], idx = [];
+    features.forEach((f, fi) => {
+      const g = f.geometry;
+      if (!g) return;
+      const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+      const id = idOf(f, fi);
+      for (const poly of polys) for (const ring of poly) {
+        const pts = densifyRing(ring, edgeDeg);
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          // wall facing: perpendicular to both the edge and "up"
+          const ex = b[0] - a[0], ey = b[1] - a[1], ez = b[2] - a[2];
+          const n = norm([ey * a[2] - ez * a[1], ez * a[0] - ex * a[2], ex * a[1] - ey * a[0]]);
+          const base = pos.length / 3;
+          for (const [v, t] of [[a, 0], [b, 0], [b, 1], [a, 1]]) {
+            pos.push(v[0] * r, v[1] * r, v[2] * r); ids.push(id); top.push(t); nrm.push(n[0], n[1], n[2]);
+          }
+          idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        }
+      }
+    });
+    return { positions: new Float32Array(pos), ids: new Float32Array(ids), top: new Float32Array(top), normals: new Float32Array(nrm), index: new Uint32Array(idx) };
+  }
+
   /** Greedy map colouring: neighbours (by shared border) never get the same palette slot. */
   function colourCountries(features, neighbors, nColours) {
     const order = features.map((_, i) => i).sort((a, b) => (neighbors[b]?.length || 0) - (neighbors[a]?.length || 0));
@@ -212,5 +241,5 @@
     };
   }
 
-  globalThis.GeoCore = { toVec, toLngLat, buildLand, buildLines, colourCountries, makePicker };
+  globalThis.GeoCore = { toVec, toLngLat, buildLand, buildLines, buildWalls, colourCountries, makePicker };
 })();

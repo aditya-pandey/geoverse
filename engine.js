@@ -16,6 +16,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
 const RAD = Math.PI / 180;
 const MAX_IDS = 512; // colour-texture slots (241 countries + Antarctica fit comfortably)
+const MAX_H = 0.4;   // tallest 3D bar, in globe radii
 
 // Clean "political" palette — soft pastels that read well on a blue ocean
 const PALETTE = ["#f2d48f", "#a9d39e", "#f3b59a", "#b9c6ec", "#d9b8e3", "#9fd6cf"];
@@ -77,21 +78,35 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const colourTex = new THREE.DataTexture(colourBytes, MAX_IDS, 1, THREE.RGBAFormat);
   colourTex.magFilter = colourTex.minFilter = THREE.NearestFilter;
   colourTex.colorSpace = THREE.SRGBColorSpace;
-  const landMat = new THREE.ShaderMaterial({
-    side: THREE.DoubleSide,
-    uniforms: { uColours: { value: colourTex }, uLight: { value: lightDir } },
-    vertexShader: `attribute float aId; varying float vId; varying vec3 vN; varying vec3 vW;
-      void main(){ vId = aId; vN = normalize(position); vW = (modelMatrix*vec4(position,1.)).xyz;
-        gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-    fragmentShader: `uniform sampler2D uColours; uniform vec3 uLight; varying float vId; varying vec3 vN; varying vec3 vW;
-      void main(){ vec3 c = texture2D(uColours, vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5)).rgb;
-        vec3 v = normalize(cameraPosition - vW);
-        float l = .74 + .26*max(dot(vN, uLight), 0.);
-        float rim = .88 + .12*max(dot(vN, v), 0.);
-        gl_FragColor = vec4(c*l*rim, 1.);
-        #include <colorspace_fragment>
-      }`,
-  });
+  // per-country bar height (3D data view), 0..MAX_H, also a tiny lookup texture
+  const heightBytes = new Uint8Array(MAX_IDS * 4);
+  const heightTex = new THREE.DataTexture(heightBytes, MAX_IDS, 1, THREE.RGBAFormat);
+  heightTex.magFilter = heightTex.minFilter = THREE.NearestFilter;
+  heightTex.needsUpdate = true;
+  const uExtrude = { value: 0 };
+  const LOOKUP = (v) => `texture2D(${v}, vec2((floor(aId + .5) + .5) / ${MAX_IDS}.0, .5))`;
+  function makeLandMat(tex, extrude) {
+    return new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,
+      uniforms: { uColours: { value: tex }, uLight: { value: lightDir }, uHeights: { value: heightTex }, uExtrude: extrude },
+      vertexShader: `attribute float aId; uniform sampler2D uHeights; uniform float uExtrude;
+        varying float vId; varying vec3 vN; varying vec3 vW;
+        void main(){ vId = aId; vN = normalize(position);
+          float h = uExtrude * ${LOOKUP("uHeights")}.r * ${MAX_H.toFixed(3)};
+          vec3 p = vN * (length(position) + h);
+          vW = (modelMatrix*vec4(p,1.)).xyz;
+          gl_Position = projectionMatrix*modelViewMatrix*vec4(p,1.); }`,
+      fragmentShader: `uniform sampler2D uColours; uniform vec3 uLight; varying float vId; varying vec3 vN; varying vec3 vW;
+        void main(){ vec3 c = texture2D(uColours, vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5)).rgb;
+          vec3 v = normalize(cameraPosition - vW);
+          float l = .74 + .26*max(dot(vN, uLight), 0.);
+          float rim = .88 + .12*max(dot(vN, v), 0.);
+          gl_FragColor = vec4(c*l*rim, 1.);
+          #include <colorspace_fragment>
+        }`,
+    });
+  }
+  const landMat = makeLandMat(colourTex, uExtrude);
   const landMesh = new THREE.Mesh(landGeo, landMat);
   scene.add(landMesh);
 
@@ -133,10 +148,99 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     if (outline) { scene.remove(outline); outline.geometry.dispose(); lineMats.splice(lineMats.indexOf(outline.material), 1); outline.material.dispose(); outline = null; }
     if (f) {
       outline = fatLines(G.buildLines([f], { r: 1.0022 + (liftOf(f) || 0) }), { color: 0xffffff, width: 2.4, opacity: 0.95 });
+      outline.userData.r = 1.0022 + (liftOf(f) || 0);
       outline.material.resolution.set(innerWidth, innerHeight);
       scene.add(outline);
     }
     dirty = true;
+  }
+
+  /* ── 3D bars: side walls (built the first time 3D is switched on) + animated heights ── */
+  let walls = null, extrudeOn = false;
+  const hTarget = new Float32Array(MAX_IDS), hCur = new Float32Array(MAX_IDS);
+  function ensureWalls() {
+    if (walls) return;
+    const w = G.buildWalls(countries, { idOf: (f) => idMap.get(f), r: 1.0005 });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(w.positions, 3));
+    geo.setAttribute("aId", new THREE.BufferAttribute(w.ids, 1));
+    geo.setAttribute("aTop", new THREE.BufferAttribute(w.top, 1));
+    geo.setAttribute("aN", new THREE.BufferAttribute(w.normals, 3));
+    geo.setIndex(new THREE.BufferAttribute(w.index, 1));
+    walls = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,
+      uniforms: { uColours: { value: colourTex }, uHeights: { value: heightTex }, uExtrude, uLight: { value: lightDir } },
+      vertexShader: `attribute float aId; attribute float aTop; attribute vec3 aN; uniform sampler2D uHeights; uniform float uExtrude;
+        varying float vId; varying vec3 vNw;
+        void main(){ vId = aId; vNw = aN;
+          float h = uExtrude * ${LOOKUP("uHeights")}.r * ${MAX_H.toFixed(3)};
+          vec3 p = normalize(position) * (length(position) + aTop * h);
+          gl_Position = projectionMatrix*modelViewMatrix*vec4(p,1.); }`,
+      fragmentShader: `uniform sampler2D uColours; uniform vec3 uLight; varying float vId; varying vec3 vNw;
+        void main(){ vec3 c = texture2D(uColours, vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5)).rgb;
+          float l = .52 + .34*abs(dot(normalize(vNw), uLight)); // sides a shade darker than the tops
+          gl_FragColor = vec4(c*l, 1.);
+          #include <colorspace_fragment>
+        }`,
+    }));
+    walls.visible = false;
+    scene.add(walls);
+  }
+  // targets from the app's polygonAltitude (globe.gl units; ~0.007 is "flat")
+  function retarget() {
+    const fn = acc.polygonAltitude;
+    for (let i = 0; i < countries.length; i++) {
+      const v = extrudeOn && typeof fn === "function" ? +fn(countries[i]) || 0 : 0;
+      hTarget[i + 1] = Math.max(0, Math.min(MAX_H, v - 0.007));
+    }
+    dirty = true;
+  }
+  // bars glide to their new heights; returns true while anything is still moving
+  function stepHeights(dt) {
+    const k = 1 - Math.pow(1 - 0.14, dt * 60);
+    let moving = false, any = false, changed = false;
+    for (let i = 1; i <= countries.length; i++) {
+      const d = hTarget[i] - hCur[i];
+      if (Math.abs(d) > 2e-4) { hCur[i] += d * k; moving = true; } else hCur[i] = hTarget[i];
+      if (hCur[i] > 1e-4) any = true;
+      const b = Math.round((hCur[i] / MAX_H) * 255);
+      if (heightBytes[i * 4] !== b) { heightBytes[i * 4] = b; changed = true; }
+    }
+    if (changed) heightTex.needsUpdate = true;
+    uExtrude.value = any ? 1 : 0;
+    if (walls) walls.visible = any;
+    return moving;
+  }
+  const maxHeight = () => { let m = 0; for (let i = 1; i <= countries.length; i++) m = Math.max(m, hCur[i]); return m * uExtrude.value; };
+
+  /* ── states / provinces of one country: their own mesh, outlines, picker and colours ── */
+  let states = null;
+  const STATE_BASE = new THREE.Color().setStyle("#f6efe2", THREE.LinearSRGBColorSpace);
+  function setStates(list) {
+    if (states && states.list.length === list.length && states.list[0] === list[0]) return; // same set
+    if (states) {
+      scene.remove(states.mesh, states.lines);
+      states.mesh.geometry.dispose(); states.mesh.material.dispose(); states.tex.dispose();
+      lineMats.splice(lineMats.indexOf(states.lines.material), 1); states.lines.geometry.dispose(); states.lines.material.dispose();
+      states = null;
+    }
+    if (list.length) {
+      const st = G.buildLand(list, { idOf: (f, i) => i + 1, radiusOf: () => 1.0028 });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(st.positions, 3));
+      geo.setAttribute("aId", new THREE.BufferAttribute(st.ids, 1));
+      geo.setIndex(new THREE.BufferAttribute(st.index, 1));
+      const bytes = new Uint8Array(MAX_IDS * 4);
+      const tex = new THREE.DataTexture(bytes, MAX_IDS, 1, THREE.RGBAFormat);
+      tex.magFilter = tex.minFilter = THREE.NearestFilter;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const mesh = new THREE.Mesh(geo, makeLandMat(tex, { value: 0 }));
+      const lines = fatLines(G.buildLines(list, { r: 1.0031 }), { color: 0xfff7e6, width: 1.3, opacity: 0.95 });
+      lines.material.resolution.set(cssW, cssH);
+      scene.add(mesh, lines);
+      states = { list, mesh, lines, bytes, tex, pick: G.makePicker(list), index: new Map(list.map((f, i) => [f, i + 1])) };
+    }
+    recolour();
   }
 
   /* ── atmosphere + stars ── */
@@ -258,6 +362,39 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     return { lat, lng };
   }
 
+  // states (when shown) sit on top of their country
+  const pickAny = (lng, lat) => (states && states.pick(lng, lat)) || pick(lng, lat);
+
+  // what's under the pointer: {s: lat/lng on the surface, f: country/state or null}, or null for space.
+  // With 3D bars up, march down the ray so the top of a tall bar picks that bar, not what lies beneath it.
+  function hitAt(clientX, clientY) {
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const o = ray.ray.origin, d = ray.ray.direction;
+    const sphere = (R) => { const bq = o.dot(d), c = o.lengthSq() - R * R, disc = bq * bq - c; return disc < 0 ? null : [-bq - Math.sqrt(disc), -bq + Math.sqrt(disc)]; };
+    const base = sphere(1.001);
+    const hMax = extrudeOn ? maxHeight() : 0;
+    if (hMax > 1e-3) {
+      const shell = sphere(1.001 + hMax + 0.002);
+      if (shell && shell[0] > 0) {
+        const t0 = shell[0], t1 = base && base[0] > 0 ? base[0] : shell[1];
+        const p = new THREE.Vector3();
+        for (let k = 0; k <= 48; k++) {
+          p.copy(o).addScaledVector(d, t0 + ((t1 - t0) * k) / 48);
+          const [lng, lat] = G.toLngLat(p.toArray());
+          const f = pick(lng, lat);
+          const id = f ? idMap.get(f) : 0;
+          if (f && p.length() - 1.001 <= hCur[id] + 0.002) return { s: { lat, lng }, f };
+        }
+      }
+    }
+    if (!base || base[0] < 0) return null;
+    const p = o.clone().addScaledVector(d, base[0]);
+    const [lng, lat] = G.toLngLat(p.toArray());
+    return { s: { lat, lng }, f: pickAny(lng, lat) };
+  }
+
   /* ── layers the app talks to through the facade ── */
   const handlers = {};
   const acc = {}; // stored accessors (globe.gl style)
@@ -288,6 +425,17 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       colourBytes[i * 4] = tmp.r * 255; colourBytes[i * 4 + 1] = tmp.g * 255; colourBytes[i * 4 + 2] = tmp.b * 255; colourBytes[i * 4 + 3] = 255;
     }
     colourTex.needsUpdate = true;
+    if (states) {
+      states.list.forEach((f, i) => {
+        tmp.copy(STATE_BASE);
+        const o = capFn ? parseColour(capFn(f)) : null;
+        if (o) tmp.setRGB(tmp.r + (o.r - tmp.r) * o.a, tmp.g + (o.g - tmp.g) * o.a, tmp.b + (o.b - tmp.b) * o.a);
+        if (f === hoverF) tmp.lerp(WHITE, 0.3);
+        const k = (i + 1) * 4;
+        states.bytes[k] = tmp.r * 255; states.bytes[k + 1] = tmp.g * 255; states.bytes[k + 2] = tmp.b * 255; states.bytes[k + 3] = 255;
+      });
+      states.tex.needsUpdate = true;
+    }
     dirty = true;
   }
   const WHITE = new THREE.Color(1, 1, 1);
@@ -542,7 +690,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       return;
     }
     setOverHover(null);
-    const s = surfaceAt(e.clientX, e.clientY);
+    const h = hitAt(e.clientX, e.clientY), s = h && h.s;
     const river = s ? pathAt(s, 7) : null;
     if (river) {
       setHover(null); setPathHover(river);
@@ -551,7 +699,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       return;
     }
     setPathHover(null);
-    const f = s ? pick(s.lng, s.lat) : null;
+    const f = h ? h.f : null;
     setHover(f);
     showTip(f, e.clientX, e.clientY);
   }
@@ -574,11 +722,12 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       else handlers.onLabelClick?.(hit.d, e);
       return;
     }
-    const s = surfaceAt(e.clientX, e.clientY);
-    if (!s) return; // clicked space
+    const h = hitAt(e.clientX, e.clientY);
+    if (!h) return; // clicked space
+    const s = h.s;
     const river = handlers.onPathClick ? pathAt(s, touch ? 14 : 7) : null;
     if (river) { handlers.onPathClick(river, e); return; }
-    const f = pick(s.lng, s.lat);
+    const f = h.f;
     if (f) handlers.onPolygonClick?.(f, e, { lat: s.lat, lng: s.lng, altitude: 0 });
     else handlers.onGlobeClick?.({ lat: s.lat, lng: s.lng }, e);
   });
@@ -744,10 +893,15 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     controls.rotateSpeed = Math.max(0.04, Math.min(1, (camera.position.length() - 1) * 0.45));
     if (!flight) moving = controls.update() || moving;
     const ringsOn = stepRings(now);
+    const barsOn = stepHeights(dt);
+    if (outline) {
+      const id = idMap.get(outlined) || 0, r0 = outline.userData.r;
+      outline.scale.setScalar((r0 + hCur[id] * uExtrude.value) / r0);
+    }
     let arcsOn = false;
     for (const o of arcObjs) if (o.userData.speed) { o.material.dashOffset -= o.userData.speed * dt; arcsOn = true; }
 
-    if (!(dirty || moving || ringsOn || arcsOn || controls.autoRotate)) return;
+    if (!(dirty || moving || ringsOn || arcsOn || barsOn || controls.autoRotate)) return;
     dirty = false;
     // soft key light just above-left of the viewer, so the visible face is always nicely lit
     camRight.crossVectors(camera.up, camera.position).normalize();
@@ -778,7 +932,12 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     resumeAnimation: () => { paused = false; dirty = true; last = performance.now(); return api; },
     width: () => { resize(); return api; },
     height: () => { resize(); return api; },
-    polygonsData: (list) => { if (list === undefined) return countries; recolour(); return api; },
+    polygonsData: (list) => {
+      if (list === undefined) return states ? [...countries, ...states.list] : countries;
+      setStates(list.filter((f) => !idMap.has(f))); // anything that isn't a country = a states/provinces layer
+      return api;
+    },
+    extrude: (on) => { extrudeOn = !!on; if (on) ensureWalls(); retarget(); return api; },
     htmlElementsData: (d) => { if (d === undefined) return htmlItems.map((x) => x.d); setHtml(d); return api; },
     ringsData: (d) => { if (d === undefined) return rings.map((r) => r.d); setRings(d); return api; },
     arcsData: (d) => { if (d === undefined) return arcObjs; setArcs(d); return api; },
@@ -801,6 +960,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
         if (prop.startsWith("on")) handlers[prop] = args[0];
         else acc[prop] = args[0];
         if (prop === "polygonCapColor") recolour();
+        if (prop === "polygonAltitude") retarget();
         dirty = true;
         return api;
       };

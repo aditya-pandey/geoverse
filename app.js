@@ -1046,7 +1046,10 @@ function refreshPolys() {
     .polygonAltitude(polyAltitude)
     .polygonStrokeColor(polyStroke)
     .polygonLabel(polyLabel);
-  if (V2) S.globe.outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
+  if (V2) {
+    S.globe.extrude(S.mode === "atlas" && S.atlas3d && !S.stateView);
+    S.globe.outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
+  }
 }
 
 function initGlobe() {
@@ -1109,7 +1112,7 @@ function initGlobe() {
     .labelAltitude(0.008)
     .labelResolution(2)
     .labelLabel((l) => `<div class="globe-tip"><div class="gt-name">${l.emoji || ""} ${titleCase(l.text)}</div><div class="gt-sub">${l.kind} · click to learn</div></div>`)
-    .onLabelClick((l) => (l.f ? handleCountryClick(l.f) : openEarthFeature(l)))
+    .onLabelClick((l) => (l.st ? handleCountryClick(l.st) : l.f ? handleCountryClick(l.f) : openEarthFeature(l)))
     .onLabelHover((l) => { el.style.cursor = l ? "pointer" : "grab"; })
     // paths layer — rivers
     .pathPoints((p) => p.pts)
@@ -2313,7 +2316,6 @@ async function loadAdm1(countryD) {
 
 async function enterStateView(countryD) {
   if (S.stateView) return;
-  if (V2) { toast("🗺️ State borders move to the new engine in Stage 3 — switch back with ?engine=v1"); return; }
   const btn = $("#btn3dStates");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Drawing state borders…"; }
   let adm1;
@@ -2883,7 +2885,17 @@ function countryLabels() {
 // Country names on the globe (new engine): explore & atlas — never in quizzes, they'd give answers away
 function refreshLabels() {
   if (!V2 || !S.globe || S.mode === "earth") return; // Earth mode shows physical-feature labels instead
-  const show = S.names && !S.stateView && S.mode !== "quiz" && !S.activeTour;
+  if (S.stateView) {
+    const sv = S.stateView;
+    sv.labels ??= sv.adm1.map((st) => {
+      const [lng, lat] = d3.geoCentroid(st);
+      // size from area, so big states name themselves first and small ones appear as you zoom in
+      return { st, lat, lng, text: st.properties.shapeName || st.properties.name || "", size: clamp(0.55 + Math.log10(d3.geoArea(st) * 4.06e7 + 1) * 0.2, 0.5, 1.7), color: "#3a2a12" };
+    });
+    S.globe.labelsData(S.names ? sv.labels : []);
+    return;
+  }
+  const show = S.names && S.mode !== "quiz" && !S.activeTour;
   S.globe.labelsData(show ? (S.countryLabels ??= countryLabels()) : []);
 }
 
