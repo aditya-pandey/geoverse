@@ -8,14 +8,6 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
-const TEXTURES = {
-  day:   "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
-  night: "https://unpkg.com/three-globe/example/img/earth-night.jpg",
-  dark:  "https://unpkg.com/three-globe/example/img/earth-dark.jpg",
-};
-const BUMP_URL = "https://unpkg.com/three-globe/example/img/earth-topology.png";
-const SKY_URL  = "https://unpkg.com/three-globe/example/img/night-sky.png";
-
 const NE = "https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0";
 
 const REGION_COLORS = {
@@ -53,17 +45,12 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
 };
 
-// Globe engine: "v2" = the new lean engine (preview via ?engine=v2), "v1" = globe.gl
-const V2 = window.GV_ENGINE === "v2";
-
 /* ───────────────────────── STATE ───────────────────────── */
 const S = {
   globe: null,
   features: [],
   byCca3: new Map(),
   mode: "explore",
-  texture: "day",
-  userTexture: "day",
   hoverD: null,
   selected: null,
   flash: new Map(),
@@ -992,9 +979,7 @@ function polyBaseColor(d) {
   if (S.mode === "earth") return "rgba(120,170,255,0.04)";
 
   if (d === S.selected) return "rgba(255,209,102,0.65)";
-  if (V2) return null; // clean political palette; the new engine draws hover itself
-  if (d === S.hoverD) return hexA(REGION_COLORS[d.gv?.region] || "#8fa3c8", 0.6);
-  return hexA(REGION_COLORS[d.gv?.region] || "#8fa3c8", 0.28);
+  return null; // clean political palette; the engine draws hover itself
 }
 
 function polyAltitude(d) {
@@ -1013,12 +998,6 @@ function polyAltitude(d) {
   if (d === S.hoverD) return 0.016;
   // slight lift so the official India overlay never z-fights neighbours it overlaps
   return d.gv?.cca3 === "IND" ? 0.0095 : 0.007;
-}
-
-function polyStroke(d) {
-  if (d.__adm1) return "rgba(255,240,200,0.9)";
-  if (S.mode === "atlas" && d === S.atlasPick) return "rgba(255,255,255,0.95)";
-  return "rgba(180,215,255,0.35)";
 }
 
 function polyLabel(d) {
@@ -1044,36 +1023,22 @@ function refreshPolys() {
   S.globe
     .polygonCapColor(polyBaseColor)
     .polygonAltitude(polyAltitude)
-    .polygonStrokeColor(polyStroke)
-    .polygonLabel(polyLabel);
-  if (V2) {
-    S.globe.extrude(S.mode === "atlas" && S.atlas3d && !S.stateView);
-    S.globe.outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
-  }
+    .polygonLabel(polyLabel)
+    .extrude(S.mode === "atlas" && S.atlas3d && !S.stateView)
+    .outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
 }
 
 function initGlobe() {
   const el = $("#globeViz");
-  S.globe = (V2
-    ? GeoEngine.create(el, {
-        countries: S.features,
-        extraLand: S.antarctica ? [S.antarctica] : [],
-        neighbors: S.neighbors,
-        // the official India outline overlaps neighbouring claims: draw it a hair above, and pick it first
-        priority: (f) => (f.gv?.cca3 === "IND" ? 1 : 0),
-        liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
-      })
-    : Globe()(el))
-    .width(innerWidth)
-    .height(innerHeight)
-    .globeImageUrl(TEXTURES.day)
-    .bumpImageUrl(BUMP_URL)
-    .backgroundImageUrl(SKY_URL)
-    .atmosphereColor("#4db8ff")
-    .atmosphereAltitude(0.22)
+  S.globe = GeoEngine.create(el, {
+      countries: S.features,
+      extraLand: S.antarctica ? [S.antarctica] : [],
+      neighbors: S.neighbors,
+      // the official India outline overlaps neighbouring claims: draw it a hair above, and pick it first
+      priority: (f) => (f.gv?.cca3 === "IND" ? 1 : 0),
+      liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
+    })
     .polygonsData(S.features)
-    .polygonSideColor(() => "rgba(30,60,120,0.18)")
-    .polygonsTransitionDuration(280)
     .onPolygonHover((d) => {
       S.hoverD = d;
       el.style.cursor = d && S.mode !== "earth" ? "pointer" : "grab";
@@ -1085,9 +1050,7 @@ function initGlobe() {
       if (S.quiz?.arcadeMode === "pinpoint") return quizPinpointClick(coords);
       if (S.quiz?.arcadeMode === "mystery") return quizMysteryClick(d, ev);
       if (S.quiz?.type === "wonder") return quizWonderClick(coords);
-      // a tiny nation within finger/cursor range beats the big neighbour underneath
-      const m = !d.__adm1 && !isMicro(d) ? microNear(ev) : null;
-      handleCountryClick(m ? m.f : d, ev);
+      handleCountryClick(d, ev);
     })
     // arcs layer — head-to-head comparison
     .arcStartLat((a) => a.sLat)
@@ -1100,7 +1063,6 @@ function initGlobe() {
     .arcDashGap((a) => a.glow ? 0 : 0.18)
     .arcDashAnimateTime((a) => a.glow ? 0 : 1700)
     .arcAltitudeAutoScale(ARC_SCALE)
-    .arcsTransitionDuration(900)
     .arcLabel((a) => `<div class="globe-tip"><div class="gt-name">📏 ${fmtFull.format(a.km)} km</div><div class="gt-sub">between the two centres</div></div>`)
     // labels layer — used by Earth mode
     .labelLat((l) => l.lat)
@@ -1108,9 +1070,6 @@ function initGlobe() {
     .labelText((l) => l.text)
     .labelSize((l) => l.size)
     .labelColor((l) => l.color)
-    .labelDotRadius(0.22)
-    .labelAltitude(0.008)
-    .labelResolution(2)
     .labelLabel((l) => `<div class="globe-tip"><div class="gt-name">${l.emoji || ""} ${titleCase(l.text)}</div><div class="gt-sub">${l.kind} · click to learn</div></div>`)
     .onLabelClick((l) => (l.st ? handleCountryClick(l.st) : l.f ? handleCountryClick(l.f) : openEarthFeature(l)))
     .onLabelHover((l) => { el.style.cursor = l ? "pointer" : "grab"; })
@@ -1119,36 +1078,27 @@ function initGlobe() {
     .pathPointLat((pt) => pt[0])
     .pathPointLng((pt) => pt[1])
     .pathColor(() => "rgba(110,205,255,0.65)")
-    .pathDashLength(0.35)
-    .pathDashGap(0.15)
-    .pathDashAnimateTime(24000)
     .pathLabel((p) => `<div class="globe-tip"><div class="gt-name">💧 ${p.name}</div><div class="gt-sub">river · click to learn</div></div>`)
     .onPathClick((p) => {
       const mid = p.pts[Math.floor(p.pts.length / 2)];
       openEarthFeature({ text: p.name, kind: "river", emoji: "💧", lat: mid[0], lng: mid[1], pts: riverPoints(p.name) });
     })
     .onPathHover((p) => { el.style.cursor = p ? "pointer" : "grab"; })
-    // html layer — wonders, tiny-nation pins, 3D wildlife cards, compare distance badge
+    // html layer — only the rich cards: 3D wildlife card, compare distance badge
     .htmlLat((w) => w.lat)
     .htmlLng((w) => w.lng)
-    .htmlAltitude((w) => w.__kind === "life" ? 0.03 : w.__kind === "arc" ? w.alt : w.__kind === "micro" ? 0.01 : 0.012)
-    .htmlElement((w) =>
-      w.__kind === "life" ? buildLifeHolo(w) :
-      w.__kind === "micro" ? buildMicroPin(w) :
-      w.__kind === "arc" ? buildArcBadge(w) :
-      buildWonderPin(w))
+    .htmlAltitude((w) => (w.__kind === "life" ? 0.03 : w.alt || 0.012))
+    .htmlElement((w) => (w.__kind === "life" ? buildLifeHolo(w) : buildArcBadge(w)))
     .onGlobeClick((coords, ev) => {
       if (S.quiz?.arcadeMode === "pinpoint") return quizPinpointClick(coords);
       if (S.quiz?.type === "wonder") return quizWonderClick(coords);
-      const m = microNear(ev);
-      if (m) return handleCountryClick(m.f, ev);
       if (S.comparePick) return;
       if (S.stateView) return exitStateView();
       if (S.mode === "explore") closePanel();
       if (S.mode === "atlas") $("#touchPreviewPill")?.classList.add("hidden");
     });
 
-  if (V2) {
+  {
     S.globe
       // painted pins: wonders (emoji badges) and tiny nations (dots) — big tap targets, no DOM per pin
       .markerLat((m) => m.lat)
@@ -1184,20 +1134,13 @@ function initGlobe() {
     pauseRotate();
   });
 
-  // Battery guardrail: never render above 2× density, even on 3×-DPR phones
-  const capDpr = () => S.globe.renderer().setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-  capDpr();
-  addEventListener("resize", () => {
-    S.globe.width(innerWidth).height(innerHeight);
-    capDpr();
-  });
 }
 
 function pauseRotate() {
   S.globe.controls().autoRotate = false;
   clearTimeout(S.idleTimer);
   S.idleTimer = setTimeout(() => {
-    if (V2 && (S.selected || panelVisible())) return;
+    if (S.selected || panelVisible()) return; // never drift away from what you're reading
     if (!S.stateView && (S.mode === "explore" || S.mode === "earth")) {
       const c = S.globe.controls();
       c.autoRotateSpeed = S.selected ? 0.18 : 0.42; // slow "hero orbit" when a country is open
@@ -1290,54 +1233,6 @@ function frameCountry(d, ms = 1000) {
   pauseRotate();
 }
 
-/* ───────────────────────── CINEMATIC FX ───────────────────────── */
-const CLOUDS_URL = "https://raw.githubusercontent.com/turban/webgl-earth/master/images/fair_clouds_4k.png";
-
-function initFx() {
-  if (V2 || !window.THREE) return; // graceful: app works without the FX layer (the new engine has its own look)
-  S.fx = { lightGoal: 0, seq: 0 };
-
-  // Warm spotlight that blooms over a selected country
-  S.fx.light = new THREE.PointLight(0xffd166, 0, 380, 1.6);
-  S.globe.scene().add(S.fx.light);
-
-  // Ocean specular glint
-  const gm = S.globe.globeMaterial();
-  gm.specular = new THREE.Color("#5d9dff");
-  gm.shininess = 13;
-
-  // Drifting cloud layer (lazy — 4K texture)
-  new THREE.TextureLoader().load(CLOUDS_URL, (tex) => {
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(S.globe.getGlobeRadius() * 1.012, 64, 64),
-      new THREE.MeshPhongMaterial({ map: tex, transparent: true, opacity: 0.5, depthWrite: false })
-    );
-    mesh.visible = S.texture === "day";
-    S.fx.clouds = mesh;
-    S.globe.scene().add(mesh);
-  });
-
-  (function tick() {
-    requestAnimationFrame(tick);
-    if (S.paused) return; // nothing is being drawn — don't burn battery animating it
-    if (S.fx.clouds) S.fx.clouds.rotation.y += 0.00011;
-    const l = S.fx.light;
-    l.intensity += (S.fx.lightGoal - l.intensity) * 0.055;
-  })();
-}
-
-function heroLightTo(d) {
-  if (!S.fx?.light) return;
-  const { lat, lng } = centroidOf(d);
-  const p = S.globe.getCoords(lat, lng, 0.45);
-  S.fx.light.position.set(p.x, p.y, p.z);
-  S.fx.lightGoal = 2.4;
-}
-
-function heroLightOff() {
-  if (S.fx) S.fx.lightGoal = 0;
-}
-
 // Pulse at one point — or pass an array of {lat, lng} as the first argument for several.
 function ringPulse(lat, lng, maxR = 4, color = "255,209,102") {
   S.globe
@@ -1353,40 +1248,18 @@ function ringPulse(lat, lng, maxR = 4, color = "255,209,102") {
   ringPulse._t = setTimeout(() => S.globe.ringsData([]), 2100);
 }
 
-// Two-stage camera: rise above the world, then dive onto the country.
+/* ───────────────────────── CAMERA ───────────────────────── */
+// One smooth flight onto a country (the engine rises over long hops by itself), then a soft pulse.
 function cinematicFlyTo(d) {
-  if (V2) {
-    pauseRotate();
-    const { lat, lng } = centroidOf(d);
-    // framed on the next frame, once the drawer / sheet is on screen
-    requestAnimationFrame(() => S.globe.pointOfView(viewFor(lat, lng, viewAltitudeFor(d) * stageZoom()), 1600));
-    clearTimeout(cinematicFlyTo._t);
-    cinematicFlyTo._t = setTimeout(() => {
-      if (S.selected === d) ringPulse(lat, lng, Math.max(2.2, Math.min(9, Math.sqrt(d.gv?.area || 3e5) / 260)));
-    }, 1450);
-    return;
-  }
-  const seq = S.fx ? ++S.fx.seq : 0;
   pauseRotate();
   const { lat, lng } = centroidOf(d);
-  const targetAlt = viewAltitudeFor(d);
-  const cur = S.globe.pointOfView();
-  const cruise = Math.min(3.2, Math.max(cur.altitude, targetAlt + 1.0));
-
-  S.globe.pointOfView({ lat: cur.lat, lng: cur.lng, altitude: cruise }, 420);
-  setTimeout(() => {
-    if (S.fx && seq !== S.fx.seq) return; // superseded by a newer selection
-    // computed now, once the drawer/sheet is on screen, so the country lands in the free stage
-    S.globe.pointOfView(viewFor(lat, lng, targetAlt * stageZoom()), 1450);
-  }, 430);
-  setTimeout(() => {
-    if (S.fx && seq !== S.fx.seq) return;
-    ringPulse(lat, lng, Math.max(2.2, Math.min(9, Math.sqrt(d.gv?.area || 3e5) / 260)));
-    heroLightTo(d);
-    pauseRotate(); // arms the slow hero orbit
-  }, 1900);
+  // framed on the next frame, once the drawer / sheet is on screen
+  requestAnimationFrame(() => S.globe.pointOfView(viewFor(lat, lng, viewAltitudeFor(d) * stageZoom()), 1600));
+  clearTimeout(cinematicFlyTo._t);
+  cinematicFlyTo._t = setTimeout(() => {
+    if (S.selected === d) ringPulse(lat, lng, Math.max(2.2, Math.min(9, Math.sqrt(d.gv?.area || 3e5) / 260)));
+  }, 1450);
 }
-
 function flash(d, color, ms = 900) {
   S.flash.set(d, color);
   refreshPolys();
@@ -1600,7 +1473,6 @@ function setMode(mode) {
   exitStateView(false);
   closePanel();
   closeProgressPop();
-  heroLightOff();
   S.atlasPick = null;
   $("#touchPreviewPill")?.classList.add("hidden");
 
@@ -1614,34 +1486,22 @@ function setMode(mode) {
   $("#quizResult").classList.add("hidden");
 
   if (mode === "atlas") {
-    setTexture("dark", false);
     renderLegend();
     renderAtlasReadout(null);
     $("#hudHint").textContent = isCoarse()
       ? "Tap a country to inspect · Tap again to dive in"
       : "Hover countries to read the data · Click to dive in";
   } else if (mode === "earth") {
-    setTexture("day", false);
     $("#hudHint").textContent = "Oceans, rivers, ranges, wonders — click anything glowing";
     enterEarthMode();
   } else if (mode === "explore") {
-    setTexture(S.userTexture, false);
     $("#hudHint").textContent = "Drag to spin · Scroll to zoom · Click a country to dive in";
   } else {
-    setTexture("dark", false);
     updateQuizBestLabels();
   }
   refreshHtmlLayer();
   refreshPolys();
   scheduleUrl();
-}
-
-function setTexture(tex, remember = true) {
-  S.texture = tex;
-  if (remember) S.userTexture = tex;
-  S.globe.globeImageUrl(TEXTURES[tex]);
-  if (S.fx?.clouds) S.fx.clouds.visible = tex === "day"; // clouds only over the daylight earth
-  $$(".tex-btn[data-tex]").forEach((b) => b.classList.toggle("active", b.dataset.tex === tex));
 }
 
 /* ───────────────────────── COUNTRY SELECTION ───────────────────────── */
@@ -1807,7 +1667,6 @@ function closePanel() {
   $("#panel").classList.add("hidden");
   $("#touchPreviewPill")?.classList.add("hidden");
   clearTimeout(S.dwellTimer);
-  heroLightOff();
   clearCompare();
   S.info = null;
   if (S.selected) {
@@ -2347,7 +2206,6 @@ function exitStateView(refocusHint = true) {
   if (!S.stateView) return;
   S.stateView = null;
   S.info = null;
-  heroLightOff();
   S.globe.polygonsData(S.features);
   $("#stateBar").classList.add("hidden");
   $("#panel").classList.add("hidden");
@@ -2717,57 +2575,6 @@ function anchorWrap(inner) {
   return a;
 }
 
-function wonderSvg(kind) {
-  const k = (kind || "").toLowerCase();
-  if (k.includes("peak") || k.includes("mountain")) {
-    return `<svg viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>`;
-  }
-  if (k.includes("volcano")) {
-    return `<svg viewBox="0 0 24 24"><path d="m2 22 7-16h6l7 16H2z"/><path d="M12 6v-4M9 4l-2-2M15 4l2-2"/></svg>`;
-  }
-  if (k.includes("waterfall") || k.includes("lake") || k.includes("sea")) {
-    return `<svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
-  }
-  if (k.includes("canyon") || k.includes("rock") || k.includes("monolith")) {
-    return `<svg viewBox="0 0 24 24"><path d="M4 20h16M7 16l3-8 4 6 3-4 3 6H4z"/></svg>`;
-  }
-  if (k.includes("glacier") || k.includes("ice")) {
-    return `<svg viewBox="0 0 24 24"><path d="m12 2 3 5h-6l3-5zM12 22l-3-5h6l-3 5zM2 12l5-3v6l-5-3zM22 12l-5 3v-6l5 3z"/></svg>`;
-  }
-  if (k.includes("reef") || k.includes("marine") || k.includes("ocean")) {
-    return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
-  }
-  if (k.includes("desert") || k.includes("sand")) {
-    return `<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M2 20c4-4 8 2 12-2 3-3 6-1 8 2H2z"/></svg>`;
-  }
-  return `<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
-}
-
-function buildWonderPin(w) {
-  const div = document.createElement("div");
-  div.className = "wonder-pin";
-  div.title = `${w.name} (${w.kind})`;
-  div.setAttribute("role", "button");
-  div.setAttribute("tabindex", "0");
-  div.setAttribute("aria-label", `${w.name} (${w.kind})`);
-  div.innerHTML = `
-    <span class="wonder-pulse"></span>
-    <span class="wonder-pin-core"><span class="telemetry-dot"></span></span>
-    <span class="wonder-label">${esc(w.name)}<small>${esc(w.kind)}</small></span>
-  `;
-  div.onclick = (e) => {
-    e.stopPropagation();
-    openEarthFeature({ text: w.name, kind: w.kind, emoji: w.emoji, wiki: w.wiki, lat: w.lat, lng: w.lng });
-  };
-  div.onkeydown = (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      div.click();
-    }
-  };
-  return anchorWrap(div);
-}
-
 /* ── Tiny nations: pins + forgiving hit-testing so every country is tappable ── */
 const MICRO_SR = 3.2e-4; // ≈ 13,000 km² of sphere — Bahrain, Malta, Singapore, Maldives, Caribbean & Pacific states…
 
@@ -2781,41 +2588,10 @@ function initMicroStates() {
   S.microSet = new Set(S.micro.map((m) => m.f));
 }
 
-const isMicro = (d) => S.microSet?.has(d);
-
 // Pins only where picking a country is the task (never in tours or quiz modes)
 function microActive() {
   if (!S.pins || S.stateView || S.mode === "earth" || S.activeTour || S.mode === "quiz") return false;
   return true;
-}
-
-function buildMicroPin(p) {
-  const div = document.createElement("div");
-  div.className = "micro-pin";
-  div.dataset.name = nameOf(p.f);
-  div.setAttribute("role", "button");
-  div.setAttribute("aria-label", nameOf(p.f));
-  div.innerHTML = `<i></i>`;
-  div.onclick = (e) => { e.stopPropagation(); handleCountryClick(p.f, e); };
-  div.onpointerenter = () => { S.hoverD = p.f; refreshPolys(); if (S.mode === "atlas" && !isCoarse()) renderAtlasReadout(p.f); };
-  div.onpointerleave = () => { if (S.hoverD === p.f) { S.hoverD = null; refreshPolys(); } };
-  return div;
-}
-
-// Closest visible micro-state pin within finger (26px) / cursor (12px) range of a click
-function microNear(ev) {
-  if (!ev || !microActive() || !S.micro.length) return null;
-  const tol = isCoarse() ? 26 : 12;
-  const pov = S.globe.pointOfView();
-  const horizon = (Math.acos(1 / (1 + pov.altitude)) * 180) / Math.PI * 0.95;
-  let best = null, bestD = tol;
-  for (const p of S.micro) {
-    if (haversine(pov, p) / 111.2 > horizon) continue; // far side of the planet
-    const s = S.globe.getScreenCoords(p.lat, p.lng, 0.01);
-    const dd = Math.hypot(s.x - ev.clientX, s.y - ev.clientY);
-    if (dd < bestD) { bestD = dd; best = p; }
-  }
-  return best;
 }
 
 function setPins(on) {
@@ -2855,23 +2631,15 @@ function buildLifeHolo(w) {
   return anchorWrap(div);
 }
 
+// Painted pins (wonders, tiny nations), the few rich HTML cards, and the name labels
 function refreshHtmlLayer() {
   if (!S.globe) return;
-  if (V2) {
-    const pins = [];
-    if (S.mode === "earth" && S.earthLayers.wonders) pins.push(...WONDERS);
-    if (microActive()) pins.push(...S.micro);
-    S.globe.markersData(pins);
-    S.globe.htmlElementsData([S.compare?.badge, S.lifePin].filter(Boolean));
-    refreshLabels();
-    return;
-  }
-  const els = [];
-  if (S.mode === "earth" && S.earthLayers.wonders) els.push(...WONDERS);
-  if (microActive()) els.push(...S.micro);
-  if (S.compare?.badge) els.push(S.compare.badge);
-  if (S.lifePin) els.push(S.lifePin);
-  S.globe.htmlElementsData(els);
+  const pins = [];
+  if (S.mode === "earth" && S.earthLayers.wonders) pins.push(...WONDERS);
+  if (microActive()) pins.push(...S.micro);
+  S.globe.markersData(pins);
+  S.globe.htmlElementsData([S.compare?.badge, S.lifePin].filter(Boolean));
+  refreshLabels();
 }
 
 function countryLabels() {
@@ -2884,7 +2652,7 @@ function countryLabels() {
 
 // Country names on the globe (new engine): explore & atlas — never in quizzes, they'd give answers away
 function refreshLabels() {
-  if (!V2 || !S.globe || S.mode === "earth") return; // Earth mode shows physical-feature labels instead
+  if (!S.globe || S.mode === "earth") return; // Earth mode shows physical-feature labels instead
   if (S.stateView) {
     const sv = S.stateView;
     sv.labels ??= sv.adm1.map((st) => {
@@ -3726,10 +3494,18 @@ function updateArenaAvailability() {
 }
 
 // A friend's link arrives → pre-select their game and lock in their seed
+function setArcadeMode(mode) {
+  S.arcadeMode = mode;
+  $$("#arcadeModeGrid .arcade-card").forEach((c) => c.classList.toggle("active", c.dataset.arcade === mode));
+  $("#blitzTypeWrap")?.classList.toggle("hidden", mode !== "blitz");
+  updateQuizBestLabels();
+}
+
 function applyChallenge(code) {
   const ch = decodeChallenge(code);
   if (!ch) { toast("⚠️ That challenge link looks broken — pick a game instead"); return false; }
   S.pendingChallenge = { ...ch, code: encodeChallenge(ch) };
+  setArcadeMode("blitz"); // classic challenge codes (Flag Frenzy, Capitals, …) are Blitz games
   setQuizSelection(ch.type, ch.region, ch.diff);
   if (S.mode !== "quiz") setMode("quiz");
   else $("#quizSetup").classList.remove("hidden");
@@ -4291,6 +4067,7 @@ function finishQuiz() {
 
   S.lastQuiz = q;
   S.quiz = null;
+  refreshArcs();
   $("#quizResult").classList.remove("hidden");
   $("#quizResult .quiz-card").scrollTop = 0;
   if (newBest) confetti({ particleCount: 160, spread: 100, origin: { y: 0.4 } });
@@ -4342,6 +4119,7 @@ async function shareScorecard() {
 
 function endQuiz(silent = false) {
   S.quiz = null;
+  refreshArcs(); // a game's arcs (Chain, Pinpoint) go away with it
   $("#quizHud").classList.add("hidden");
   $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
@@ -4705,7 +4483,6 @@ function onKey(e) {
 /* ───────────────────────── WIRE UP ───────────────────────── */
 function initUI() {
   $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
-  $$(".tex-btn[data-tex]").forEach((b) => b.addEventListener("click", () => setTexture(b.dataset.tex)));
   $("#namesToggle")?.addEventListener("click", () => {
     setNames(!S.names);
     toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
@@ -4792,13 +4569,7 @@ function initUI() {
 
   // 4-Mode Arcade Grid Cards
   $$("#arcadeModeGrid .arcade-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      $$("#arcadeModeGrid .arcade-card").forEach((c) => c.classList.remove("active"));
-      card.classList.add("active");
-      S.arcadeMode = card.dataset.arcade;
-      $("#blitzTypeWrap").classList.toggle("hidden", S.arcadeMode !== "blitz");
-      updateQuizBestLabels();
-    });
+    card.addEventListener("click", () => setArcadeMode(card.dataset.arcade));
   });
 
   $("#progressChip").addEventListener("click", (e) => { e.stopPropagation(); toggleProgressPop(); });
@@ -4878,20 +4649,13 @@ function initUI() {
   try {
     await Promise.all([loadData(), window.GV_LIBS]);
     document.body.dataset.mode = S.mode;
-    document.body.classList.toggle("engine-v2", V2);
-    if (V2) {
-      $("#enginePill")?.remove();
-      document.body.insertAdjacentHTML("beforeend",
-        `<a id="enginePill" class="engine-pill" href="?engine=v1" title="Switch back to the current globe">New engine preview · <u>switch back</u></a>`);
-    }
     initGlobe();
-    initFx();
     initMicroStates();
     initUI();
     initSheets();
     initRenderGuards();
     setPins(S.pins);
-    if (V2) setNames(S.names);
+    setNames(S.names);
     updateProgress();
     renderAtlasReadout(null);
     loaderStep(100, "Ready for lift-off 🚀");

@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
-   GEOVERSE ENGINE v2 — a lean three.js globe
+   GEOVERSE ENGINE — a lean three.js globe
    · all land is ONE mesh; per-country colour lives in a tiny lookup texture
      (hover, selection, choropleths = rewriting a few bytes, never rebuilding geometry)
    · picking: ray → sphere → lat/lng → grid + point-in-polygon (no triangle raycasts)
    · one camera director (flights cancel each other), steering that slows as you zoom in
    · renders only when something changes; 30 fps when idle; resolution adapts to the device
-   Exposes window.GeoEngine.create(container, opts) → a globe.gl-compatible facade, so the
-   existing app runs on it unchanged while modes are moved over stage by stage.
+   Exposes window.GeoEngine.create(container, opts) → a chainable, globe.gl-style API
+   (pointOfView, polygonCapColor, labelsData, arcsData, …) that app.js talks to.
    ═══════════════════════════════════════════════════════════ */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -945,7 +945,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     markersData: (d) => { if (d === undefined) return markers; setMarkers(d); return api; },
     pathsData: (d) => { if (d === undefined) return paths; setPaths(d); return api; },
     overlayStats: () => stats,
-    // v2-only extras
+    // engine extras
     outlineCountry,
     hovered: () => hoverF,
     isV2: true,
@@ -954,7 +954,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     get(target, prop) {
       if (prop in target) return target[prop];
       if (typeof prop !== "string" || prop === "then" || prop === "toJSON") return undefined; // never look like a Promise
-      // any other globe.gl setter: store it and stay chainable (unported layers simply wait for later stages)
+      // any other accessor/handler setter (labelLat, onPathClick, …): store it and stay chainable
       return (...args) => {
         if (!args.length) return acc[prop] ?? handlers[prop];
         if (prop.startsWith("on")) handlers[prop] = args[0];
