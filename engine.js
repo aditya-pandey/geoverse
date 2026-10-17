@@ -24,7 +24,7 @@ const ICE = "#e9f1f7";
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-function create(container, { countries, extraLand = [], neighbors = [], priority = () => 0, liftOf = () => 0 }) {
+function create(container, { countries, extraLand = [], neighbors = [], priority = () => 0, liftOf = () => 0, textures = {} }) {
   const G = globalThis.GeoCore;
   const isPhone = matchMedia("(max-width: 768px)").matches || matchMedia("(pointer: coarse)").matches;
   const lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
@@ -85,10 +85,24 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   heightTex.needsUpdate = true;
   const uExtrude = { value: 0 };
   const LOOKUP = (v) => `texture2D(${v}, vec2((floor(aId + .5) + .5) / ${MAX_IDS}.0, .5))`;
-  function makeLandMat(tex, extrude) {
+  // overlay = per-country app colour (selection, quiz flashes, choropleth) with its strength in alpha
+  const overlayBytes = new Uint8Array(MAX_IDS * 4);
+  const overlayTex = new THREE.DataTexture(overlayBytes, MAX_IDS, 1, THREE.RGBAFormat);
+  overlayTex.magFilter = overlayTex.minFilter = THREE.NearestFilter;
+  overlayTex.colorSpace = THREE.SRGBColorSpace;
+  // terrain view + relief: textures stream in after the first frame (1×1 stand-ins until then)
+  const stand = (rgba) => { const t = new THREE.DataTexture(new Uint8Array(rgba), 1, 1, THREE.RGBAFormat); t.needsUpdate = true; return t; };
+  const uBiome = { value: stand([200, 190, 150, 255]) }, uRelief = { value: stand([0, 0, 0, 255]) };
+  const uTerrain = { value: 0 }, uReliefK = { value: 0 }, uHover = { value: -1 };
+  const blankOverlay = stand([0, 0, 0, 0]);
+
+  function makeLandMat(tex, extrude, { overlay = overlayTex, hover = uHover, terrain = uTerrain } = {}) {
     return new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
-      uniforms: { uColours: { value: tex }, uLight: { value: lightDir }, uHeights: { value: heightTex }, uExtrude: extrude },
+      uniforms: {
+        uColours: { value: tex }, uOverlay: { value: overlay }, uHoverId: hover, uTerrain: terrain,
+        uBiome, uRelief, uReliefK, uLight: { value: lightDir }, uHeights: { value: heightTex }, uExtrude: extrude,
+      },
       vertexShader: `attribute float aId; uniform sampler2D uHeights; uniform float uExtrude;
         varying float vId; varying vec3 vN; varying vec3 vW;
         void main(){ vId = aId; vN = normalize(position);
@@ -96,12 +110,37 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
           vec3 p = vN * (length(position) + h);
           vW = (modelMatrix*vec4(p,1.)).xyz;
           gl_Position = projectionMatrix*modelViewMatrix*vec4(p,1.); }`,
-      fragmentShader: `uniform sampler2D uColours; uniform vec3 uLight; varying float vId; varying vec3 vN; varying vec3 vW;
-        void main(){ vec3 c = texture2D(uColours, vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5)).rgb;
+      fragmentShader: `uniform sampler2D uColours, uOverlay, uBiome, uRelief;
+        uniform float uHoverId, uTerrain, uReliefK; uniform vec3 uLight;
+        varying float vId; varying vec3 vN; varying vec3 vW;
+        const float PI = 3.141592653589793;
+        void main(){
+          vec2 idUv = vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5);
+          // equirectangular lookup from the surface direction (same axes as the rest of the engine)
+          vec3 n0 = normalize(vN);
+          vec2 uv = vec2(fract((PI * 1.5 - atan(n0.z, n0.x)) / (2. * PI)), asin(clamp(n0.y, -1., 1.)) / PI + .5);
+          // seam-safe derivatives: take whichever of u / u+½ doesn't jump at the 180° line
+          vec2 uv2 = vec2(fract(uv.x + .5), uv.y);
+          vec2 dx = dFdx(uv), dy = dFdy(uv), dx2 = dFdx(uv2), dy2 = dFdy(uv2);
+          if (dot(dx2, dx2) + dot(dy2, dy2) < dot(dx, dx) + dot(dy, dy)) { dx = dx2; dy = dy2; }
+
+          vec3 c = mix(texture2D(uColours, idUv).rgb, textureGrad(uBiome, uv, dx, dy).rgb, uTerrain);
+          vec4 o = texture2D(uOverlay, idUv);
+          c = mix(c, o.rgb, o.a);
+          if (abs(vId - uHoverId) < .5) c = mix(c, vec3(1.), .28);
+
+          // relief: tilt the normal by the local elevation slope (mountains catch the light)
+          float hC = textureGrad(uRelief, uv, dx, dy).r;
+          float hE = textureGrad(uRelief, uv + vec2(1. / 2048., 0.), dx, dy).r;
+          float hN = textureGrad(uRelief, uv + vec2(0., 1. / 1024.), dx, dy).r;
+          vec3 east = normalize(cross(vec3(0., 1., 0.), n0) + vec3(1e-5, 0., 0.));
+          vec3 north = cross(n0, east);
+          vec3 n = normalize(n0 - uReliefK * ((hE - hC) * east + (hN - hC) * north));
+
           vec3 v = normalize(cameraPosition - vW);
-          float l = .74 + .26*max(dot(vN, uLight), 0.);
-          float rim = .88 + .12*max(dot(vN, v), 0.);
-          gl_FragColor = vec4(c*l*rim, 1.);
+          float l = .74 + .26 * max(dot(n0, uLight), 0.) + (dot(n, uLight) - dot(n0, uLight)) * 1.4;
+          float rim = .88 + .12 * max(dot(n0, v), 0.);
+          gl_FragColor = vec4(c * clamp(l, .45, 1.15) * rim, 1.);
           #include <colorspace_fragment>
         }`,
     });
@@ -115,6 +154,9 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const srgb = (hex) => new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace); // raw sRGB numbers, no conversion
   const base = countries.map((_, i) => srgb(PALETTE[slot[i]]));
   const ice = srgb(ICE);
+  colourBytes.set([ice.r * 255, ice.g * 255, ice.b * 255, 255], 0);
+  base.forEach((c, i) => colourBytes.set([c.r * 255, c.g * 255, c.b * 255, 255], (i + 1) * 4));
+  colourTex.needsUpdate = true;
 
   /* ── lines: borders/coasts, graticule, selection outline ── */
   const lineMats = [];
@@ -169,15 +211,19 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     geo.setIndex(new THREE.BufferAttribute(w.index, 1));
     walls = new THREE.Mesh(geo, new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
-      uniforms: { uColours: { value: colourTex }, uHeights: { value: heightTex }, uExtrude, uLight: { value: lightDir } },
+      uniforms: { uColours: { value: colourTex }, uOverlay: { value: overlayTex }, uHoverId: uHover, uHeights: { value: heightTex }, uExtrude, uLight: { value: lightDir } },
       vertexShader: `attribute float aId; attribute float aTop; attribute vec3 aN; uniform sampler2D uHeights; uniform float uExtrude;
         varying float vId; varying vec3 vNw;
         void main(){ vId = aId; vNw = aN;
           float h = uExtrude * ${LOOKUP("uHeights")}.r * ${MAX_H.toFixed(3)};
           vec3 p = normalize(position) * (length(position) + aTop * h);
           gl_Position = projectionMatrix*modelViewMatrix*vec4(p,1.); }`,
-      fragmentShader: `uniform sampler2D uColours; uniform vec3 uLight; varying float vId; varying vec3 vNw;
-        void main(){ vec3 c = texture2D(uColours, vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5)).rgb;
+      fragmentShader: `uniform sampler2D uColours, uOverlay; uniform float uHoverId; uniform vec3 uLight; varying float vId; varying vec3 vNw;
+        void main(){ vec2 idUv = vec2((floor(vId + .5) + .5) / ${MAX_IDS}.0, .5);
+          vec3 c = texture2D(uColours, idUv).rgb;
+          vec4 o = texture2D(uOverlay, idUv);
+          c = mix(c, o.rgb, o.a);
+          if (abs(vId - uHoverId) < .5) c = mix(c, vec3(1.), .28);
           float l = .52 + .34*abs(dot(normalize(vNw), uLight)); // sides a shade darker than the tops
           gl_FragColor = vec4(c*l, 1.);
           #include <colorspace_fragment>
@@ -234,7 +280,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       const tex = new THREE.DataTexture(bytes, MAX_IDS, 1, THREE.RGBAFormat);
       tex.magFilter = tex.minFilter = THREE.NearestFilter;
       tex.colorSpace = THREE.SRGBColorSpace;
-      const mesh = new THREE.Mesh(geo, makeLandMat(tex, { value: 0 }));
+      const mesh = new THREE.Mesh(geo, makeLandMat(tex, { value: 0 }, { overlay: blankOverlay, hover: { value: -1 }, terrain: { value: 0 } }));
       const lines = fatLines(G.buildLines(list, { r: 1.0031 }), { color: 0xfff7e6, width: 1.3, opacity: 0.95 });
       lines.material.resolution.set(cssW, cssH);
       scene.add(mesh, lines);
@@ -415,16 +461,14 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const tmp = new THREE.Color();
   function recolour() {
     const capFn = acc.polygonCapColor;
-    for (let i = 0; i <= countries.length; i++) {
-      if (i === 0) { colourBytes.set([ice.r * 255, ice.g * 255, ice.b * 255, 255], 0); continue; }
-      const f = countries[i - 1];
-      tmp.copy(base[i - 1]);
-      const o = capFn ? parseColour(capFn(f)) : null;
-      if (o) tmp.setRGB(tmp.r + (o.r - tmp.r) * o.a, tmp.g + (o.g - tmp.g) * o.a, tmp.b + (o.b - tmp.b) * o.a);
-      if (f === hoverF) tmp.lerp(WHITE, 0.28);
-      colourBytes[i * 4] = tmp.r * 255; colourBytes[i * 4 + 1] = tmp.g * 255; colourBytes[i * 4 + 2] = tmp.b * 255; colourBytes[i * 4 + 3] = 255;
+    for (let i = 1; i <= countries.length; i++) {
+      const o = capFn ? parseColour(capFn(countries[i - 1])) : null;
+      const k = i * 4;
+      if (o) { overlayBytes[k] = o.r * 255; overlayBytes[k + 1] = o.g * 255; overlayBytes[k + 2] = o.b * 255; overlayBytes[k + 3] = o.a * 255; }
+      else overlayBytes[k + 3] = 0;
     }
-    colourTex.needsUpdate = true;
+    overlayTex.needsUpdate = true;
+    uHover.value = hoverF && idMap.has(hoverF) ? idMap.get(hoverF) : -1;
     if (states) {
       states.list.forEach((f, i) => {
         tmp.copy(STATE_BASE);
@@ -706,7 +750,8 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   function setHover(f) {
     if (f === hoverF) return;
     hoverF = f;
-    recolour();
+    if (states && states.index.has(f)) recolour(); // states keep their colours in their own texture
+    else { uHover.value = f && idMap.has(f) ? idMap.get(f) : -1; dirty = true; }
     handlers.onPolygonHover?.(f, hoverF);
   }
   el.addEventListener("pointerup", (e) => {
@@ -844,6 +889,43 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     dirty = true;
   }
 
+  /* ── map style: clean political (default) or biome terrain, plus relief shading for both ── */
+  const texLoader = new THREE.TextureLoader();
+  function loadTex(url, colour) {
+    return new Promise((resolve, reject) => {
+      try {
+        texLoader.load(url, (t) => {
+          t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          resolve(t);
+        }, undefined, reject);
+      } catch (e) { reject(e); }
+    });
+  }
+  let terrainTarget = 0, biomeReady = false, biomeLoading = null;
+  function setMapStyle(style) {
+    terrainTarget = style === "terrain" ? 1 : 0;
+    if (terrainTarget && !biomeLoading && textures.biome) {
+      biomeLoading = loadTex(textures.biome, true)
+        .then((t) => { uBiome.value = t; biomeReady = true; dirty = true; })
+        .catch(() => { biomeLoading = null; }); // offline: stay political, try again next time
+    }
+    dirty = true;
+  }
+  function stepTerrain(dt) {
+    const target = biomeReady ? terrainTarget : 0;
+    const d = target - uTerrain.value;
+    if (Math.abs(d) < 0.002) { uTerrain.value = target; return false; }
+    uTerrain.value += d * (1 - Math.pow(1 - 0.12, dt * 60)); // ~½ s cross-fade
+    return true;
+  }
+  // relief streams in just after the first frame, so it never delays the globe appearing
+  if (textures.relief) {
+    setTimeout(() => {
+      loadTex(textures.relief, false).then((t) => { uRelief.value = t; uReliefK.value = 6; dirty = true; }).catch(() => {});
+    }, 250);
+  }
+
   /* ── frame loop: render on demand, 30 fps when idle, adaptive resolution ── */
   let dirty = true, paused = false, last = performance.now(), frameAvg = 1 / 60, dprTimer = 0, raf = 0;
   const overlayDpr = Math.min(devicePixelRatio || 1, 2);
@@ -894,6 +976,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     if (!flight) moving = controls.update() || moving;
     const ringsOn = stepRings(now);
     const barsOn = stepHeights(dt);
+    const styleOn = stepTerrain(dt);
     if (outline) {
       const id = idMap.get(outlined) || 0, r0 = outline.userData.r;
       outline.scale.setScalar((r0 + hCur[id] * uExtrude.value) / r0);
@@ -901,7 +984,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     let arcsOn = false;
     for (const o of arcObjs) if (o.userData.speed) { o.material.dashOffset -= o.userData.speed * dt; arcsOn = true; }
 
-    if (!(dirty || moving || ringsOn || arcsOn || barsOn || controls.autoRotate)) return;
+    if (!(dirty || moving || ringsOn || arcsOn || barsOn || styleOn || controls.autoRotate)) return;
     dirty = false;
     // soft key light just above-left of the viewer, so the visible face is always nicely lit
     camRight.crossVectors(camera.up, camera.position).normalize();
@@ -938,6 +1021,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       return api;
     },
     extrude: (on) => { extrudeOn = !!on; if (on) ensureWalls(); retarget(); return api; },
+    mapStyle: (style) => { if (style === undefined) return terrainTarget ? "terrain" : "political"; setMapStyle(style); return api; },
     htmlElementsData: (d) => { if (d === undefined) return htmlItems.map((x) => x.d); setHtml(d); return api; },
     ringsData: (d) => { if (d === undefined) return rings.map((r) => r.d); setRings(d); return api; },
     arcsData: (d) => { if (d === undefined) return arcObjs; setArcs(d); return api; },

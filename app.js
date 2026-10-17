@@ -88,7 +88,9 @@ const S = {
   comparePick: false,      // waiting for the user to choose country B
   micro: [],               // pins for micro-states & small islands
   pins: store.get("gv-pins-v2", false),
-  names: store.get("gv-names", true), // country names on the globe (new engine)
+  names: store.get("gv-names", true), // country names on the globe
+  mapStyle: store.get("gv-map", "political"), // "political" | "terrain"
+  sound: store.get("gv-sound", false),
   paused: false,           // render loop paused (tab hidden / full-screen modal)
   searchIndex: null,
 };
@@ -876,26 +878,44 @@ function loaderStep(pct, msg) {
   $("#loaderMsg").textContent = msg;
 }
 
+const POP_FALLBACK = { TWN: 23894394, ESH: 587000, VAT: 800, FLK: 3800, UNK: 1587000, ATF: 400, SPM: 5800, WLF: 11400, BLM: 10600, MAF: 32500, SJM: 2900, NIU: 1600, TKL: 1900, VGB: 31000, AIA: 15900, MSR: 4400, FRO: 54000, GGY: 64000, JEY: 103000, PCN: 47 };
+
+function populationMap(wb) {
+  const m = new Map();
+  if (Array.isArray(wb) && Array.isArray(wb[1])) {
+    for (const row of wb[1]) if (row.value != null) m.set(row.countryiso3code, row.value);
+    if (m.has("XKX")) m.set("UNK", m.get("XKX"));
+  }
+  return m;
+}
+
+// World Bank answered after the globe was already up: fill the numbers in place
+function applyPopulations(m) {
+  for (const f of uniqueCountries()) f.gv.population = m.get(f.gv.cca3) ?? POP_FALLBACK[f.gv.cca3] ?? f.gv.population;
+  rankCache.delete("population");
+  if (S.mode === "atlas") { renderLegend(); renderAtlasReadout(null); refreshPolys(); }
+}
+
 async function loadData() {
   loaderStep(10, "Charting the continents…");
+  // every download starts at once (they used to queue behind the map)
   // 50m resolution → 241 units incl. micro-states (Bahrain, Singapore, Malta, Monaco, Maldives…)
-  const topo = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json").then((r) => r.json());
+  const topoP = fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json").then((r) => r.json());
+  const rawP = fetch("https://cdn.jsdelivr.net/npm/world-countries@5.1.0/countries.json").then((r) => r.json());
+  const popP = fetch("https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&mrnev=1&per_page=400")
+    .then((r) => r.json()).catch(() => null);
+  const indiaP = fetch("data/india-official.geojson").then((r) => r.json()).catch(() => null);
+  const topo = await topoP;
   const features = topojson.feature(topo, topo.objects.countries).features;
 
   loaderStep(40, "Interviewing 195 countries…");
   let countries = [];
   try {
-    const [raw, wb] = await Promise.all([
-      fetch("https://cdn.jsdelivr.net/npm/world-countries@5.1.0/countries.json").then((r) => r.json()),
-      fetch("https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&mrnev=1&per_page=400")
-        .then((r) => r.json()).catch(() => null),
-    ]);
-    const POP_FALLBACK = { TWN: 23894394, ESH: 587000, VAT: 800, FLK: 3800, UNK: 1587000, ATF: 400, SPM: 5800, WLF: 11400, BLM: 10600, MAF: 32500, SJM: 2900, NIU: 1600, TKL: 1900, VGB: 31000, AIA: 15900, MSR: 4400, FRO: 54000, GGY: 64000, JEY: 103000, PCN: 47 };
-    const popByIso3 = new Map();
-    if (Array.isArray(wb) && Array.isArray(wb[1])) {
-      for (const row of wb[1]) if (row.value != null) popByIso3.set(row.countryiso3code, row.value);
-      if (popByIso3.has("XKX")) popByIso3.set("UNK", popByIso3.get("XKX"));
-    }
+    // populations: a slow World Bank never holds the globe back — wait ≤ 2.5 s, fill in later otherwise
+    const late = new Promise((r) => setTimeout(() => r("late"), 2500));
+    const [raw, wb] = await Promise.all([rawP, Promise.race([popP, late])]);
+    if (wb === "late") popP.then((j) => { if (j) applyPopulations(populationMap(j)); });
+    const popByIso3 = populationMap(wb);
     countries = raw.map((c) => ({
       ...c,
       population: popByIso3.get(c.cca3) ?? POP_FALLBACK[c.cca3] ?? null,
@@ -945,7 +965,7 @@ async function loadData() {
   // Official Survey of India boundary for India (world view)
   loaderStep(68, "Redrawing India, officially…");
   try {
-    const ind = await fetch("data/india-official.geojson").then((r) => r.json());
+    const ind = await indiaP;
     const indF = S.byCca3.get("IND");
     if (indF && ind.features?.[0]) {
       indF.geometry = ind.features[0].geometry;
@@ -1025,6 +1045,7 @@ function refreshPolys() {
     .polygonAltitude(polyAltitude)
     .polygonLabel(polyLabel)
     .extrude(S.mode === "atlas" && S.atlas3d && !S.stateView)
+    .mapStyle(S.mode === "atlas" || S.stateView ? "political" : S.mapStyle) // data & states need the clean colours
     .outlineCountry(S.compare || S.stateView ? null : S.selected || (S.mode === "atlas" ? S.atlasPick : null));
 }
 
@@ -1037,6 +1058,7 @@ function initGlobe() {
       // the official India outline overlaps neighbouring claims: draw it a hair above, and pick it first
       priority: (f) => (f.gv?.cca3 === "IND" ? 1 : 0),
       liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
+      textures: { biome: "data/biome.jpg", relief: "data/relief.png" },
     })
     .polygonsData(S.features)
     .onPolygonHover((d) => {
@@ -1528,6 +1550,7 @@ function selectCountry(d) {
   S.selected = d;
   if (S.mode === "atlas") { S.atlasPick = d; renderLegend(); renderAtlasReadout(null); }
   S.panelTab = "overview";
+  sfx("select");
   refreshPolys();
   cinematicFlyTo(d);
   openPanel(d);
@@ -2665,6 +2688,66 @@ function refreshLabels() {
   }
   const show = S.names && S.mode !== "quiz" && !S.activeTour;
   S.globe.labelsData(show ? (S.countryLabels ??= countryLabels()) : []);
+}
+
+function setMapStyle(style) {
+  S.mapStyle = style === "terrain" ? "terrain" : "political";
+  store.set("gv-map", S.mapStyle);
+  const on = S.mapStyle === "terrain";
+  $("#styleToggle")?.classList.toggle("active", on);
+  $("#styleToggle")?.setAttribute("aria-pressed", String(on));
+  $("#styleToggle")?.setAttribute("aria-label", on ? "Show the political map" : "Show the terrain view");
+  refreshPolys();
+}
+
+// Soft UI sounds, synthesised on the fly (no audio files) — off unless switched on
+const sfx = (() => {
+  let ac = null;
+  const tone = (freq, at, dur, type = "sine", gain = 0.07) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, at);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(gain, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(at); o.stop(at + dur + 0.02);
+  };
+  const SOUNDS = {
+    select: (t) => tone(620, t, 0.14),
+    correct: (t) => { tone(660, t, 0.12); tone(990, t + 0.09, 0.18); },
+    wrong: (t) => tone(190, t, 0.24, "triangle", 0.06),
+    skipped: (t) => tone(330, t, 0.12, "sine", 0.05),
+    click: (t) => tone(880, t, 0.06, "sine", 0.04),
+  };
+  return (kind) => {
+    if (!S.sound || !SOUNDS[kind]) return;
+    try {
+      ac ??= new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      SOUNDS[kind](ac.currentTime + 0.005);
+    } catch (e) { /* audio unavailable — stay silent */ }
+  };
+})();
+
+function setSound(on, quiet = false) {
+  S.sound = on;
+  store.set("gv-sound", on);
+  $("#soundToggle")?.classList.toggle("active", on);
+  $("#soundToggle")?.setAttribute("aria-pressed", String(on));
+  $("#soundToggle")?.setAttribute("aria-label", on ? "Turn sounds off" : "Turn sounds on");
+  if (!quiet) sfx("click");
+}
+
+// The bottom hint says its piece, then gets out of the way; it returns briefly when its text changes
+function initHint() {
+  const h = $("#hudHint");
+  if (!h) return;
+  let t;
+  const fadeIn = (ms) => { clearTimeout(t); t = setTimeout(() => h.classList.add("faded"), ms); };
+  new MutationObserver(() => { h.classList.remove("faded"); fadeIn(6000); })
+    .observe(h, { childList: true, characterData: true, subtree: true });
+  $("#globeViz").addEventListener("pointerdown", () => fadeIn(1500), { passive: true });
+  fadeIn(8000);
 }
 
 function setNames(on) {
@@ -3842,6 +3925,7 @@ function quizPinpointClick(coords) {
 function logRound(result, given = "") {
   const q = S.quiz;
   if (!q || q.log.length >= q.round) return;
+  sfx(result);
   const r = q.cur;
   let place = {};
   if (r.country) place = { cca3: r.country.gv.cca3 };
@@ -4483,6 +4567,11 @@ function onKey(e) {
 /* ───────────────────────── WIRE UP ───────────────────────── */
 function initUI() {
   $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  $("#styleToggle")?.addEventListener("click", () => {
+    setMapStyle(S.mapStyle === "terrain" ? "political" : "terrain");
+    toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
+  });
+  $("#soundToggle")?.addEventListener("click", () => setSound(!S.sound));
   $("#namesToggle")?.addEventListener("click", () => {
     setNames(!S.names);
     toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
@@ -4656,20 +4745,32 @@ function initUI() {
     initRenderGuards();
     setPins(S.pins);
     setNames(S.names);
+    setMapStyle(S.mapStyle);
+    setSound(S.sound, true);
+    initHint();
     updateProgress();
     renderAtlasReadout(null);
     loaderStep(100, "Ready for lift-off 🚀");
 
-    setTimeout(() => getStatesDataset(), 4000); // pre-warm states metadata
+    // pre-warm the states list (~1 MB) only on desktop, once the browser is idle
+    if (!isMobile() && !navigator.connection?.saveData) {
+      setTimeout(() => (window.requestIdleCallback || setTimeout)(() => getStatesDataset()), 8000);
+    }
 
     const deepLink = location.search.length > 1;
-    setTimeout(() => {
+    // two frames: the globe has been drawn behind the loader, so it fades onto a finished picture
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       $("#loader").classList.add("done");
+      // touch screens don't show the bottom hint — teach the three gestures once, on the first visit
+      if (isCoarse() && !store.get("gv-coached", false)) {
+        store.set("gv-coached", true);
+        setTimeout(() => toast("👆 Drag to spin · pinch to zoom · tap any country", 5200), 1600);
+      }
       if (!deepLink) S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400);
       S.urlReady = true;
       if (deepLink) applyUrl();
       else history.replaceState({ gvLevel: 0, gvDepth: history.state?.gvDepth ?? 0 }, "", location.href);
-    }, 500);
+    }));
   } catch (err) {
     console.error(err);
     loaderStep(100, "⚠️ Couldn't reach map data — check your internet connection and refresh.");
