@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019i" />
+<link rel="stylesheet" href="style.css?v=20261019k" />
 </head>
 <body>
 
@@ -82,9 +82,9 @@
 
 <!-- ══════════ TOP BAR ══════════ -->
 <header id="topbar">
-  <div class="brand">
+  <a class="brand" href="./" title="Home" aria-label="Bhoogol home">
     <img class="brand-lockup" src="assets/brand/bhoogol-wordmark-night.svg" alt="Bhoogol" width="124" height="39" />
-  </div>
+  </a>
 
   <nav id="modeTabs" aria-label="Modes">
     <button class="mode-tab active" data-mode="explore">
@@ -159,6 +159,9 @@
   <button class="tex-btn names-toggle" id="namesToggle" title="Country names" aria-label="Show country names on the globe" aria-pressed="true">Aa</button>
   <button class="tex-btn pin-toggle" id="pinToggle" title="Pins for tiny nations" aria-label="Show pins for tiny nations and islands" aria-pressed="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+  </button>
+  <button class="tex-btn about-btn" id="aboutBtn" title="About Bhoogol" aria-label="About Bhoogol, credits and settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
   </button>
 </div>
 
@@ -606,14 +609,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019i"),
-    load("engine.js?v=20261019i", true),
+    load("engine-core.js?v=20261019k"),
+    load("engine.js?v=20261019k", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019i"></script>
+<script src="app.js?v=20261019k"></script>
 </body>
 </html>

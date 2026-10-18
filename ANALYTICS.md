@@ -47,6 +47,7 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | `welcome_shown` / `welcome_choice` | First-visit welcome card | `choice` (tour/daily/explore) |
 | **`tutorial_begin`** / **`tutorial_complete`** / `tutorial_skip` | The walkthrough | `tutorial`, `play_now`, `step` |
 | `intro_skip` / `intro_replay` | The opening animation | (none) |
+| `go_home` | The logo is tapped to go home | `from` (the mode it left) |
 | `setting_change` | Sound, names, pins, terrain view | `setting`, `setting_value` (not `value`, which GA reserves for money) |
 | `analytics_opt_out` | Someone turns counting off | (none) |
 | **`exception`** | JavaScript error, lost 3D view, failed start-up | `description`, `fatal` |

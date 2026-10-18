@@ -1577,7 +1577,7 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 .credits-note { margin-top: 16px; font-size: 13px; }
 .pp-credits { width: 100%; margin-top: 6px; padding: 8px; font-size: 14px; color: var(--text-dim); border-radius: 10px; }
 .pp-credits:hover { color: var(--text); background: var(--glass-lite); }
-.brand { cursor: pointer; }
+.brand { cursor: pointer; text-decoration: none; border-radius: 8px; }
 @media (max-width: 768px) { .credits-card { padding: 20px 18px; } }
 
 /* ═══════════════════════════════════════════════════════════════════════

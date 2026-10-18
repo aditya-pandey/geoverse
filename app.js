@@ -1709,6 +1709,30 @@ function openCredits() {
   $("#creditsModal").classList.remove("hidden");
   $("#creditsClose").focus();
 }
+// Home: Explore, nothing open, the globe back where it starts. A tour is paused (resumable from Tours);
+// today's Daily keeps its saved progress.
+function goHome() {
+  track("go_home", { from: S.mode });
+  closeCredits();
+  closeStoryToursModal();
+  if (!$("#palette").classList.contains("hidden")) closePalette();
+  if (!$("#welcome")?.classList.contains("hidden")) closeWelcome();
+  if (S.mode !== "explore") setMode("explore");
+  else {
+    if (S.activeTour) pauseTour();
+    clearLifePin();
+    if (S.compare || S.comparePick) endCompare();
+    exitStateView(false);
+    closePanel();
+    closeProgressPop();
+  }
+  S.selected = null;
+  refreshPolys();
+  S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 1400);
+  pauseRotate();
+  scheduleUrl();
+}
+
 function closeCredits() { $("#creditsModal").classList.add("hidden"); }
 
 function closeProgressPop() {
@@ -4950,10 +4974,12 @@ function sheetPx(state, el) {
 }
 // How tall a sheet would be if it simply wrapped its content
 function naturalHeight(el) {
-  const h = el.style.height, t = el.style.transition;
+  const h = el.style.height, t = el.style.transition, ds = el.dataset.sheet;
   el.style.transition = "none";
   el.style.height = "auto";
+  if (ds === "peek") el.dataset.sheet = "half"; // folded at peek: unfold for the measurement
   const n = el.offsetHeight;
+  if (ds === "peek") el.dataset.sheet = ds;
   el.style.height = h;
   el.style.transition = t;
   return n;
@@ -5150,7 +5176,7 @@ function initSheets() {
       requestAnimationFrame(() => { queued = false; const st = sheets.get(wrap).state; if (st !== "peek") setSheet(wrap, st); });
     }).observe(card, { childList: true, subtree: true, characterData: true });
   };
-  gameSheet($("#quizHud"), $("#quizScroll"), $("#quizHud .quiz-meta"), 0.52, [".sheet-grip", ".quiz-meta", ".quiz-actions"]);
+  gameSheet($("#quizHud"), $("#quizScroll"), $("#quizHud .quiz-meta"), 0.52, [".sheet-grip", ".quiz-meta"]);
   gameSheet($("#dailyHud"), $("#dlScroll"), $("#dailyHud .dl-head"), 0.72, [".sheet-grip", ".dl-head", ".dl-actions"],
     (t) => S.daily?.phase === "order" && t.closest?.(".dl-row")); // while ordering, a row drag reorders
 
@@ -5406,14 +5432,13 @@ function initUI() {
     toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
   });
   $("#soundToggle")?.addEventListener("click", () => { setSound(!S.sound); track("setting_change", { setting: "sound", setting_value: S.sound ? "on" : "off" }); });
-  const brand = $(".brand");
-  if (brand) {
-    Object.assign(brand, { tabIndex: 0, title: "About Bhoogol & credits" });
-    brand.setAttribute("role", "button");
-    brand.setAttribute("aria-label", "About Bhoogol and credits");
-    brand.addEventListener("click", openCredits);
-    brand.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCredits(); } });
-  }
+  $("#aboutBtn")?.addEventListener("click", openCredits);
+  // The logo goes home, like any website: without reloading (which would replay the opening)
+  $(".brand")?.addEventListener("click", (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return; // new tab / window: let the link do it
+    e.preventDefault();
+    goHome();
+  });
   $("#creditsClose").addEventListener("click", closeCredits);
   $("#creditsModal").addEventListener("click", (e) => { if (e.target.id === "creditsModal") closeCredits(); });
   $("#namesToggle")?.addEventListener("click", () => {
@@ -5896,7 +5921,7 @@ function endCoach(say = true) {
   Coach.i = -1;
   $("#coach")?.classList.add("hidden");
   store.set("gv-welcomed", true);
-  if (say) toast("You can replay this tour from the Bhoogol logo, top left.", 3600);
+  if (say) toast("You can replay this tour from the ⓘ button, bottom right.", 3600);
 }
 
 function initWelcome() {
