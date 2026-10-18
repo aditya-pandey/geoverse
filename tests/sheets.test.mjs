@@ -18,6 +18,10 @@ test("swiping down scrolls back to the top first, then shrinks the card", () => 
   assert.equal(mode({ state: "full", dy: 6, scrollTop: 0 }), "sheet");
   assert.equal(mode({ state: "half", dy: 6, scrollTop: 0 }), "sheet");
 });
+test("a card that already shows everything doesn't grow: the swipe scrolls instead", () => {
+  assert.equal(mode({ state: "half", dy: -8, canGrow: false }), "native");
+  assert.equal(mode({ state: "peek", dy: -8, canGrow: true }), "sheet");
+});
 test("sideways swipes are left alone", () => {
   assert.equal(mode({ state: "half", dy: -2, dx: 9 }), "native");
 });

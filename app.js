@@ -1191,7 +1191,6 @@ function initGlobe() {
       if (S.comparePick) return;
       if (S.stateView) return exitStateView();
       if (S.mode === "explore") closePanel();
-      if (S.mode === "atlas") $("#touchPreviewPill")?.classList.add("hidden");
     });
 
   {
@@ -1459,27 +1458,6 @@ function atlasInspect(d) {
   const { lat, lng } = centroidOf(d);
   ringPulse(lat, lng, 2.4, "255,255,255");
   scheduleUrl();
-
-  const pill = $("#touchPreviewPill");
-  if (pill && d?.gv) {
-    const fEl = $("#tpFlag");
-    const nEl = $("#tpName");
-    const vEl = $("#tpValue");
-    if (fEl) fEl.textContent = flagEmoji(d.gv.cca2);
-    if (nEl) nEl.textContent = nameOf(d);
-    const r = rankOf(S.atlasMetric, d);
-    const rankText = r ? ` · #${r.rank} of ${r.total}` : "";
-    if (vEl) vEl.textContent = `${atlasTooltip(d.gv)}${rankText}`;
-    pill.classList.remove("hidden");
-    const openBtn = $("#tpOpenBtn");
-    if (openBtn) {
-      openBtn.onclick = (e) => {
-        e.stopPropagation();
-        pill.classList.add("hidden");
-        selectCountry(d);
-      };
-    }
-  }
 }
 
 const wbPending = {};
@@ -1574,7 +1552,6 @@ function setMode(mode) {
   closePanel();
   closeProgressPop();
   S.atlasPick = null;
-  $("#touchPreviewPill")?.classList.add("hidden");
 
   S.mode = mode;
   document.body.dataset.mode = mode;
@@ -1784,7 +1761,6 @@ function syncTabs() {
 
 function closePanel() {
   $("#panel").classList.add("hidden");
-  $("#touchPreviewPill")?.classList.add("hidden");
   clearTimeout(S.dwellTimer);
   clearCompare();
   S.info = null;
@@ -3820,6 +3796,7 @@ function nextRound() {
   $("#quizNext")?.classList.add("hidden");
   $("#quizSkip")?.classList.remove("hidden");
   setTimeout(syncCardFade, 80);
+  fitGameCard("#quizHud");
   $("#quizStoryFact").classList.add("hidden");
   $("#quizStoryFact").innerHTML = "";
 
@@ -3904,7 +3881,8 @@ function roundSay(kind, html) {
   const card = $("#quizHud .quiz-card");
   card?.classList.toggle("won", kind === "win");
   card?.classList.toggle("lost", kind === "miss");
-  if (card) card.scrollTop = 0;
+  const sc = $("#quizScroll");
+  if (sc) sc.scrollTop = 0;
   requestAnimationFrame(syncCardFade);
 }
 // A round is over: no timer, the player moves on when they've taken it in
@@ -3928,7 +3906,7 @@ function goNextRound() {
 }
 // A soft fade at the card's bottom edge whenever more of it is below
 function syncCardFade() {
-  const c = $("#quizHud .quiz-card");
+  const c = $("#quizScroll");
   if (c) c.classList.toggle("more-below", c.scrollHeight - c.scrollTop - c.clientHeight > 6);
 }
 // Clue stepper: how many clues there are, how many are open; older clues fold to one line
@@ -4504,11 +4482,15 @@ async function openDaily() {
   $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
   const rec = dailyMemory().days[n] || { rounds: [] };
-  S.daily = { n, iso, entry, rec, round: 0, order: [], phase: "order" };
+  // Order all three freely, then one Lock in. Nothing is revealed before it, so a saved draft is safe to restore.
+  if (!rec.done) rec.rounds = [];
+  const fresh = entry.rounds.map((r) => r.c.map(([k]) => k));
+  const draftOk = Array.isArray(rec.draft) && rec.draft.length === 3 && rec.draft.every((o, i) => o?.length === 5 && o.slice().sort().join() === fresh[i].slice().sort().join());
+  S.daily = { n, iso, entry, rec, round: 0, order: [], orders: draftOk ? rec.draft.map((o) => o.slice()) : fresh, phase: "order" };
   if (rec.done) S.daily.phase = "done";
   else {
-    if (!rec.rounds.length) track("daily_start", { puzzle: n });
-    dailyRound(Math.min(rec.rounds.length, 2)); // a locked round stays locked, even after a reload
+    if (!draftOk) track("daily_start", { puzzle: n });
+    dailyRound(0);
   }
   $("#dailyHud").classList.remove("hidden");
   syncImmersive();
@@ -4517,13 +4499,15 @@ async function openDaily() {
   scheduleUrl();
 }
 
-function dailyRound(i) {
+// Show Line-up i (ordering, or its reveal once everything is locked in)
+function dailyRound(i, phase = S.daily.phase === "done" ? "reveal" : S.daily.phase) {
   const D = S.daily;
   D.round = i;
-  D.phase = "order";
-  D.order = D.entry.rounds[i].c.map(([k]) => k);
+  D.phase = phase;
+  D.order = D.orders[i];
   D.truth = dailyTruth(D.entry.rounds[i]);
-  D.colour = Object.fromEntries(D.order.map((k, j) => [k, DAILY_COLOURS[j]]));
+  D.colour = Object.fromEntries(D.entry.rounds[i].c.map(([k], j) => [k, DAILY_COLOURS[j]])); // a country keeps its colour
+  fitGameCard("#dailyHud");
   refreshPolys();
   refreshHtmlLayer();
   frameDaily();
@@ -4562,6 +4546,8 @@ function dailyMove(from, to) {
   if (!D || D.phase !== "order" || from === to || to < 0 || to >= D.order.length) return;
   const [k] = D.order.splice(from, 1);
   D.order.splice(to, 0, k);
+  D.rec.draft = D.orders.map((o) => o.slice()); // survives a reload
+  saveDailyRecord();
   sfx("click");
   renderDaily();
   refreshHtmlLayer();
@@ -4579,38 +4565,58 @@ function dailyPeek(k) {
   if (row) { row.classList.remove("ping"); void row.offsetWidth; row.classList.add("ping"); }
 }
 
+// One Lock in for all three, then the answers, one Line-up at a time
 function lockDaily() {
   const D = S.daily;
   if (!D || D.phase !== "order") return;
-  const marks = dailyMarks(D.order, D.truth), pts = dailyPoints(marks);
-  D.rec.rounds[D.round] = { order: D.order.slice(), marks, pts };
-  if (D.round === 2) { D.rec.done = true; D.rec.score = D.rec.rounds.reduce((s, r) => s + r.pts, 0); }
+  D.rec.rounds = D.orders.map((order, i) => {
+    const marks = dailyMarks(order, dailyTruth(D.entry.rounds[i]));
+    return { order: order.slice(), marks, pts: dailyPoints(marks) };
+  });
+  D.rec.done = true;
+  D.rec.score = D.rec.rounds.reduce((s, r) => s + r.pts, 0);
+  delete D.rec.draft;
   saveDailyRecord();
-  D.phase = "reveal";
-  D.settled = false;
-  sfx(pts >= 80 ? "correct" : pts >= 40 ? "select" : "wrong");
-  track("daily_round", { puzzle: D.n, round: D.round + 1, measure: D.entry.rounds[D.round].m, points: pts });
+  D.rec.rounds.forEach((r, i) => track("daily_round", { puzzle: D.n, round: i + 1, measure: D.entry.rounds[i].m, points: r.pts }));
+  track("daily_end", { puzzle: D.n, score: D.rec.score });
+  track("post_score", { score: D.rec.score, level: "daily" });
+  renderDailyHero();
+  revealDaily(0);
+}
+
+// The reveal of Line-up i: your order with its colours first, then the cards slide into the true order
+function revealDaily(i, animate = true) {
+  const D = S.daily;
+  dailyRound(i, "reveal");
+  D.settled = !animate;
+  const pts = D.rec.rounds[i].pts;
+  if (animate) sfx(pts >= 80 ? "correct" : pts >= 40 ? "select" : "wrong");
   renderDaily();
-  // first your order with its colours, then the cards slide into the true order
+  refreshHtmlLayer();
   clearTimeout(S.dailySettle);
-  S.dailySettle = setTimeout(() => { if (S.daily === D && D.phase === "reveal") { D.settled = true; renderDaily(true); refreshHtmlLayer(); } }, 650);
-  if (D.rec.done) {
-    track("daily_end", { puzzle: D.n, score: D.rec.score });
-    track("post_score", { score: D.rec.score, level: "daily" });
-    if (D.rec.score >= 240) confetti({ particleCount: 110, spread: 85, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
-  }
+  if (animate) S.dailySettle = setTimeout(() => { if (S.daily === D && D.phase === "reveal" && D.round === i) { D.settled = true; renderDaily(true); refreshHtmlLayer(); } }, 650);
 }
 
 function nextDaily() {
   const D = S.daily;
-  if (!D || D.phase !== "reveal") return;
-  if (D.round < 2) { dailyRound(D.round + 1); renderDaily(); return; }
+  if (!D) return;
+  if (D.phase === "order") { if (D.round < 2) { dailyRound(D.round + 1); renderDaily(); } return; }
+  if (D.phase !== "reveal") return;
+  if (D.round < 2) { revealDaily(D.round + 1); return; }
   D.phase = "done";
   refreshPolys();
   refreshHtmlLayer();
   renderDaily();
-  renderDailyHero();
   dailyRank();
+  if (D.rec.score >= 240 && !D.rec.cheered) { D.rec.cheered = true; saveDailyRecord(); confetti({ particleCount: 110, spread: 85, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] }); }
+}
+// ← : back to the previous Line-up (still editable before Lock in), or back through the answers after it
+function backDaily() {
+  const D = S.daily;
+  if (!D) return;
+  if (D.phase === "order") { if (D.round > 0) { dailyRound(D.round - 1); renderDaily(); } return; }
+  if (D.phase === "reveal") { if (D.round > 0) revealDaily(D.round - 1, false); return; }
+  revealDaily(2, false); // from the score: the last answers
 }
 
 function dailyGapLine(round) {
@@ -4630,8 +4636,10 @@ function renderDaily(flip = false) {
   const D = S.daily, card = $("#dailyHud .daily-card");
   if (!D || !card) return;
   $("#dlEyebrow").textContent = `Bhoogol #${D.n}${D.entry.theme ? ` · ${D.entry.theme}` : ""}`;
-  $("#dlDots").innerHTML = [0, 1, 2].map((i) => `<i class="${D.phase === "done" || i < D.round || (i === D.round && D.phase === "reveal") ? "done" : i === D.round ? "on" : ""}"></i>`).join("");
+  $("#dlDots").innerHTML = [0, 1, 2].map((i) => `<i class="${D.phase === "done" ? "done" : i === D.round ? "on" : D.phase === "reveal" && i < D.round ? "done" : ""}"></i>`).join("");
   card.dataset.phase = D.phase;
+  const back = $("#dlBack");
+  if (back) back.disabled = D.phase !== "done" && D.round === 0;
   if (D.phase === "done") return renderDailyDone();
 
   const round = D.entry.rounds[D.round], M = DAILY_MEASURES[round.m];
@@ -4678,10 +4686,11 @@ function renderDaily(flip = false) {
       <p class="dl-gap">${dailyGapLine(round)}</p>
       <p class="dl-src">${M.note ? esc(M.note) + " " : ""}Source: ${dailySource(round)}</p>` : `<p class="dl-howto">${isCoarse() ? "Drag to reorder. Tap one to find it on the globe." : "Drag to reorder, or use the arrow keys. Click one to find it on the globe."}</p>`;
   const act = $("#dlAct");
-  act.textContent = reveal ? (D.round < 2 ? "Next Line-up" : "See today's score") : "Lock in";
-  act.classList.toggle("go", reveal);
+  act.textContent = reveal ? (D.round < 2 ? "Next answers" : "See today's score") : D.round < 2 ? "Next Line-up" : "Lock in all 3";
+  act.classList.toggle("go", reveal || D.round < 2);
+  act.classList.toggle("final", !reveal && D.round === 2);
   act.disabled = reveal && !D.settled;
-  if (!reveal && !flip) card.scrollTop = 0; // a new Line-up starts at the top
+  if (!flip) $("#dlScroll").scrollTop = 0; // each Line-up starts at the top
   requestAnimationFrame(syncDailyFade);
 }
 const DAILY_FACTS = ["pop", "area", "density", "urban", "neighbours", "equator", "delhi"], DAILY_QUIRKY = ["kids", "grandparents", "phones", "rain", "farmland", "water", "grain"];
@@ -4707,7 +4716,7 @@ function renderDailyDone() {
   act.classList.add("go");
   act.disabled = false;
   $("#dlPts")?.classList.add("hidden");
-  $("#dailyHud .daily-card").scrollTop = 0;
+  $("#dlScroll").scrollTop = 0;
   requestAnimationFrame(syncDailyFade);
   clearInterval(S.dailyTick);
   S.dailyTick = setInterval(() => {
@@ -4725,7 +4734,7 @@ function dailyCountdown(now = new Date()) {
 
 // More of the card below? a soft fade at its bottom edge says so
 function syncDailyFade() {
-  const c = $("#dailyHud .daily-card");
+  const c = $("#dlScroll");
   if (c) c.classList.toggle("more-below", c.scrollHeight - c.scrollTop - c.clientHeight > 6);
 }
 
@@ -4802,7 +4811,7 @@ async function shareDaily() {
 function onDailyAction() {
   const D = S.daily;
   if (!D) return;
-  if (D.phase === "order") lockDaily();
+  if (D.phase === "order") { if (D.round < 2) nextDaily(); else lockDaily(); }
   else if (D.phase === "reveal") { if (D.settled) nextDaily(); }
   else shareDaily();
 }
@@ -4898,8 +4907,8 @@ function renderDailyHero() {
   $("#dhNum").textContent = `#${n}`;
   $("#dhStatus").innerHTML = rec?.done
     ? `Done today · <b class="mono-num">${rec.score}</b>/300${rec.pct != null ? ` · better than ${rec.pct}%` : ""}. Next one in ${dailyCountdown()}.`
-    : rec?.rounds?.length ? `You're ${rec.rounds.length} of 3 in. Pick up where you left off.` : "Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.";
-  $("#dhCta").textContent = rec?.done ? "See my score" : rec?.rounds?.length ? "Continue" : "Play today's";
+    : rec?.draft ? "You've started today's. Pick up where you left off." : "Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.";
+  $("#dhCta").textContent = rec?.done ? "See my score" : rec?.draft ? "Continue" : "Play today's";
 }
 
 /* ───────────────────────── BOTTOM SHEETS (mobile) ───────────────────────── */
@@ -4912,9 +4921,9 @@ const sheets = new Map(); // element → { state, def, dismiss, onSnap, snap, on
 // One gesture, one meaning (like Maps): on a sheet's text, a swipe moves the SHEET until it's full,
 // and only then scrolls the text; at the top of the text, pulling down shrinks the sheet again.
 // Decided on the first move of a touch, because a browser only lets us stop scrolling before it starts.
-function sheetGestureMode({ state, dy, dx = 0, scrollTop = 0 }) {
+function sheetGestureMode({ state, dy, dx = 0, scrollTop = 0, canGrow = state !== "full" }) {
   if (Math.abs(dx) > Math.abs(dy)) return "native"; // sideways: carousels, tabs
-  if (dy < 0) return state === "full" ? "native" : "sheet"; // up: grow first, then read
+  if (dy < 0) return canGrow ? "sheet" : "native"; // up: grow first (if there's anything more to show), then read
   return scrollTop > 0 ? "native" : "sheet"; // down: back to the top of the text, then shrink
 }
 // Where a released sheet settles: a flick goes one step in its direction, otherwise the nearest height
@@ -4926,10 +4935,28 @@ function sheetTarget(snaps, h, v) {
 
 const sheetShown = (el) => !el.classList.contains("hidden");
 
+// Phones: a game card goes back to fitting its round at the start of each one
+function fitGameCard(sel) {
+  const el = $(sel);
+  if (el && isMobile() && sheets.has(el) && sheets.get(el).state !== "half") setSheet(el, "half");
+}
+// A sheet never grows taller than what it holds: no empty card hiding the globe
 function sheetPx(state, el) {
   const max = innerHeight - navHeight() - 8;
-  const own = el && sheets.get(el)?.snap?.(state);
-  return Math.round(Math.min(max, own ?? innerHeight * SNAP[state]));
+  const sh = el && sheets.get(el);
+  let px = sh?.snap?.(state) ?? innerHeight * SNAP[state];
+  if (state !== "peek" && sh?.natural) px = Math.max(sheetPx("peek", el), Math.min(px, sh.natural()));
+  return Math.round(Math.min(max, px));
+}
+// How tall a sheet would be if it simply wrapped its content
+function naturalHeight(el) {
+  const h = el.style.height, t = el.style.transition;
+  el.style.transition = "none";
+  el.style.height = "auto";
+  const n = el.offsetHeight;
+  el.style.height = h;
+  el.style.transition = t;
+  return n;
 }
 
 // Height of the tallest visible sheet — the camera and floating HUD keep clear of it
@@ -4967,8 +4994,8 @@ function updateHudLift() {
   document.body.classList.toggle("sheet-tall", tall);
 }
 
-function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null, ignore = null } = {}) {
-  const sh = { state: def, def, dismiss, onSnap, snap, onTap };
+function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null, ignore = null, fit = false } = {}) {
+  const sh = { state: def, def, dismiss, onSnap, snap, onTap, natural: fit ? () => naturalHeight(el) : null };
   sheets.set(el, sh);
 
   // every time the sheet appears it opens at its default snap
@@ -5047,7 +5074,7 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
       const dy = y - t.y0, dx = x - t.x0;
       if (!t.mode) {
         if (!dy && !dx) return;
-        t.mode = sheetGestureMode({ state: sh.state, dy, dx, scrollTop: body.scrollTop });
+        t.mode = sheetGestureMode({ state: sh.state, dy, dx, scrollTop: body.scrollTop, canGrow: el.offsetHeight < sheetPx("full", el) - 2 });
       }
       if (t.mode !== "sheet") return;
       if (e.cancelable) e.preventDefault();
@@ -5077,7 +5104,7 @@ function initSheets() {
       else if (S.selected) frameCountry(S.selected, 700);
     },
   });
-  initSheet($("#atlasDock"), { def: "peek", body: $("#atlasDock") });
+  initSheet($("#atlasDock"), { def: "peek", body: $("#atlasDock"), fit: true });
   // Story tours: peek = title + Next · half (default) = the hook and a taste of why · full = everything
   const tour = $("#tourActiveHud");
   if (tour) {
@@ -5099,36 +5126,32 @@ function initSheets() {
       },
     });
   }
-  initSheet($("#earthDock"), { def: "peek", body: $("#earthDock") });
+  initSheet($("#earthDock"), { def: "peek", body: $("#earthDock"), fit: true });
   // Game cards (Arcade, Daily): peek = just the header, so the globe is yours to play on ·
   // half = exactly as tall as this round needs (re-fitted as it changes) · full = for long results
-  const gameSheet = (wrap, card, head, cap, peekSel, ignore = null) => {
-    if (!wrap || !card) return;
-    const natural = () => {
-      const h = wrap.style.height;
-      wrap.style.height = "auto";
-      const n = card.offsetHeight;
-      wrap.style.height = h;
-      return n;
-    };
-    const peek = () => peekSel.reduce((sum, sel) => sum + (card.querySelector(sel)?.offsetHeight || 0), 0) + 30;
+  const gameSheet = (wrap, scroller, head, cap, peekSel, ignore = null) => {
+    if (!wrap || !scroller) return;
+    const card = wrap.firstElementChild;
+    const peek = () => peekSel.reduce((sum, sel) => sum + (card.querySelector(sel)?.offsetHeight || 0), 0) + 26;
     initSheet(wrap, {
       def: "half",
-      body: card,
+      body: scroller,
       handles: [head],
       ignore,
-      snap: (st) => (st === "peek" ? peek() : st === "half" ? Math.max(peek() + 40, Math.min(natural(), innerHeight * cap)) : innerHeight * 0.86),
+      fit: true,
+      snap: (st) => (st === "peek" ? peek() : st === "half" ? innerHeight * cap : innerHeight * 0.86),
       onTap: (st) => setSheet(wrap, st === "peek" ? "half" : "peek"),
     });
+    // as the round changes (a clue, a result, the answers), the card re-fits
     let queued = false;
     new MutationObserver(() => {
       if (queued || !isMobile() || !sheetShown(wrap)) return;
       queued = true;
-      requestAnimationFrame(() => { queued = false; if (sheets.get(wrap).state === "half") setSheet(wrap, "half"); });
-    }).observe(card, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+      requestAnimationFrame(() => { queued = false; const st = sheets.get(wrap).state; if (st !== "peek") setSheet(wrap, st); });
+    }).observe(card, { childList: true, subtree: true, characterData: true });
   };
-  gameSheet($("#quizHud"), $("#quizHud .quiz-card"), $("#quizHud .quiz-meta"), 0.52, [".quiz-meta"]);
-  gameSheet($("#dailyHud"), $("#dailyHud .daily-card"), $("#dailyHud .dl-head"), 0.72, [".dl-head", ".dl-actions"],
+  gameSheet($("#quizHud"), $("#quizScroll"), $("#quizHud .quiz-meta"), 0.52, [".sheet-grip", ".quiz-meta", ".quiz-actions"]);
+  gameSheet($("#dailyHud"), $("#dlScroll"), $("#dailyHud .dl-head"), 0.72, [".sheet-grip", ".dl-head", ".dl-actions"],
     (t) => S.daily?.phase === "order" && t.closest?.(".dl-row")); // while ordering, a row drag reorders
 
   // soft fades at the edges of the country card's text, like the tour card
@@ -5522,10 +5545,11 @@ function initUI() {
   $("#dlAct")?.addEventListener("click", onDailyAction);
   $("#dlClose")?.addEventListener("click", () => closeDaily());
   $("#dlMore")?.addEventListener("click", () => closeDaily());
-  $("#dailyHud .daily-card")?.addEventListener("scroll", syncDailyFade, { passive: true });
+  $("#dlScroll")?.addEventListener("scroll", syncDailyFade, { passive: true });
+  $("#dlBack")?.addEventListener("click", backDaily);
   renderDailyHero();
   $("#quizNext")?.addEventListener("click", goNextRound);
-  $("#quizHud .quiz-card")?.addEventListener("scroll", syncCardFade, { passive: true });
+  $("#quizScroll")?.addEventListener("scroll", syncCardFade, { passive: true });
   // a folded clue opens again on tap
   $("#mysteryCluesBox")?.addEventListener("click", (e) => {
     const c = e.target.closest?.(".clue-item.past");

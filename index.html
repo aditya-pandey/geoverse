@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019g" />
+<link rel="stylesheet" href="style.css?v=20261019i" />
 </head>
 <body>
 
@@ -278,18 +278,6 @@
   </div>
 </div>
 
-<!-- ══════════ TOUCH CHOROPLETH PREVIEW PILL (pointer: coarse) ══════════ -->
-<div id="touchPreviewPill" class="hidden" role="status" aria-live="polite">
-  <div class="tp-content">
-    <span class="tp-flag" id="tpFlag">🌐</span>
-    <div class="tp-info">
-      <div class="tp-name" id="tpName">Country Name</div>
-      <div class="tp-val" id="tpValue">Rank &amp; Value</div>
-    </div>
-  </div>
-  <button id="tpOpenBtn" class="tp-btn">Open Story →</button>
-</div>
-
 <!-- ══════════ STATE VIEW BAR ══════════ -->
 <div id="stateBar" class="hidden">
   <button id="stateBack">← Back to the world</button>
@@ -411,6 +399,7 @@
       <div class="dl-dots" id="dlDots" aria-hidden="true"></div>
       <button class="dl-close" id="dlClose" type="button" title="Close (Esc)" aria-label="Close today's Bhoogol">✕</button>
     </div>
+    <div class="dl-scroll" id="dlScroll">
     <div class="dl-play">
       <p class="dl-kind" id="dlKind">Fact · 1 of 3</p>
       <h2 class="dl-q" id="dlQ">Who has the most people?</h2>
@@ -420,9 +409,11 @@
       <div class="dl-after" id="dlAfter" aria-live="polite"></div>
     </div>
     <div class="dl-done" id="dlDone"></div>
+    </div>
     <div class="dl-actions">
+      <button id="dlBack" class="dl-back" type="button" aria-label="Previous Line-up" title="Previous Line-up">←</button>
       <p class="dl-pts hidden" id="dlPts" aria-live="polite"></p>
-      <button id="dlAct" class="dl-act" type="button">Lock in</button>
+      <button id="dlAct" class="dl-act" type="button">Next Line-up</button>
       <button id="dlMore" class="dl-more" type="button">More games</button>
     </div>
   </div>
@@ -441,6 +432,7 @@
         </button>
       </div>
     </div>
+    <div class="quiz-scroll" id="quizScroll">
     <div id="quizFeedback" role="status" aria-live="polite"></div>
     <div id="quizPrompt"></div>
 
@@ -491,6 +483,7 @@
     <!-- Mode D / Classic Options -->
     <div id="quizOptions" class="hidden"></div>
     <div id="quizStoryFact" class="quiz-story-fact hidden"></div>
+    </div>
 
     <div class="quiz-actions">
       <button id="quizSkip">Skip</button>
@@ -613,14 +606,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019g"),
-    load("engine.js?v=20261019g", true),
+    load("engine-core.js?v=20261019i"),
+    load("engine.js?v=20261019i", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019g"></script>
+<script src="app.js?v=20261019i"></script>
 </body>
 </html>
