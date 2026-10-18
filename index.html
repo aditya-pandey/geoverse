@@ -2,6 +2,37 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- Google Analytics 4 (G-R0PQMW24PX) — loaded first so it sees every visit.
+     · not on localhost / 127.0.0.1, or with ?notrack (so testing never pollutes the numbers)
+     · ?ga_debug sends events to GA's DebugView
+     · consent mode: no ads signals anywhere (Bhoogol has no ads); analytics cookies are off by default in
+       the EEA, UK and Switzerland, where GA then sends cookieless pings instead -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  (function () {
+    var q = location.search;
+    var optedOut = false;
+    try { optedOut = localStorage.getItem("gv-notrack") === "true"; } catch (e) {}
+    window.GV_GA = !optedOut && !/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(location.hostname) && !/[?&]notrack\b/.test(q);
+    gtag("consent", "default", { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "granted" });
+    gtag("consent", "default", {
+      analytics_storage: "denied",
+      region: ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+               "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "GB", "CH"]
+    });
+    gtag("set", { allow_google_signals: false, allow_ad_personalization_signals: false });
+    gtag("js", new Date());
+    var cfg = { app_version: "2026.10.18" };
+    if (/[?&]ga_debug\b/.test(q)) cfg.debug_mode = true; // GA treats any debug_mode key as "on", so only add it when asked
+    gtag("config", "G-R0PQMW24PX", cfg);
+    if (!window.GV_GA) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=G-R0PQMW24PX";
+    document.head.appendChild(s);
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#12133A" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -19,7 +50,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Bhoogol" />
 <meta property="og:title" content="Bhoogol · भूगोल — the round Earth" />
-<meta property="og:description" content="Spin a 3D globe and learn geography: countries, states, live data, wonders, wildlife and games to play with friends." />
+<meta property="og:description" content="A 3D globe you can spin, tap and play with. Find out how much of the round Earth you actually know." />
 <meta property="og:url" content="https://bhoogol.netlify.app/" />
 <meta property="og:image" content="https://bhoogol.netlify.app/assets/brand/og-image.png" />
 <meta property="og:image:width" content="1200" />
@@ -27,13 +58,13 @@
 <meta property="og:image:alt" content="The Bhoogol logo, its two O's drawn as little worlds, with भूगोल beneath, among small planets on deep space" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Bhoogol · भूगोल — the round Earth" />
-<meta name="twitter:description" content="Spin a 3D globe and learn geography: countries, states, live data, wonders, wildlife and games to play with friends." />
+<meta name="twitter:description" content="A 3D globe you can spin, tap and play with. Find out how much of the round Earth you actually know." />
 <meta name="twitter:image" content="https://bhoogol.netlify.app/assets/brand/og-image.png" />
 <script>try { if (localStorage.getItem("gv-intro-seen") === "true" && !/[?&]intro\b/.test(location.search)) document.documentElement.classList.add("intro-seen"); } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261018f" />
+<link rel="stylesheet" href="style.css?v=20261018h" />
 </head>
 <body>
 
@@ -491,6 +522,7 @@
       <li>Fonts — Baloo 2, Mukta, Kalam &amp; JetBrains Mono via <a href="https://fonts.google.com/" target="_blank" rel="noopener">Google Fonts</a> (SIL Open Font License)</li>
     </ul>
     <p class="credits-note">Map borders show how the source data draws them; India is shown with its official Survey of India boundary.</p>
+    <p class="credits-note">Bhoogol counts visits with Google Analytics to learn which features help people. No ads, and no data sold. <button id="trackToggle" class="coach-link" type="button">Don't count my visits</button></p>
     <div class="credits-replays">
       <button id="creditsShare" class="bh-primary credits-replay" type="button">Share Bhoogol</button>
       <button id="creditsIntro" class="bh-raised credits-replay" type="button">Replay the opening</button>
@@ -552,14 +584,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261018f"),
-    load("engine.js?v=20261018f", true),
+    load("engine-core.js?v=20261018h"),
+    load("engine.js?v=20261018h", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261018f"></script>
+<script src="app.js?v=20261018h"></script>
 </body>
 </html>

@@ -45,6 +45,17 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
 };
 
+// Google Analytics 4 events (the tag lives in index.html). Never throws, never blocks; a no-op on localhost,
+// with ?notrack, or wherever the tag isn't present. Event and parameter names: see ANALYTICS.md.
+function track(name, params = {}) {
+  try { if (globalThis.GV_GA && typeof globalThis.gtag === "function") globalThis.gtag("event", name, params); } catch (e) { /* ignore */ }
+}
+// JavaScript errors reach the Exceptions report (the first few per visit, so one bad loop can't flood it)
+let errorsSent = 0;
+addEventListener("error", (e) => {
+  if (errorsSent++ < 5) track("exception", { description: String(e?.message || "error").slice(0, 120), fatal: false });
+});
+
 /* ───────────────────────── STATE ───────────────────────── */
 const S = {
   globe: null,
@@ -761,6 +772,7 @@ function startStoryTour(tourId) {
   clearCompare();
   endQuiz(true);
   S.activeTour = { tour, stopIndex: 0 };
+  track("tour_begin", { tour_id: tour.id });
   $("#tourActiveHud .tour-hud-card")?.classList.remove("collapsed");
   $("#tourActiveHud")?.classList.remove("hidden");
   renderActiveTourStop();
@@ -1061,7 +1073,7 @@ function initGlobe() {
       liftOf: (f) => (f.gv?.cca3 === "IND" ? 0.0004 : 0),
       textures: { biome: "data/biome.jpg", relief: "data/relief.png" },
       perfMeter: new URLSearchParams(location.search).has("fps"), // ?fps=1 → on-screen performance meter
-      onContextLost: (lost) => toast(lost ? "⏸️ The device paused the 3D view — restoring…" : "✨ Back in 3D", 2600),
+      onContextLost: (lost) => { toast(lost ? "⏸️ The device paused the 3D view — restoring…" : "✨ Back in 3D", 2600); if (lost) track("exception", { description: "webgl_context_lost", fatal: false }); },
     })
     .polygonsData(S.features)
     .onPolygonHover((d) => {
@@ -1430,6 +1442,7 @@ function ensureIndicator(key) {
 }
 
 async function setAtlasMetric(metric) {
+  if (S.urlReady && metric !== S.atlasMetric) track("atlas_metric", { metric });
   S.atlasMetric = metric;
   $$(".metric-btn[data-metric]").forEach((x) => x.classList.toggle("active", x.dataset.metric === metric));
   scheduleUrl();
@@ -1484,6 +1497,7 @@ async function showInAtlas(d, metric) {
 /* ───────────────────────── MODES ───────────────────────── */
 function setMode(mode) {
   if (mode === "tours") {
+    track("mode_change", { mode: "tours" });
     openStoryToursModal();
     return;
   }
@@ -1493,6 +1507,7 @@ function setMode(mode) {
   }
   if (S.mode === "quiz") endQuiz(true);
   if (S.mode === "earth") clearEarthLayers();
+  track("mode_change", { mode });
   clearLifePin();
   clearCompare();
   exitStateView(false);
@@ -1548,6 +1563,11 @@ function handleCountryClick(d, ev) {
 
 function selectCountry(d) {
   if (!d) return;
+  const code = d.gv?.cca3 || "";
+  if (code && (code !== S.lastTracked || Date.now() - (S.lastTrackedAt || 0) > 5000)) {
+    S.lastTracked = code; S.lastTrackedAt = Date.now();
+    track("view_country", { country_code: code, country_name: nameOf(d), region: d.gv?.region || "", mode: S.mode });
+  }
   if (S.mode === "quiz" || S.mode === "earth") setMode("explore");
   clearCompare();
   S.info = null;
@@ -2209,6 +2229,7 @@ async function loadAdm1(countryD) {
 }
 
 async function enterStateView(countryD) {
+  track("view_states", { country_code: countryD?.gv?.cca3 || "", country_name: nameOf(countryD) });
   if (S.stateView) return;
   const btn = $("#btn3dStates");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Drawing state borders…"; }
@@ -2779,6 +2800,7 @@ function clearLifePin() {
 
 // Drop the species' interactive 3D model onto the globe at the country's location and dive to it.
 async function placeLifeOnGlobe(sp, countryD, btn) {
+  track("wildlife_3d", { species: String(sp?.name || sp?.title || sp?.label || "").slice(0, 80), country_code: countryD?.gv?.cca3 || "" });
   const label = btn?.textContent;
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Summoning…"; }
   try {
@@ -3022,6 +3044,7 @@ function pickCompare(d) {
 }
 
 function setCompare(a, b) {
+  if (a && b) track("compare", { country_a: a.gv?.cca3 || "", country_b: b.gv?.cca3 || "" });
   S.comparePick = false;
   const ca = centroidOf(a), cb = centroidOf(b);
   const km = Math.round(haversine(ca, cb));
@@ -3293,6 +3316,9 @@ function highlightPalette(i) {
 
 async function pickSearch(it) {
   if (!it) return;
+  const term = ($("#searchInput")?.value || "").trim();
+  if (term) track("search", { search_term: term.slice(0, 100) });
+  track("select_content", { content_type: "search_" + (it.kind || "result"), item_id: String(it.label || "").slice(0, 100) });
   closePalette();
   exitStateView(false);
   if (it.kind === "tour") {
@@ -3696,6 +3722,7 @@ function startQuiz() {
   $("#quizHud .quiz-card.hud")?.classList.remove("collapsed");
   $("#quizHud").classList.remove("hidden");
   $("#hudHint").textContent = QUIZ_HINTS[arcadeMode] || QUIZ_HINTS[type] || "Play with the 3D globe!";
+  track("level_start", { level_name: arcadeMode === "blitz" ? `blitz:${type}` : arcadeMode, game: arcadeMode, quiz_type: type, region, difficulty: diff, challenge: !!S.pendingChallenge });
   S.globe.pointOfView(viewFor(15, 20, 2.6 * stageZoom()), 900);
   refreshHtmlLayer();
   scheduleUrl();
@@ -4193,6 +4220,9 @@ function finishQuiz() {
   $$("#resultReview .rv-item").forEach((b) => b.addEventListener("click", () => reviewJump(q.log[+b.dataset.i])));
 
   S.lastQuiz = q;
+  const level = q.arcadeMode === "blitz" ? `blitz:${q.type}` : q.arcadeMode;
+  track("level_end", { level_name: level, success: q.correct >= ROUNDS / 2, score: q.score, correct: q.correct, rounds: ROUNDS, best_streak: q.bestStreak, region: q.region, difficulty: q.diff });
+  track("post_score", { score: q.score, level: level });
   S.quiz = null;
   refreshArcs();
   $("#quizResult").classList.remove("hidden");
@@ -4234,6 +4264,7 @@ async function shareChallenge() {
   if (!q) return;
   const url = challengeUrl(q);
   const ok = await copyText(url);
+  track("share", { method: "copy", content_type: "challenge", item_id: q.code || "" });
   toast(ok ? "🔗 Seeded challenge link copied — your friend gets the exact same questions!" : `Copy this link: ${url}`, 3600);
 }
 
@@ -4241,6 +4272,7 @@ async function shareScorecard() {
   const q = S.lastQuiz;
   if (!q) return;
   const ok = await copyText(scorecardText(q));
+  track("share", { method: "copy", content_type: "scorecard", item_id: q.code || "" });
   toast(ok ? "📋 Scorecard copied — paste it anywhere!" : "⚠️ Couldn't reach the clipboard", 3200);
 }
 
@@ -4613,9 +4645,10 @@ function initUI() {
   $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $("#styleToggle")?.addEventListener("click", () => {
     setMapStyle(S.mapStyle === "terrain" ? "political" : "terrain");
+    track("setting_change", { setting: "map_style", value: S.mapStyle });
     toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
   });
-  $("#soundToggle")?.addEventListener("click", () => setSound(!S.sound));
+  $("#soundToggle")?.addEventListener("click", () => { setSound(!S.sound); track("setting_change", { setting: "sound", value: S.sound ? "on" : "off" }); });
   const brand = $(".brand");
   if (brand) {
     Object.assign(brand, { tabIndex: 0, title: "About Bhoogol & credits" });
@@ -4628,10 +4661,12 @@ function initUI() {
   $("#creditsModal").addEventListener("click", (e) => { if (e.target.id === "creditsModal") closeCredits(); });
   $("#namesToggle")?.addEventListener("click", () => {
     setNames(!S.names);
+    track("setting_change", { setting: "names", value: S.names ? "on" : "off" });
     toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
   });
   $("#pinToggle").addEventListener("click", () => {
     setPins(!S.pins);
+    track("setting_change", { setting: "pins", value: S.pins ? "on" : "off" });
     toast(S.pins ? "📍 Pins on — tiny nations & islands are easy to tap" : "📍 Pins hidden");
   });
 
@@ -4689,6 +4724,7 @@ function initUI() {
       S.activeTour.stopIndex++;
       renderActiveTourStop();
     } else {
+      track("tour_complete", { tour_id: S.activeTour.tour.id });
       S.toursCompleted.add(S.activeTour.tour.id);
       store.set("gv-tours-completed", Array.from(S.toursCompleted));
       confetti({ particleCount: 120, spread: 85, origin: { y: 0.5 } });
@@ -4743,7 +4779,10 @@ function initUI() {
   }));
   $("#quizStart").addEventListener("click", startQuiz);
   $("#quizSkip").addEventListener("click", skipRound);
-  $("#quizQuit").addEventListener("click", () => endQuiz());
+  $("#quizQuit").addEventListener("click", () => {
+    if (S.quiz) track("level_quit", { level_name: S.quiz.arcadeMode === "blitz" ? `blitz:${S.quiz.type}` : S.quiz.arcadeMode, round: (S.quiz.log?.length || 0) + 1 });
+    endQuiz();
+  });
   $("#quizSetupClose").addEventListener("click", () => setMode("explore"));
   $("#quizResultClose").addEventListener("click", () => setMode("explore"));
   // clicking the dark backdrop (outside the card) also leaves
@@ -4777,6 +4816,7 @@ function initUI() {
   $$(".ptab").forEach((b) => b.addEventListener("click", () => {
     if (!S.selected) return;
     S.panelTab = b.dataset.tab;
+    track("panel_tab", { tab: b.dataset.tab, country_code: S.selected.gv?.cca3 || "" });
     syncTabs();
     markVisited(S.selected); // reading a tab counts as exploring
     renderPanelTab(S.selected);
@@ -4839,7 +4879,7 @@ function initIntro() {
   L.addEventListener("pointerdown", () => skipIntro());
   bindIntroSkip();
 }
-function skipIntro() { Intro.skip = true; if (Intro.ready) finishIntro(); }
+function skipIntro() { if (!Intro.skip && !Intro.done) track("intro_skip"); Intro.skip = true; if (Intro.ready) finishIntro(); }
 function bindIntroSkip() {
   $("#introSkip")?.addEventListener("click", skipIntro);
   const onKey = (e) => {
@@ -4942,12 +4982,14 @@ function dockLogo() {
    so a link shared from a deep view or a preview still opens the app's front door. */
 async function shareApp() {
   const url = $('link[rel="canonical"]')?.href || "https://bhoogol.netlify.app/";
-  const data = { title: "Bhoogol · भूगोल", text: "Spin a 3D globe and learn geography. It's free.", url };
+  const data = { title: "Bhoogol · भूगोल", text: "Bhoogol means \u201cthe round Earth\u201d. Spin it, tap any country, and find out how much of the world you actually know.", url };
   if (isCoarse() && navigator.share) {
-    try { await navigator.share(data); } catch (e) { /* closed the sheet: nothing to say */ }
+    try { await navigator.share(data); track("share", { method: "native", content_type: "app", item_id: "bhoogol" }); }
+    catch (e) { /* closed the sheet: nothing to say */ }
     return;
   }
   const ok = await copyText(url);
+  track("share", { method: "copy", content_type: "app", item_id: "bhoogol" });
   toast(ok ? "Link copied. Send it to someone curious." : `Copy this link: ${url}`, 3000);
 }
 
@@ -4955,6 +4997,7 @@ async function shareApp() {
 function openWelcome() {
   if (S.quiz || S.selected || S.mode !== "explore" || !$("#welcome")) return; // never interrupt someone already busy
   $("#welcome").classList.remove("hidden");
+  track("welcome_shown");
   $("#welcomeTour")?.focus();
 }
 function closeWelcome() {
@@ -5011,6 +5054,7 @@ function elRect(sel) {
 }
 
 function startCoach() {
+  track("tutorial_begin", { tutorial: "welcome" });
   closeWelcome();
   if (S.mode !== "explore") setMode("explore");
   $("#coach")?.classList.remove("hidden");
@@ -5080,23 +5124,37 @@ function endCoach(say = true) {
 }
 
 function initWelcome() {
-  $("#welcomeTour")?.addEventListener("click", startCoach);
-  $("#welcomePlay")?.addEventListener("click", () => { closeWelcome(); setMode("quiz"); });
+  $("#welcomeTour")?.addEventListener("click", () => { track("welcome_choice", { choice: "tour" }); startCoach(); });
+  $("#welcomePlay")?.addEventListener("click", () => { track("welcome_choice", { choice: "play" }); closeWelcome(); setMode("quiz"); });
   $("#welcomeSkip")?.addEventListener("click", () => {
+    track("welcome_choice", { choice: "explore" });
     closeWelcome();
     if (isCoarse()) toast("Drag to spin · pinch to zoom · tap any country", 5200);
   });
   $("#welcome")?.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeWelcome(); } });
   $("#coachNext")?.addEventListener("click", () => {
     const step = COACH_STEPS[Coach.i];
-    if (Coach.i >= COACH_STEPS.length - 1) { endCoach(!step.onNext); step.onNext?.(); }
+    if (Coach.i >= COACH_STEPS.length - 1) { track("tutorial_complete", { tutorial: "welcome", play_now: !!step.onNext }); endCoach(!step.onNext); step.onNext?.(); }
     else showCoachStep(Coach.i + 1);
   });
   $("#coachBack")?.addEventListener("click", () => { if (Coach.i > 0) showCoachStep(Coach.i - 1); });
-  $("#coachSkip")?.addEventListener("click", () => endCoach());
+  $("#coachSkip")?.addEventListener("click", () => { track("tutorial_skip", { tutorial: "welcome", step: Coach.i + 1 }); endCoach(); });
   $("#creditsWelcome")?.addEventListener("click", () => { closeCredits(); startCoach(); });
-  $("#creditsIntro")?.addEventListener("click", () => { closeCredits(); replayIntro(); });
+  $("#creditsIntro")?.addEventListener("click", () => { track("intro_replay"); closeCredits(); replayIntro(); });
   $("#shareApp")?.addEventListener("click", shareApp);
+  // About → "Don't count my visits": remembered on this device; takes effect at once
+  const trackBtn = $("#trackToggle");
+  const syncTrack = () => { if (trackBtn) trackBtn.textContent = store.get("gv-notrack", false) ? "Count my visits again" : "Don't count my visits"; };
+  syncTrack();
+  trackBtn?.addEventListener("click", () => {
+    const out = !store.get("gv-notrack", false);
+    if (out) track("analytics_opt_out");
+    store.set("gv-notrack", out);
+    if (out) { try { globalThis.gtag?.("consent", "update", { analytics_storage: "denied" }); } catch (e) { /* ignore */ } }
+    globalThis.GV_GA = !out && !/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(location.hostname);
+    syncTrack();
+    toast(out ? "Done. This device won't be counted." : "Thanks. Visits from this device count again.", 2800);
+  });
   $("#creditsShare")?.addEventListener("click", shareApp);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && Coach.i >= 0) endCoach(); });
   addEventListener("resize", () => placeCoach());
@@ -5122,6 +5180,7 @@ function initWelcome() {
     updateProgress();
     renderAtlasReadout(null);
     loaderStep(100, "Ready");
+    track("app_ready", { load_ms: Math.round(globalThis.performance?.now?.() || 0), layout: isMobile() ? "phone" : "desktop", returning: !!store.get("gv-intro-seen", false) });
 
     // pre-warm the states list (~1 MB) only on desktop, once the browser is idle
     if (!isMobile() && !navigator.connection?.saveData) {
@@ -5156,6 +5215,7 @@ function initWelcome() {
     }));
   } catch (err) {
     console.error(err);
+    track("exception", { description: String(err?.message || err).slice(0, 120), fatal: true });
     loaderStep(100, String(err?.message).includes("WEBGL_UNAVAILABLE")
       ? "⚠️ This browser can't draw 3D right now (WebGL is off or unsupported). Try another browser, or turn on hardware acceleration."
       : "⚠️ Couldn't reach map data — check your internet connection and refresh.");
