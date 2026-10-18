@@ -251,6 +251,38 @@ const wikiBlockHtml = (wiki, fallbackMsg = "No encyclopedia entry available.") =
      <br/><a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Full article: ${wiki.title} →</a>`
   : `<em style="color:var(--text-dim)">${fallbackMsg}</em>`;
 
+/* ───────────────────── HAND-WRITTEN COUNTRY STORIES ───────────────────── */
+// data/stories.json: hook · land · people · surprise · scale, written and checked by hand.
+// Countries without one yet fall back to the generated story below.
+function loadStories() {
+  S.storiesP ??= fetch("data/stories.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})).then((j) => (S.stories = j));
+  return S.storiesP;
+}
+const storyOf = (d) => (d?.gv?.cca3 && S.stories?.[d.gv.cca3]?.hook ? S.stories[d.gv.cca3] : null);
+
+// For a Mystery clue: the country's name and its people's name give the game away
+function maskCountry(text, d) {
+  const name = nameOf(d), dem = d?.gv?.demonyms?.eng?.m;
+  const re = (w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+  let t = String(text || "");
+  if (dem) t = t.replace(re(dem + "s"), "Locals").replace(re(dem), "local");
+  t = t.replace(re("Mount " + name), "its great mountain"); // Mount Kenya
+  t = t.replace(re(name + "'s"), "Its").replace(re(name), "This country");
+  return t.replace(/([a-z,;:] )(This country|Its|Locals)/g, (m, pre, w) => pre + w.toLowerCase());
+}
+
+function countryStoryHtml(st) {
+  const beat = (label, text) => `<p class="cs-beat"><span class="cs-label">${label}</span>${esc(text)}</p>`;
+  return `
+    <article class="country-story">
+      <h3 class="cs-hook">${esc(st.hook)}</h3>
+      ${beat("The land", st.land)}
+      ${beat("The people", st.people)}
+      ${beat("The surprise", st.surprise)}
+      <p class="cs-scale"><span class="cs-label">For scale</span>${esc(st.scale)}</p>
+    </article>`;
+}
+
 /* ───────────────────── 3-BEAT MICRO-STORY ENGINE ───────────────────── */
 function generateCountryStory(d) {
   const c = d.gv;
@@ -2044,6 +2076,8 @@ async function renderPanelTab(d) {
   const tab = S.panelTab;
 
   if (tab === "overview") {
+    if (!S.stories) { await loadStories(); if (token !== S.panelToken) return; }
+    const told = storyOf(d);
     const density = c?.area && c.population != null ? (c.population / c.area).toFixed(0) : null;
     const langs = c?.languages ? Object.values(c.languages) : [];
     const curr = c?.currencies ? Object.values(c.currencies).map((x) => `${x.name}${x.symbol ? " (" + x.symbol + ")" : ""}`) : [];
@@ -2058,11 +2092,11 @@ async function renderPanelTab(d) {
         <div class="story-photo-credit">Wikimedia Commons</div>
       </div>
 
-      <div class="geo-identity-card">
+      ${told ? countryStoryHtml(told) : `<div class="geo-identity-card">
         <div class="gic-eyebrow">Geographic identity · ${c?.region ? esc(c.region) : "Global"}</div>
         <h3 class="gic-spark">${story.spark}</h3>
         <p class="gic-explain">${story.howItWorks}</p>
-      </div>
+      </div>`}
 
       <div class="telemetry-strip" style="margin-bottom:14px">
         <div class="telemetry-item">
@@ -2133,7 +2167,9 @@ async function renderPanelTab(d) {
         pBanner.style.display = "";
       }
     }
-    $("#ovWiki").innerHTML = wikiBlockHtml(wiki);
+    $("#ovWiki").innerHTML = told
+      ? (wiki?.url ? `<a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Read more on Wikipedia: ${esc(wiki.title)} →</a>` : "")
+      : wikiBlockHtml(wiki);
   }
 
   else if (tab === "wildlife") {
@@ -3496,6 +3532,17 @@ function makeMysteryRounds(pool, rng) {
     const story = generateCountryStory(country);
     const c = country.gv;
     const name = nameOf(country);
+    const told = storyOf(country);
+    if (told) {
+      return {
+        arcadeMode: "mystery",
+        country,
+        clues: [told.land, told.people, told.surprise].map((t) => maskCountry(t, country)),
+        fact: told.hook,
+        text: `Mystery Country: ${name}`,
+        answer: name,
+      };
+    }
     const clue1 = story.spark;
     let clue2 = "";
     if (c?.capital?.[0]) {
@@ -5972,6 +6019,7 @@ function initWelcome() {
     initUI();
     initSheets();
     initWelcome();
+    loadStories();
     initRenderGuards();
     setPins(S.pins);
     setNames(S.names);

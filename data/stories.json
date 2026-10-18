@@ -1,0 +1,53 @@
+{
+  "_about": "Hand-written country stories, keyed by ISO code. Shape: hook (one line, never the country's name) · land · people · surprise · scale (everyday comparisons) · sources · checks (numbers the tests verify against the World Bank data) · status (sample | draft | reviewed).",
+  "BTN": {
+    "hook": "The country that breathes in more carbon than it breathes out.",
+    "land": "Bhutan climbs from steamy jungle about 100 m above the sea to Himalayan ice above 7,000 m, all in less than 200 km. That's every climate on Earth in one long bus ride.",
+    "people": "About 8 lakh people live mostly in the river valleys in between. The forests are protected by the constitution itself: at least 60% of the land must stay forest, forever.",
+    "surprise": "Gangkhar Puensum (7,570 m) is the highest mountain nobody has ever climbed. Bhutan doesn't allow it: the big peaks are home to the gods, and the gods like their privacy.",
+    "scale": "About the size of Kerala, with fewer people than Chandigarh. India could hold 85 Bhutans.",
+    "sources": ["World Bank: population 2025, area 2024", "Constitution of the Kingdom of Bhutan (2008), Article 5", "Wikipedia: Gangkhar Puensum"],
+    "checks": { "pop": [700000, 800000], "areaInIndia": [80, 90] },
+    "status": "sample"
+  },
+  "ISL": {
+    "hook": "An island that's slowly being pulled in two.",
+    "land": "Iceland sits right on the seam where North America and Europe drift apart, about 2 cm a year, half as fast as your fingernails grow. At Þingvellir you can walk in the gap between them.",
+    "people": "About 3.9 lakh Icelanders turned all that heat under their feet into a home comfort: nine homes in ten are warmed by hot water piped straight from the ground.",
+    "surprise": "There are no mosquitoes. None at all. Scientists still aren't completely sure why.",
+    "scale": "You can drive the road all the way round it in about two days. India could hold 32 Icelands, and it has fewer people than Chandigarh.",
+    "sources": ["World Bank: population 2025, area 2024", "Wikipedia: Mid-Atlantic Ridge, Þingvellir, Geothermal power in Iceland, Route 1 (Iceland)"],
+    "checks": { "pop": [350000, 420000], "areaInIndia": [30, 34] },
+    "status": "sample"
+  },
+  "CHL": {
+    "hook": "The world's longest, skinniest country.",
+    "land": "Chile runs about 4,300 km from desert to glaciers, but on average it's only about 180 km wide, squeezed between the Andes and the Pacific. On a map it looks less like a country and more like a ribbon.",
+    "people": "Most Chileans live in the mild middle, around Santiago. Up north, the Atacama is the driest desert outside the poles: some of its weather stations have never recorded a single drop of rain.",
+    "surprise": "Those bone-dry, cloudless nights make it the best stargazing on Earth, which is why so many of the world's biggest telescopes are built here.",
+    "scale": "Longer than India is from Kashmir to Kanyakumari, yet on average only a little wider than the drive from Mumbai to Pune.",
+    "sources": ["World Bank: area 2024", "Wikipedia: Geography of Chile, Atacama Desert, European Southern Observatory"],
+    "checks": { "areaInIndia": [4, 4.6] },
+    "status": "sample"
+  },
+  "MNG": {
+    "hook": "More horses than people.",
+    "land": "A high, wind-swept sea of grass, desert and mountains, where winter nights fall below −30°C but the sky stays stubbornly blue. Mongolians call it the Land of the Eternal Blue Sky.",
+    "people": "About 36 lakh people live here, the fewest per km² of any country. Nearly half live in Ulaanbaatar, the coldest capital on Earth. Many others still move with their herds, taking their round felt gers with them.",
+    "surprise": "At Naadam, the big summer festival, the jockeys in the long-distance horse races are children.",
+    "scale": "Almost half the size of India, with roughly as many people as Jaipur.",
+    "sources": ["World Bank: population 2025, area 2024, population density", "Wikipedia: Ulaanbaatar, Naadam, Livestock in Mongolia"],
+    "checks": { "pop": [3300000, 3800000], "areaInIndia": [2, 2.2] },
+    "status": "sample"
+  },
+  "KEN": {
+    "hook": "Snow on the equator.",
+    "land": "The equator runs right through Kenya, yet Mount Kenya (5,199 m) still holds small glaciers. Below it, the Great Rift Valley splits the land: a crack where Africa is very slowly tearing itself apart.",
+    "people": "The high Rift Valley towns, more than 2,000 m up, have raised many of the world's greatest distance runners. Thin air, strong lungs.",
+    "surprise": "Kenya went cashless before most of the world. Since 2007, most adults have paid for things by text message through M-Pesa: chai, school fees, even a cow.",
+    "scale": "A bit bigger than Maharashtra and Gujarat put together. India could hold almost six Kenyas.",
+    "sources": ["World Bank: area 2024", "Wikipedia: Mount Kenya, Great Rift Valley, Iten, M-Pesa"],
+    "checks": { "areaInIndia": [5.3, 5.9] },
+    "status": "sample"
+  }
+}
