@@ -96,7 +96,7 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 @keyframes float { 50% { transform: translateY(-8px); } }
 @keyframes bh-turn { to { transform: rotate(360deg); } }
 
-/* the opening: a pale blue dot in a sunbeam (Voyager, 1990), which falls towards us and becomes the globe */
+/* ── the opening: two worlds roll in like kanche, the word builds around them, and the logo docks ── */
 .intro-stars {
   position: absolute; inset: 0; opacity: .75; transition: opacity .5s;
   background-image:
@@ -106,39 +106,51 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
     radial-gradient(1.2px 1.2px at 8% 84%, #A9ACD3 50%, transparent 52%), radial-gradient(1.6px 1.6px at 57% 88%, #F7F5EF 50%, transparent 52%),
     radial-gradient(1.3px 1.3px at 93% 82%, #F7F5EF 50%, transparent 52%), radial-gradient(1.1px 1.1px at 34% 8%, #A9ACD3 50%, transparent 52%);
 }
-.intro-beam {
-  position: absolute; left: 50%; top: 50%; width: 170px; height: 170vmax; pointer-events: none;
-  transform: translate(-50%, -50%) rotate(15deg); transition: opacity .5s;
-  background: linear-gradient(90deg, transparent, rgba(255, 176, 32, .05) 28%, rgba(255, 214, 170, .12) 50%, rgba(255, 176, 32, .05) 72%, transparent);
+#loader { --k: 1; }
+.intro-seen #loader { --k: .62; } /* return visits: the same show, brisker */
+.intro-mark { position: absolute; left: 50%; top: 45%; width: min(560px, 84vw); transform: translate(-50%, -50%); }
+.intro-word { display: block; width: 100%; height: auto; overflow: visible; transform-origin: 0 0; }
+.intro-word .ltr { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: bh-ltr calc(.52s * var(--k)) var(--ease-pop) both; animation-delay: calc((1.45s + var(--i) * 110ms) * var(--k)); }
+.intro-word .stat-world { opacity: 0; }
+@keyframes bh-ltr { from { opacity: 0; transform: translateY(14%) scale(.55); } to { opacity: 1; transform: none; } }
+
+.intro-world { position: absolute; overflow: visible; will-change: transform; }
+.intro-world.l { animation: bh-roll-l calc(1.45s * var(--k)) cubic-bezier(.2, .85, .3, 1.12) calc(.25s * var(--k)) both; }
+.intro-world.r { animation: bh-roll-r calc(1.45s * var(--k)) cubic-bezier(.2, .85, .3, 1.12) calc(.25s * var(--k)) both; }
+@keyframes bh-roll-l { from { transform: translateX(-62vw) rotate(-760deg); } to { transform: none; } }
+@keyframes bh-roll-r { from { transform: translateX(62vw) rotate(760deg); } to { transform: none; } }
+.intro-world .strip { animation: bh-spin 3.2s linear infinite; }
+.intro-world.r .strip { animation-delay: -1.1s; }
+@keyframes bh-spin { to { transform: translateX(-240px); } }
+.intro-world .shade { transition: opacity .4s; }
+
+.intro-ul { position: absolute; top: 96%; height: 16px; opacity: 0; animation: bh-fade .4s ease calc(2.15s * var(--k)) both; }
+#loaderFill { width: 0%; height: 100%; overflow: hidden; transition: width var(--t-slow) var(--ease-settle); }
+#loaderFill svg { display: block; width: min(560px, 84vw); height: 100%; }
+@keyframes bh-fade { from { opacity: 0; } to { opacity: 1; } }
+.intro-msg {
+  position: absolute; left: 16px; right: 16px; top: calc(45% + min(160px, 24vw)); text-align: center;
+  font-size: 14px; color: var(--ink-muted); opacity: 0; animation: bh-fade .4s ease calc(2.3s * var(--k)) both; transition: opacity .3s;
 }
-.intro-dot {
-  position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; border-radius: 50%;
-  background: #9BB8FF; box-shadow: 0 0 14px 3px rgba(143, 178, 255, .45);
-  transform: translate(-50%, -50%) scale(1);
-  animation: bh-breathe 3.2s ease-in-out infinite;
-  transition: transform .8s cubic-bezier(.6, 0, .85, .3), background-color .8s, box-shadow .4s;
-}
-@keyframes bh-breathe { 50% { box-shadow: 0 0 22px 6px rgba(143, 178, 255, .55); } }
-.intro-line {
-  position: absolute; left: 16px; right: 16px; top: calc(50% + 34px); text-align: center;
-  font: 700 clamp(20px, 3.4vw, 28px)/1.25 var(--font-display); color: var(--ink);
-  opacity: 0; transform: translateY(8px); transition: opacity .7s var(--ease-settle), transform .7s var(--ease-settle);
-}
-.intro-line.on { opacity: 1; transform: none; }
-.intro-foot { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; transition: opacity .4s; }
-.loader-bar { width: 160px; height: 4px; margin: 0 auto 10px; background: var(--surface-raised); border-radius: var(--radius-pill); overflow: hidden; }
-#loaderFill { height: 100%; width: 0%; border-radius: var(--radius-pill); background: var(--marigold); transition: width var(--t-slow) var(--ease-settle); }
-#loaderMsg { font-size: 14px; color: var(--ink-muted); padding: 0 16px; }
 .intro-skip {
   position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
   padding: 8px 16px; border-radius: var(--radius-pill); font: 600 14px/1 var(--font-sans);
   color: var(--ink-muted); background: var(--surface); transition: opacity .3s;
 }
 .intro-skip:hover { color: var(--ink); }
-#loader.ready .intro-foot { opacity: 0; }
-#loader.falling .intro-dot { animation: none; transform: translate(-50%, -50%) scale(var(--grow, 30)); background-color: var(--ocean); box-shadow: none; }
-#loader.falling .intro-stars, #loader.falling .intro-beam, #loader.falling .intro-line, #loader.falling .intro-skip, #loader.falling .intro-foot { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { .intro-dot { animation: none; } }
+
+
+/* the hand-over: worlds settle into the logo pose, the word docks into the top bar, the eastern world becomes the globe */
+#loader.settled .intro-world .shade { opacity: 0; }
+#loader.docking .intro-word { transition: transform calc(1.1s * var(--k)) var(--ease-settle); }
+#loader.docking .intro-word .stat-world { opacity: 1; }
+#loader.docking .intro-world { transition: transform calc(1.15s * var(--k)) cubic-bezier(.55, 0, .3, 1), opacity .5s ease calc(.4s * var(--k)); }
+#loader.docking .intro-world.l { opacity: 0; }
+#loader.docking .intro-stars, #loader.docking .intro-ul, #loader.docking .intro-msg, #loader.docking .intro-skip { opacity: 0; transition: opacity .35s; }
+#loader.ready .intro-msg { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .intro-word .ltr, .intro-world.l, .intro-world.r, .intro-world .strip, .intro-ul, .intro-msg { animation: none !important; opacity: 1; }
+}
 
 /* ═══════════ TOP BAR ═══════════ */
 #topbar {
@@ -1764,7 +1776,8 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 .coach-gap { flex: 1; }
 .coach-link { font-size: 14px; color: var(--ink-muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
 .coach-link:hover { color: var(--ink); }
-.credits-replay { margin-top: 18px; height: 42px; font-size: 15px; }
+.credits-replays { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.credits-replay { height: 42px; font-size: 15px; }
 
 /* ═══════════ ARCADE SETUP: one card on desktop, two short steps on phones ═══════════ */
 .setup-progress, .setup-back-row { display: none; }

@@ -4822,22 +4822,48 @@ function handLoop(W, H, { rx, ry, wmax = 7, tilt = -4, sq = 2, turns = 1.16, sta
   return d + "Z";
 }
 
-// The opening: the loader is a pale blue dot in a sunbeam. When the world is ready, the dot falls
-// towards us, growing to exactly the size the real globe is drawn at, and the scene fades onto it.
+// The opening is the logo assembling itself: two worlds roll in like kanche and keep spinning in the "oo",
+// the letters pop in around them, and a teacher's underline draws as the data loads (all CSS, see
+// index.html → intro artwork). When the world is ready the worlds settle into their logo pose, the
+// wordmark flies into its place in the top bar, and the eastern world grows into the real globe.
 const INTRO_ALT = 4.5; // the altitude initGlobe() starts the camera at
-const Intro = { ready: false, skip: false, done: false, t: 0, onDone: null };
+const SPIN = 240;      // one turn of a world's land strip, in its own units (brand/identity → build_intro.py)
+const Intro = { ready: false, skip: false, done: false, t: 0, onDone: null, calm: false, force: false, t0: 0, html: "" };
+const introPace = () => (document.documentElement.classList.contains("intro-seen") ? 0.62 : 1); // return visits: same show, brisker
 
 function initIntro() {
   const L = $("#loader");
   if (!L) return;
-  const skip = () => { Intro.skip = true; if (Intro.ready) finishIntro(); };
-  $("#introSkip")?.addEventListener("click", skip);
-  L.addEventListener("pointerdown", skip);
+  Intro.html = L.innerHTML; // kept so the opening can be replayed from About
+  L.addEventListener("pointerdown", () => skipIntro());
+  bindIntroSkip();
+}
+function skipIntro() { Intro.skip = true; if (Intro.ready) finishIntro(); }
+function bindIntroSkip() {
+  $("#introSkip")?.addEventListener("click", skipIntro);
   const onKey = (e) => {
     if (Intro.done) { removeEventListener("keydown", onKey); return; }
-    if (e.key === "Escape" || e.key === "Enter" || e.key === " ") skip();
+    if (e.key === "Escape" || e.key === "Enter" || e.key === " ") skipIntro();
   };
   addEventListener("keydown", onKey);
+}
+
+// Play the opening again on top of the app (About → Replay the opening), at first-visit pace
+function replayIntro() {
+  const L = $("#loader");
+  if (!L || !Intro.done) return;
+  closePanel();
+  document.documentElement.classList.remove("intro-seen");
+  L.style.transition = "none";
+  ["done", "ready", "settled", "docking"].forEach((c) => L.classList.remove(c));
+  if (Intro.html) L.innerHTML = Intro.html; // fresh nodes: every CSS animation starts again from zero
+  void L.getBoundingClientRect?.();
+  L.style.transition = "";
+  Object.assign(Intro, { ready: false, skip: false, done: false, calm: false, force: true, t0: globalThis.performance?.now?.() ?? 0 });
+  bindIntroSkip();
+  S.globe.pointOfView({ lat: 12, lng: 25, altitude: INTRO_ALT });
+  setTimeout(() => loaderStep(100, "Ready"), 1200); // the data is already here: just draw the underline
+  playIntro(() => S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400), false);
 }
 
 // How big the globe is on screen at a given camera altitude (perspective camera looking at the centre)
@@ -4847,38 +4873,74 @@ function globeRadiusPx(alt) {
   return (h / 2) * Math.tan(Math.asin(1 / (1 + alt))) / Math.tan(fov / 2);
 }
 
-// Called once the globe has been drawn behind the loader. Every visit gets the dot; a first visit also gets
-// the line. quick (a deep link): the camera is heading somewhere else, so the dot fades instead of falling.
-// Reduced motion: the same scene, faded rather than flown.
+// Called once the globe has been drawn behind the loader. quick: a deep link, where the camera is about to
+// fly somewhere else, so the logo simply fades away. Reduced motion: the same calm fade.
 function playIntro(onDone, quick) {
   Intro.ready = true;
   Intro.onDone = onDone;
-  const first = !store.get("gv-intro-seen", false) || Intro.force;
   store.set("gv-intro-seen", true);
-  Intro.calm = quick || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  Intro.calm = !!quick || matchMedia("(prefers-reduced-motion: reduce)").matches;
   $("#loader").classList.add("ready");
-  if (Intro.skip) { finishIntro(); return; }
-  if (first && !quick) {
-    const line = $("#introLine");
-    line.textContent = "That little blue dot is home.";
-    line.classList.add("on");
-    Intro.t = setTimeout(() => finishIntro(), 2300);
-  } else {
-    Intro.t = setTimeout(() => finishIntro(), quick ? 450 : 700);
-  }
+  if (Intro.skip || Intro.calm) { finishIntro(); return; }
+  // a first visit lets the roll-in and the letters finish (~2.5 s after the page starts); later visits
+  // arrive with the logo already built, so a short beat is enough
+  const since = (globalThis.performance?.now?.() ?? 0) - Intro.t0;
+  Intro.t = setTimeout(() => finishIntro(), Math.max(0, 3500 * introPace() - since));
 }
 
 function finishIntro() {
   if (Intro.done || !Intro.ready) return;
   Intro.done = true;
   clearTimeout(Intro.t);
-  const L = $("#loader"), dot = $("#introDot");
+  const L = $("#loader");
   const end = () => { L.classList.add("done"); Intro.onDone?.(); };
-  if (Intro.calm || !dot) { end(); return; } // the loader's own fade carries it
-  const r0 = (dot.offsetWidth || 12) / 2;
-  dot.style.setProperty("--grow", (globeRadiusPx(INTRO_ALT) / r0).toFixed(2));
-  L.classList.add("falling");
-  setTimeout(end, 820);
+  if (Intro.calm || Intro.skip) { end(); return; } // the loader's own fade carries it
+  try {
+    const k = introPace();
+    settleWorlds(k);
+    L.classList.add("settled");
+    setTimeout(() => {
+      // the class first (it carries the transitions), then the destinations
+      L.classList.add("docking");
+      void L.getBoundingClientRect?.();
+      if (!dockLogo()) { end(); return; }
+      setTimeout(end, 1150 * k);
+    }, 760 * k);
+  } catch (e) { end(); }
+}
+
+// Slow each spinning world to the pose it has in the logo: the Americas west, Afro-Eurasia east
+function settleWorlds(k = 1) {
+  for (const [sel, pose] of [[".intro-world.l .strip", 0], [".intro-world.r .strip", -SPIN / 2]]) {
+    const strip = $(sel);
+    if (!strip) continue;
+    const m = getComputedStyle(strip).transform;
+    const tx = m && m !== "none" ? new DOMMatrixReadOnly(m).m41 : 0;   // where the spin is right now, 0 … −SPIN
+    let target = pose;
+    while (target > tx) target -= SPIN;                                 // keep turning forwards, never back
+    strip.style.animation = "none";
+    strip.style.transform = `translateX(${tx}px)`;
+    void strip.getBoundingClientRect();
+    strip.style.transition = `transform ${0.7 * k}s cubic-bezier(.2, .9, .25, 1)`;
+    strip.style.transform = `translateX(${target}px)`;
+  }
+}
+
+// Fly the wordmark onto the top-bar logo (same artwork, so it lands exactly) and grow the eastern world into
+// the globe the camera is looking at. Returns false if there's nothing to measure (then we just fade).
+function dockLogo() {
+  const word = $(".intro-word"), brand = $(".brand-lockup"), east = $(".intro-world.r"), west = $(".intro-world.l");
+  const a = word?.getBoundingClientRect?.(), b = brand?.getBoundingClientRect?.();
+  if (!a?.width || !b?.width) return false;
+  word.style.transform = `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${b.width / a.width})`;
+  const vw = globalThis.innerWidth || 1200, vh = globalThis.innerHeight || 800, R = globeRadiusPx(INTRO_ALT);
+  for (const [w, k] of [[east, 1], [west, 0.6]]) {
+    const r = w?.getBoundingClientRect?.();
+    if (!r?.width) continue;
+    w.style.animation = "none"; // a finished roll-in still holds its end pose and would win over the transform
+    w.style.transform = `translate(${vw / 2 - (r.left + r.width / 2)}px, ${vh / 2 - (r.top + r.height / 2)}px) scale(${(2 * R / r.width) * k})`;
+  }
+  return true;
 }
 
 /* Welcome card (first visit) and the walkthrough */
@@ -5025,6 +5087,7 @@ function initWelcome() {
   $("#coachBack")?.addEventListener("click", () => { if (Coach.i > 0) showCoachStep(Coach.i - 1); });
   $("#coachSkip")?.addEventListener("click", () => endCoach());
   $("#creditsWelcome")?.addEventListener("click", () => { closeCredits(); startCoach(); });
+  $("#creditsIntro")?.addEventListener("click", () => { closeCredits(); replayIntro(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && Coach.i >= 0) endCoach(); });
   addEventListener("resize", () => placeCoach());
 }
