@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   GEOVERSE — The Living Atlas
+   BHOOGOL — The round Earth
    A cinematic 3D geography experience.
    Data: Natural Earth · world-countries · World Bank · Wikipedia
          geoBoundaries (states) · Survey of India (official Indian map)
@@ -11,15 +11,15 @@ const $$ = (s) => [...document.querySelectorAll(s)];
 const NE = "https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0";
 
 const REGION_COLORS = {
-  Africa:    "#f4a261",
-  Americas:  "#2a9d8f",
-  Asia:      "#e76f51",
-  Europe:    "#4db8ff",
-  Oceania:   "#c77dff",
-  Antarctic: "#9aa5b1",
+  Africa:    "#FFB020",
+  Americas:  "#3DDC97",
+  Asia:      "#FF8A70",
+  Europe:    "#7FA4FF",
+  Oceania:   "#E4BDF4",
+  Antarctic: "#A9ACD3",
 };
 
-const ADM1_PALETTE = ["#ffd166", "#4db8ff", "#3ddc84", "#c77dff", "#ff9f43", "#7ee0ff", "#f4a261", "#e76f51", "#2a9d8f", "#ff5d73"];
+const ADM1_PALETTE = ["#F7D37E", "#9FE3C2", "#FFB49B", "#B5C4FF", "#E4BDF4", "#94D9E6", "#FFB020", "#3DDC97", "#7FA4FF", "#FF8A70"];
 
 const WIKI_OVERRIDES = {
   "Georgia": "Georgia (country)",
@@ -987,18 +987,18 @@ function polyBaseColor(d) {
   if (S.stateView) return "rgba(80,110,160,0.06)";
 
   if (S.compare) {
-    if (d === S.compare.a) return "rgba(255,209,102,0.72)";
-    if (d === S.compare.b) return "rgba(126,224,255,0.72)";
+    if (d === S.compare.a) return "rgba(255,176,32,0.78)";
+    if (d === S.compare.b) return "rgba(61,220,151,0.78)";
   }
 
   if (S.mode === "quiz" && S.quiz) {
     if (d === S.hoverD) return "rgba(255,255,255,0.35)";
-    return "rgba(120,170,255,0.10)";
+    return "rgba(127,164,255,0.10)";
   }
   if (S.mode === "atlas") return atlasColor(d);
-  if (S.mode === "earth") return "rgba(120,170,255,0.04)";
+  if (S.mode === "earth") return "rgba(127,164,255,0.04)";
 
-  if (d === S.selected) return "rgba(255,209,102,0.65)";
+  if (d === S.selected) return "rgba(255,176,32,0.72)";
   return null; // clean political palette; the engine draws hover itself
 }
 
@@ -1081,7 +1081,7 @@ function initGlobe() {
     .arcStartLng((a) => a.sLng)
     .arcEndLat((a) => a.eLat)
     .arcEndLng((a) => a.eLng)
-    .arcColor((a) => a.glow ? ["rgba(255,209,102,0.22)", "rgba(126,224,255,0.22)"] : ["rgba(255,209,102,0.95)", "rgba(126,224,255,0.95)"])
+    .arcColor((a) => a.glow ? ["rgba(255,176,32,0.22)", "rgba(61,220,151,0.22)"] : ["rgba(255,176,32,0.95)", "rgba(61,220,151,0.95)"])
     .arcStroke((a) => a.glow ? 1.9 : 0.55)
     .arcDashLength((a) => a.glow ? 1 : 0.42)
     .arcDashGap((a) => a.glow ? 0 : 0.18)
@@ -1101,7 +1101,7 @@ function initGlobe() {
     .pathPoints((p) => p.pts)
     .pathPointLat((pt) => pt[0])
     .pathPointLng((pt) => pt[1])
-    .pathColor(() => "rgba(110,205,255,0.65)")
+    .pathColor(() => "rgba(46,107,255,0.8)")
     .pathLabel((p) => `<div class="globe-tip"><div class="gt-name">💧 ${p.name}</div><div class="gt-sub">river · click to learn</div></div>`)
     .onPathClick((p) => {
       const mid = p.pts[Math.floor(p.pts.length / 2)];
@@ -1325,7 +1325,7 @@ function atlasColor(d) {
   if (!c) return "rgba(120,140,170,0.15)";
   const hot = d === S.hoverD || d === S.atlasPick;
   if (S.atlasMetric === "region") {
-    return hexA(REGION_COLORS[c.region] || "#8fa3c8", hot ? 1 : 0.85);
+    return hexA(REGION_COLORS[c.region] || "#A9ACD3", hot ? 1 : 0.85);
   }
   const t = atlasT(d);
   if (t == null) return "rgba(120,140,170,0.15)";
@@ -1487,7 +1487,7 @@ function setMode(mode) {
     return;
   }
   if (mode === S.mode) {
-    if (mode === "quiz" && !S.quiz) { $("#quizSetup").classList.remove("hidden"); updateQuizBestLabels(); scheduleUrl(); }
+    if (mode === "quiz" && !S.quiz) { openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
     return;
   }
   if (S.mode === "quiz") endQuiz(true);
@@ -1506,6 +1506,7 @@ function setMode(mode) {
   $("#atlasDock").classList.toggle("hidden", mode !== "atlas");
   $("#earthDock").classList.toggle("hidden", mode !== "earth");
   $("#quizSetup").classList.toggle("hidden", mode !== "quiz");
+  if (mode === "quiz") setSetupStep(S.pendingChallenge ? 2 : 1);
   $("#quizHud").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
 
@@ -1616,9 +1617,9 @@ function renderProgressPop() {
     <div class="pp-regions">
       ${Object.entries(regions).sort().map(([r, v]) => `
         <div class="pp-row">
-          <span class="pp-dot" style="background:${REGION_COLORS[r] || "#8fa3c8"}"></span>
+          <span class="pp-dot" style="background:${REGION_COLORS[r] || "#A9ACD3"}"></span>
           <span class="pp-name">${r}</span>
-          <span class="pp-bar"><i style="width:${(v.n / v.total) * 100}%;background:${REGION_COLORS[r] || "#8fa3c8"}"></i></span>
+          <span class="pp-bar"><i style="width:${(v.n / v.total) * 100}%;background:${REGION_COLORS[r] || "#A9ACD3"}"></i></span>
           <span class="pp-num">${v.n}/${v.total}</span>
         </div>`).join("")}
     </div>
@@ -2680,7 +2681,7 @@ function countryLabels() {
   return uniqueCountries().map((f) => {
     const [lat, lng] = f.gv.latlng?.length === 2 ? f.gv.latlng : [centroidOf(f).lat, centroidOf(f).lng];
     // bigger countries get bigger names and show from further away
-    return { f, lat, lng, text: nameOf(f), size: clamp(0.45 + Math.log10(f.gv.area || 1) * 0.22, 0.5, 1.9), color: "#1f2f42" };
+    return { f, lat, lng, text: nameOf(f), size: clamp(0.45 + Math.log10(f.gv.area || 1) * 0.22, 0.5, 1.9), color: "#12133A" };
   });
 }
 
@@ -2692,7 +2693,7 @@ function refreshLabels() {
     sv.labels ??= sv.adm1.map((st) => {
       const [lng, lat] = d3.geoCentroid(st);
       // size from area, so big states name themselves first and small ones appear as you zoom in
-      return { st, lat, lng, text: st.properties.shapeName || st.properties.name || "", size: clamp(0.55 + Math.log10(d3.geoArea(st) * 4.06e7 + 1) * 0.2, 0.5, 1.7), color: "#3a2a12" };
+      return { st, lat, lng, text: st.properties.shapeName || st.properties.name || "", size: clamp(0.55 + Math.log10(d3.geoArea(st) * 4.06e7 + 1) * 0.2, 0.5, 1.7), color: "#12133A" };
     });
     S.globe.labelsData(S.names ? sv.labels : []);
     return;
@@ -3603,7 +3604,25 @@ function setArcadeMode(mode) {
   S.arcadeMode = mode;
   $$("#arcadeModeGrid .arcade-card").forEach((c) => c.classList.toggle("active", c.dataset.arcade === mode));
   $("#blitzTypeWrap")?.classList.toggle("hidden", mode !== "blitz");
+  const card = $(`#arcadeModeGrid .arcade-card[data-arcade="${mode}"] .ac-title`);
+  if (card && $("#setupModeName")) $("#setupModeName").textContent = card.textContent;
   updateQuizBestLabels();
+}
+
+// On phones the setup is two short steps (pick a game → where & how hard) instead of one long scroll.
+// On desktop both steps show together and the step number changes nothing.
+function setSetupStep(n) {
+  const card = $("#quizSetup .quiz-card.setup");
+  if (!card) return;
+  card.dataset.step = String(n);
+  const p = $("#setupProgress");
+  if (p) p.textContent = n === 1 ? "Step 1 of 2 · Pick a game" : "Step 2 of 2 · Where and how hard";
+  card.scrollTop = 0;
+}
+// Show the setup: a fresh visit starts at the games; a chosen game (challenge link, play again) skips ahead
+function openQuizSetup(step = 1) {
+  setSetupStep(S.pendingChallenge ? 2 : step);
+  $("#quizSetup").classList.remove("hidden");
 }
 
 function applyChallenge(code) {
@@ -3613,7 +3632,8 @@ function applyChallenge(code) {
   setArcadeMode("blitz"); // classic challenge codes (Flag Frenzy, Capitals, …) are Blitz games
   setQuizSelection(ch.type, ch.region, ch.diff);
   if (S.mode !== "quiz") setMode("quiz");
-  else $("#quizSetup").classList.remove("hidden");
+  else openQuizSetup(2);
+  setSetupStep(2);
   renderChallengeBanner();
   scheduleUrl();
   return true;
@@ -3751,7 +3771,7 @@ function nextRound() {
     const midLat = (ca.lat + cb.lat) / 2;
     const midLng = (ca.lng + cb.lng) / 2;
     S.globe.pointOfView({ lat: midLat, lng: midLng, altitude: 2.1 }, 1200);
-    flash(base, "rgba(56,189,248,0.7)", 8000);
+    flash(base, "rgba(127,164,255,0.7)", 8000);
     refreshPolys();
   } else if (q.arcadeMode === "pinpoint") {
     q.target = r.target;
@@ -3794,12 +3814,12 @@ function quizMysteryClick(d, ev) {
     fb.innerHTML = `✅ <b>Bullseye!</b> That's <b>${nameOf(d)}</b> (+${pts} pts)`;
     fb.className = "good";
     logRound("correct", nameOf(d));
-    flash(d, "rgba(16,185,129,0.9)", 1400);
+    flash(d, "rgba(61,220,151,0.9)", 1400);
     ringPulse(centroidOf(d).lat, centroidOf(d).lng, 4, "16,185,129");
     confetti({
       particleCount: 90, spread: 75,
       origin: { x: (ev?.clientX ?? innerWidth / 2) / innerWidth, y: (ev?.clientY ?? innerHeight / 2) / innerHeight },
-      colors: ["#10B981", "#38BDF8", "#F59E0B"],
+      colors: ["#3DDC97", "#2E6BFF", "#FFB020", "#F7F5EF"],
     });
 
     if (q.cur.fact) showQuizStoryFact(q.cur.fact);
@@ -3811,16 +3831,16 @@ function quizMysteryClick(d, ev) {
 
     let tempClass = "cold";
     let tempLabel = "❄️ Freezing Cold";
-    let flashColor = "rgba(56,189,248,0.85)";
+    let flashColor = "rgba(127,164,255,0.85)";
 
     if (dist < 1500) {
       tempClass = "hot";
       tempLabel = "🔥 Burning Hot!";
-      flashColor = "rgba(244,63,94,0.9)";
+      flashColor = "rgba(184,58,31,0.9)";
     } else if (dist <= 5000) {
       tempClass = "warm";
       tempLabel = "☀️ Getting Warmer";
-      flashColor = "rgba(245,158,11,0.85)";
+      flashColor = "rgba(255,176,32,0.85)";
     }
 
     flash(d, flashColor, 800);
@@ -3832,7 +3852,7 @@ function quizMysteryClick(d, ev) {
       fb.innerHTML = `❌ Out of clues! It was <b>${nameOf(target)}</b>`;
       fb.className = "bad";
       logRound("wrong", nameOf(d));
-      flash(target, "rgba(245,158,11,0.95)", 2400);
+      flash(target, "rgba(255,176,32,0.95)", 2400);
       flyTo(target, 1100);
       if (q.cur.fact) showQuizStoryFact(q.cur.fact);
       setTimeout(nextRound, 3000);
@@ -3873,8 +3893,8 @@ function answerChain(isHigher) {
     fb.innerHTML = `✅ <b>Correct!</b> ${nameOf(r.target)} has ${r.valTargetStr} (+${pts} pts)`;
     fb.className = "good";
     logRound("correct", isHigher ? "MORE" : "FEWER");
-    flash(r.target, "rgba(16,185,129,0.9)", 1400);
-    confetti({ particleCount: 75, spread: 70, origin: { x: 0.5, y: 0.4 }, colors: ["#10B981", "#38BDF8"] });
+    flash(r.target, "rgba(61,220,151,0.9)", 1400);
+    confetti({ particleCount: 75, spread: 70, origin: { x: 0.5, y: 0.4 }, colors: ["#3DDC97", "#2E6BFF", "#FFB020"] });
     flyTo(r.target, 1100);
     if (r.fact) showQuizStoryFact(r.fact);
     setTimeout(nextRound, 2000);
@@ -3883,7 +3903,7 @@ function answerChain(isHigher) {
     fb.innerHTML = `❌ <b>Streak Broken!</b> ${nameOf(r.target)} has ${r.valTargetStr}`;
     fb.className = "bad";
     logRound("wrong", isHigher ? "MORE" : "FEWER");
-    flash(r.target, "rgba(244,63,94,0.85)", 1400);
+    flash(r.target, "rgba(184,58,31,0.9)", 1400);
     flyTo(r.target, 1100);
     if (r.fact) showQuizStoryFact(r.fact);
     setTimeout(nextRound, 2600);
@@ -3977,7 +3997,7 @@ function quizWonderClick(coords) {
     fb.className = "good";
     logRound("correct", `${fmtFull.format(Math.round(dist))} km off`);
     ringPulse(w.lat, w.lng, 3.5, "61,220,132");
-    confetti({ particleCount: 90, spread: 75, origin: { x: 0.5, y: 0.35 }, colors: ["#3ddc84", "#ffd166", "#4db8ff"] });
+    confetti({ particleCount: 90, spread: 75, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
     setTimeout(nextRound, 1600);
   } else {
     q.attempts++;
@@ -4030,23 +4050,23 @@ function quizMapClick(d, ev) {
     fb.textContent = `✅ +${pts} pts — that's ${nameOf(d)}!`;
     fb.className = "good";
     logRound("correct");
-    flash(d, "rgba(61,220,132,0.85)", 1100);
+    flash(d, "rgba(61,220,151,0.9)", 1100);
     confetti({
       particleCount: 90, spread: 75, startVelocity: 38,
       origin: { x: (ev?.clientX ?? innerWidth / 2) / innerWidth, y: (ev?.clientY ?? innerHeight / 2) / innerHeight },
-      colors: ["#3ddc84", "#ffd166", "#4db8ff", "#ffffff"],
+      colors: ["#3DDC97", "#FFB020", "#2E6BFF", "#F7F5EF"],
     });
     setTimeout(nextRound, 1300);
   } else {
     q.attempts++;
-    flash(d, "rgba(255,93,115,0.75)", 700);
+    flash(d, "rgba(184,58,31,0.85)", 700);
     if (q.attempts >= q.maxAttempts) {
       q.locked = true;
       q.streak = 0;
       fb.innerHTML = `❌ It was here — <b>${esc(nameOf(q.target))}</b>`;
       fb.className = "bad";
       logRound("wrong", nameOf(d));
-      flash(q.target, "rgba(255,209,102,0.9)", 2100);
+      flash(q.target, "rgba(255,176,32,0.9)", 2100);
       flyTo(q.target, 1000);
       setTimeout(nextRound, 2400);
     } else {
@@ -4073,8 +4093,8 @@ function choiceAnswer(btn) {
     fb.textContent = `✅ +${pts} pts!`;
     fb.className = "good";
     logRound("correct");
-    flash(q.target, "rgba(61,220,132,0.85)", 1100);
-    confetti({ particleCount: 80, spread: 70, origin: { x: 0.5, y: 0.35 }, colors: ["#3ddc84", "#ffd166", "#4db8ff"] });
+    flash(q.target, "rgba(61,220,151,0.9)", 1100);
+    confetti({ particleCount: 80, spread: 70, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
   } else {
     btn.classList.add("wrong");
     q.streak = 0;
@@ -4097,7 +4117,7 @@ function skipRound() {
   logRound("skipped");
   if (q.arcadeMode === "mystery") {
     q.locked = true;
-    flash(q.target, "rgba(245,158,11,0.95)", 2000);
+    flash(q.target, "rgba(255,176,32,0.95)", 2000);
     flyTo(q.target, 1000);
     $("#quizFeedback").innerHTML = `It was <b>${esc(nameOf(q.target))}</b>`;
     $("#quizFeedback").className = "bad";
@@ -4119,7 +4139,7 @@ function skipRound() {
     setTimeout(nextRound, 2600);
   } else if (q.type === "find") {
     q.locked = true;
-    flash(q.target, "rgba(255,209,102,0.9)", 1800);
+    flash(q.target, "rgba(255,176,32,0.9)", 1800);
     flyTo(q.target, 900);
     $("#quizFeedback").innerHTML = `It was <b>${esc(nameOf(q.target))}</b>`;
     $("#quizFeedback").className = "bad";
@@ -4201,7 +4221,7 @@ function challengeUrl(q) {
 function scorecardText(q) {
   const modeLabel = QUIZ_TYPE_LABEL[q.arcadeMode] || QUIZ_TYPE_LABEL[q.type] || "Arcade Challenge";
   return [
-    `GeoVerse 🌍 ${modeLabel} · ${q.region} · ${DIFF_LABEL[q.diff]}`,
+    `Bhoogol 🌍 ${modeLabel} · ${q.region} · ${DIFF_LABEL[q.diff]}`,
     q.log.map((e) => RESULT_ICON[e.result]).join(""),
     `🏆 ${q.score} pts · ${q.correct}/${ROUNDS} correct · 🔥 ${q.bestStreak} best streak`,
     `Can you beat my score? ${challengeUrl(q)}`,
@@ -4479,7 +4499,7 @@ async function applyUrl() {
     const mode = ["explore", "atlas", "earth", "quiz"].includes(p.get("mode")) ? p.get("mode") : "explore";
     if (mode !== S.mode) setMode(mode);
     if (mode === "quiz") {
-      if (!S.quiz && $("#quizResult").classList.contains("hidden")) $("#quizSetup").classList.remove("hidden");
+      if (!S.quiz && $("#quizResult").classList.contains("hidden")) openQuizSetup();
       return;
     }
     if (mode === "atlas") {
@@ -4597,9 +4617,9 @@ function initUI() {
   $("#soundToggle")?.addEventListener("click", () => setSound(!S.sound));
   const brand = $(".brand");
   if (brand) {
-    Object.assign(brand, { tabIndex: 0, title: "About GeoVerse & credits" });
+    Object.assign(brand, { tabIndex: 0, title: "About Bhoogol & credits" });
     brand.setAttribute("role", "button");
-    brand.setAttribute("aria-label", "About GeoVerse and credits");
+    brand.setAttribute("aria-label", "About Bhoogol and credits");
     brand.addEventListener("click", openCredits);
     brand.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCredits(); } });
   }
@@ -4691,8 +4711,11 @@ function initUI() {
 
   // 4-Mode Arcade Grid Cards
   $$("#arcadeModeGrid .arcade-card").forEach((card) => {
-    card.addEventListener("click", () => setArcadeMode(card.dataset.arcade));
+    card.addEventListener("click", () => { setArcadeMode(card.dataset.arcade); if (isMobile()) setSetupStep(2); });
   });
+  $("#setupBack")?.addEventListener("click", () => setSetupStep(1));
+  const picked = $("#arcadeModeGrid .arcade-card.active .ac-title");
+  if (picked && $("#setupModeName")) $("#setupModeName").textContent = picked.textContent;
 
   $("#progressChip").addEventListener("click", (e) => { e.stopPropagation(); toggleProgressPop(); });
   document.addEventListener("click", (e) => {
@@ -4727,7 +4750,7 @@ function initUI() {
   $("#quizResult").addEventListener("click", (e) => { if (e.target.id === "quizResult") setMode("explore"); });
   $("#resultAgain").addEventListener("click", () => {
     $("#quizResult").classList.add("hidden");
-    $("#quizSetup").classList.remove("hidden");
+    openQuizSetup(2); // same game again: straight to where & how hard
     updateQuizBestLabels();
   });
   $("#resultExplore").addEventListener("click", () => setMode("explore"));
@@ -4766,8 +4789,249 @@ function initUI() {
   initSearch();
 }
 
+/* ───────────────────────── OPENING & WELCOME ───────────────────────── */
+// The brand's hand-drawn "teacher's circle" (brand/identity → Marks), redrawn for each target in screen
+// pixels so it always encloses it with an even pencil weight: a slightly wobbly ellipse that overshoots
+// its start, thick in the middle of the stroke and tapered at both ends. Same recipe as marks.py → loop().
+function handLoop(W, H, { rx, ry, wmax = 7, tilt = -4, sq = 2, turns = 1.16, start = 160, n = 48 }) {
+  const cx = W / 2, cy = H / 2, tl = (tilt * Math.PI) / 180;
+  const C = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, th = (start * Math.PI) / 180 - t * turns * 2 * Math.PI;
+    // wobble and the second pass's drift inward are in pixels, so long bars aren't cut at the ends
+    const dr = Math.min(rx, ry, 60) * (0.05 * Math.sin(2 * th + 0.6) + 0.03 * Math.sin(3 * th)) - 7 * t;
+    // sq > 2 squares the loop off (a superellipse), so it can hug long, thin targets
+    const sp = (v) => Math.sign(v) * Math.pow(Math.abs(v), 2 / sq);
+    const x = (rx + dr) * sp(Math.cos(th)), y = (ry + dr) * sp(Math.sin(th));
+    C.push([cx + x * Math.cos(tl) - y * Math.sin(tl), cy + x * Math.sin(tl) + y * Math.cos(tl)]);
+  }
+  const width = (t) => wmax * (0.18 + 0.82 * Math.pow(Math.sin(Math.PI * t), 0.55));
+  const L = [], R = [];
+  C.forEach(([x, y], i) => {
+    const a = C[Math.max(i - 1, 0)], b = C[Math.min(i + 1, n)];
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, w = width(i / n) / 2;
+    L.push([x - (dy / len) * w, y + (dx / len) * w]);
+    R.push([x + (dy / len) * w, y - (dx / len) * w]);
+  });
+  const P = [...L, C[n], ...R.reverse(), C[0]], m = P.length, f = (v) => v.toFixed(1);
+  let d = `M${f(P[0][0])} ${f(P[0][1])}`;
+  for (let i = 0; i < m; i++) { // closed Catmull-Rom → cubic Béziers
+    const p0 = P[(i - 1 + m) % m], p1 = P[i], p2 = P[(i + 1) % m], p3 = P[(i + 2) % m];
+    d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${f(p2[0])} ${f(p2[1])}`;
+  }
+  return d + "Z";
+}
+
+// The opening: the loader is a pale blue dot in a sunbeam. When the world is ready, the dot falls
+// towards us, growing to exactly the size the real globe is drawn at, and the scene fades onto it.
+const INTRO_ALT = 4.5; // the altitude initGlobe() starts the camera at
+const Intro = { ready: false, skip: false, done: false, t: 0, onDone: null };
+
+function initIntro() {
+  const L = $("#loader");
+  if (!L) return;
+  const skip = () => { Intro.skip = true; if (Intro.ready) finishIntro(); };
+  $("#introSkip")?.addEventListener("click", skip);
+  L.addEventListener("pointerdown", skip);
+  const onKey = (e) => {
+    if (Intro.done) { removeEventListener("keydown", onKey); return; }
+    if (e.key === "Escape" || e.key === "Enter" || e.key === " ") skip();
+  };
+  addEventListener("keydown", onKey);
+}
+
+// How big the globe is on screen at a given camera altitude (perspective camera looking at the centre)
+function globeRadiusPx(alt) {
+  const h = globalThis.innerHeight || 800;
+  const fov = ((S.globe?.camera?.()?.fov) || 50) * Math.PI / 180;
+  return (h / 2) * Math.tan(Math.asin(1 / (1 + alt))) / Math.tan(fov / 2);
+}
+
+// Called once the globe has been drawn behind the loader. Every visit gets the dot; a first visit also gets
+// the line. quick (a deep link): the camera is heading somewhere else, so the dot fades instead of falling.
+// Reduced motion: the same scene, faded rather than flown.
+function playIntro(onDone, quick) {
+  Intro.ready = true;
+  Intro.onDone = onDone;
+  const first = !store.get("gv-intro-seen", false) || Intro.force;
+  store.set("gv-intro-seen", true);
+  Intro.calm = quick || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  $("#loader").classList.add("ready");
+  if (Intro.skip) { finishIntro(); return; }
+  if (first && !quick) {
+    const line = $("#introLine");
+    line.textContent = "That little blue dot is home.";
+    line.classList.add("on");
+    Intro.t = setTimeout(() => finishIntro(), 2300);
+  } else {
+    Intro.t = setTimeout(() => finishIntro(), quick ? 450 : 700);
+  }
+}
+
+function finishIntro() {
+  if (Intro.done || !Intro.ready) return;
+  Intro.done = true;
+  clearTimeout(Intro.t);
+  const L = $("#loader"), dot = $("#introDot");
+  const end = () => { L.classList.add("done"); Intro.onDone?.(); };
+  if (Intro.calm || !dot) { end(); return; } // the loader's own fade carries it
+  const r0 = (dot.offsetWidth || 12) / 2;
+  dot.style.setProperty("--grow", (globeRadiusPx(INTRO_ALT) / r0).toFixed(2));
+  L.classList.add("falling");
+  setTimeout(end, 820);
+}
+
+/* Welcome card (first visit) and the walkthrough */
+function openWelcome() {
+  if (S.quiz || S.selected || S.mode !== "explore" || !$("#welcome")) return; // never interrupt someone already busy
+  $("#welcome").classList.remove("hidden");
+  $("#welcomeTour")?.focus();
+}
+function closeWelcome() {
+  $("#welcome")?.classList.add("hidden");
+  store.set("gv-welcomed", true);
+}
+
+const Coach = { i: -1, poll: 0, after: 0 };
+const COACH_STEPS = [
+  {
+    title: "Spin the world",
+    text: () => isCoarse() ? "Drag to spin it, and pinch to zoom in and out." : "Drag to spin it. Scroll to zoom in and out.",
+    target: () => {
+      const alt = S.globe.pointOfView().altitude || 2.4, r = globeRadiusPx(alt);
+      const cx = (globalThis.innerWidth || 1200) / 2, cy = (globalThis.innerHeight || 800) / 2;
+      return { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, card: "bottom", round: true };
+    },
+  },
+  {
+    title: "Tap a country",
+    text: () => `Every country opens a card with its story, its numbers and its wildlife. ${isCoarse() ? "Tap" : "Click"} India to try it.`,
+    enter: () => { closePanel(); pauseRotate(); S.globe.pointOfView({ lat: 22, lng: 79, altitude: 1.7 }, 1200); },
+    target: () => {
+      const p = S.globe.getScreenCoords?.(22, 79);
+      if (!p || !isFinite(p.x)) return null;
+      return { x: p.x - 54, y: p.y - 44, w: 108, h: 88, round: true };
+    },
+    live: true,                       // the globe may move under the mark: keep following it
+    done: () => !!S.selected,         // advances by itself once a country is open
+  },
+  {
+    title: "Find anything",
+    text: () => isCoarse() ? "Search every country, capital, river, range and wonder." : "Search every country, capital, river, range and wonder. Press ⌘K any time.",
+    enter: () => closePanel(),
+    target: () => elRect("#searchTrigger"),
+  },
+  {
+    title: "Five ways to see it",
+    text: () => "Explore the map, take a story tour, paint live data in Atlas, see the land itself in Earth, or play in Arcade.",
+    target: () => elRect("#modeTabs"),
+  },
+  {
+    title: "Ready for a game?",
+    text: () => "Arcade has four quick games, each about a minute long.",
+    target: () => elRect('.mode-tab[data-mode="quiz"]'),
+    next: "Play now",
+    onNext: () => setMode("quiz"),
+  },
+];
+
+function elRect(sel) {
+  const el = $(sel), r = el?.getBoundingClientRect?.();
+  return r && r.width ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+}
+
+function startCoach() {
+  closeWelcome();
+  if (S.mode !== "explore") setMode("explore");
+  $("#coach")?.classList.remove("hidden");
+  showCoachStep(0);
+}
+
+function showCoachStep(i) {
+  clearInterval(Coach.poll); clearTimeout(Coach.after);
+  Coach.i = i;
+  const step = COACH_STEPS[i];
+  step.enter?.();
+  $("#coachStep").textContent = `${i + 1} of ${COACH_STEPS.length}`;
+  $("#coachTitle").textContent = step.title;
+  $("#coachText").textContent = step.text();
+  $("#coachNext").textContent = step.next || (i === COACH_STEPS.length - 1 ? "Done" : "Next");
+  $("#coachBack").classList.toggle("hidden", i === 0);
+  const mark = $("#coachMark");
+  mark?.classList.remove("draw"); void mark?.getBoundingClientRect?.(); mark?.classList.add("draw");
+  placeCoach();
+  setTimeout(placeCoach, 1300); // after any camera flight has landed
+  if (step.live || step.done) {
+    Coach.poll = setInterval(() => {
+      if (step.live) placeCoach();
+      if (step.done?.() && !Coach.after) Coach.after = setTimeout(() => showCoachStep(i + 1), 1100);
+    }, 200);
+  }
+  $("#coachNext")?.focus({ preventScroll: true });
+}
+
+function placeCoach() {
+  if (Coach.i < 0) return;
+  const r = COACH_STEPS[Coach.i].target(), mark = $("#coachMark"), card = $("#coachCard");
+  if (!mark || !card) return;
+  const vw = globalThis.innerWidth || 1200, vh = globalThis.innerHeight || 800, gap = 14;
+  mark.style.visibility = r ? "visible" : "hidden";
+  let m = { x: vw / 2, y: vh / 2, w: 0, h: 0 };
+  if (r) {
+    // an ellipse that holds the whole target: wide bars get extra height so their rounded ends sit inside
+    const round = !!r.round, wmax = round ? 9 : 7;
+    const rx = r.w / 2 + (round ? 20 : Math.max(26, r.h * 0.5));
+    const ry = round ? r.h / 2 + 20 : r.h / 2 * 1.5 + 16;
+    const tilt = round ? -4 : -4 * Math.min(1, (r.h / r.w) * 2.5); // long bars barely tilt
+    const sq = round ? 2 : 2 + Math.min(1.2, Math.max(0, r.w / r.h - 1) * 0.15);
+    const W = 2 * rx + 2 * wmax + 8, H = 2 * ry + 2 * wmax + 8;
+    m = { x: r.x + r.w / 2 - W / 2, y: r.y + r.h / 2 - H / 2, w: W, h: H };
+    mark.setAttribute("viewBox", `0 0 ${W.toFixed(1)} ${H.toFixed(1)}`);
+    $("#coachMarkPath")?.setAttribute("d", handLoop(W, H, { rx, ry, wmax, tilt, sq }));
+  }
+  Object.assign(mark.style, { left: m.x + "px", top: m.y + "px", width: m.w + "px", height: m.h + "px" });
+  const cw = card.offsetWidth || 340, ch = card.offsetHeight || 190;
+  const bottomSafe = isMobile() ? (navHeight?.() || 60) + 16 : 28;
+  let top;
+  if (!r || r.card === "bottom") top = vh - ch - bottomSafe;
+  else if (m.y + m.h + gap + ch <= vh - bottomSafe) top = m.y + m.h + gap;
+  else top = Math.max(16, m.y - ch - gap);
+  const left = Math.min(Math.max(16, (r ? r.x + r.w / 2 : vw / 2) - cw / 2), vw - cw - 16);
+  card.style.left = left + "px";
+  card.style.top = top + "px";
+}
+
+function endCoach(say = true) {
+  clearInterval(Coach.poll); clearTimeout(Coach.after);
+  Coach.i = -1;
+  $("#coach")?.classList.add("hidden");
+  store.set("gv-welcomed", true);
+  if (say) toast("You can replay this tour from the Bhoogol logo, top left.", 3600);
+}
+
+function initWelcome() {
+  $("#welcomeTour")?.addEventListener("click", startCoach);
+  $("#welcomePlay")?.addEventListener("click", () => { closeWelcome(); setMode("quiz"); });
+  $("#welcomeSkip")?.addEventListener("click", () => {
+    closeWelcome();
+    if (isCoarse()) toast("Drag to spin · pinch to zoom · tap any country", 5200);
+  });
+  $("#welcome")?.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeWelcome(); } });
+  $("#coachNext")?.addEventListener("click", () => {
+    const step = COACH_STEPS[Coach.i];
+    if (Coach.i >= COACH_STEPS.length - 1) { endCoach(!step.onNext); step.onNext?.(); }
+    else showCoachStep(Coach.i + 1);
+  });
+  $("#coachBack")?.addEventListener("click", () => { if (Coach.i > 0) showCoachStep(Coach.i - 1); });
+  $("#coachSkip")?.addEventListener("click", () => endCoach());
+  $("#creditsWelcome")?.addEventListener("click", () => { closeCredits(); startCoach(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && Coach.i >= 0) endCoach(); });
+  addEventListener("resize", () => placeCoach());
+}
+
 /* ───────────────────────── BOOT ───────────────────────── */
 (async function boot() {
+  initIntro(); // the opening scene runs while the data loads
   try {
     await Promise.all([loadData(), window.GV_LIBS]);
     document.body.dataset.mode = S.mode;
@@ -4775,6 +5039,7 @@ function initUI() {
     initMicroStates();
     initUI();
     initSheets();
+    initWelcome();
     initRenderGuards();
     setPins(S.pins);
     setNames(S.names);
@@ -4783,23 +5048,35 @@ function initUI() {
     initHint();
     updateProgress();
     renderAtlasReadout(null);
-    loaderStep(100, "Ready for lift-off 🚀");
+    loaderStep(100, "Ready");
 
     // pre-warm the states list (~1 MB) only on desktop, once the browser is idle
     if (!isMobile() && !navigator.connection?.saveData) {
       setTimeout(() => (window.requestIdleCallback || setTimeout)(() => getStatesDataset()), 8000);
     }
 
+    // ?intro replays the first-visit opening (for demos); it isn't a deep link and leaves the URL
+    const qs = new URLSearchParams(location.search);
+    if (qs.has("intro")) {
+      Intro.force = true;
+      qs.delete("intro");
+      const rest = qs.toString();
+      history.replaceState(history.state, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
+    }
     const deepLink = location.search.length > 1;
     // two frames: the globe has been drawn behind the loader, so it fades onto a finished picture
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      $("#loader").classList.add("done");
-      // touch screens don't show the bottom hint — teach the three gestures once, on the first visit
-      if (isCoarse() && !store.get("gv-coached", false)) {
-        store.set("gv-coached", true);
-        setTimeout(() => toast("👆 Drag to spin · pinch to zoom · tap any country", 5200), 1600);
-      }
-      if (!deepLink) S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400);
+      playIntro(() => {
+        if (deepLink) return;
+        S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400);
+        // first visit: say hello once the globe has landed; touch users who've been welcomed before
+        // but never taught the gestures get the one-line hint instead
+        if (!store.get("gv-welcomed", false)) setTimeout(openWelcome, 2500);
+        else if (isCoarse() && !store.get("gv-coached", false)) {
+          store.set("gv-coached", true);
+          setTimeout(() => toast("Drag to spin · pinch to zoom · tap any country", 5200), 1600);
+        }
+      }, deepLink);
       S.urlReady = true;
       if (deepLink) applyUrl();
       else history.replaceState({ gvLevel: 0, gvDepth: history.state?.gvDepth ?? 0 }, "", location.href);

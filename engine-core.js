@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   GEOVERSE ENGINE · CORE (no WebGL — pure geometry & picking)
+   BHOOGOL ENGINE · CORE (no WebGL — pure geometry & picking)
    Builds the whole world as ONE land mesh, border line segments,
    a political colouring, and fast lat/lng → country lookup.
    Plain script: exposes globalThis.GeoCore (needs global `earcut`, `d3`).

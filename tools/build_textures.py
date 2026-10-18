@@ -1,4 +1,4 @@
-"""Build GeoVerse's terrain textures from NASA imagery (run once; outputs are committed).
+"""Build Bhoogol's terrain textures from NASA imagery (run once; outputs are committed).
 
   biome.jpg  — Blue Marble classified into soft, flat biome colours (snow, ice, rock,
                forest, grass, steppe, dry, sand, tundra, lakes) — the clean "toy" terrain look.

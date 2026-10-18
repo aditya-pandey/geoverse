@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   GEOVERSE ENGINE — a lean three.js globe
+   BHOOGOL ENGINE — a lean three.js globe
    · all land is ONE mesh; per-country colour lives in a tiny lookup texture
      (hover, selection, choropleths = rewriting a few bytes, never rebuilding geometry)
    · picking: ray → sphere → lat/lng → grid + point-in-polygon (no triangle raycasts)
@@ -19,7 +19,7 @@ const MAX_IDS = 512; // colour-texture slots (241 countries + Antarctica fit com
 const MAX_H = 0.4;   // tallest 3D bar, in globe radii
 
 // Clean "political" palette — soft pastels that read well on a blue ocean
-const PALETTE = ["#f2d48f", "#a9d39e", "#f3b59a", "#b9c6ec", "#d9b8e3", "#9fd6cf"];
+const PALETTE = ["#F7D37E", "#9FE3C2", "#FFB49B", "#B5C4FF", "#E4BDF4", "#94D9E6"]; // Bhoogol pol-1…pol-6
 const ICE = "#e9f1f7";
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -40,7 +40,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const LITE = renderer.capabilities.isWebGL2 === false;
   const maxDpr = () => Math.min(devicePixelRatio || 1, isPhone ? 2 : 2);
   renderer.setPixelRatio(maxDpr());
-  renderer.setClearColor(0x070b14, 1);
+  renderer.setClearColor(0x12133a, 1); // Bhoogol space
   renderer.domElement.style.display = "block";
   renderer.domElement.style.touchAction = "none";
   container.appendChild(renderer.domElement);
@@ -54,7 +54,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
   const ocean = new THREE.Mesh(
     new THREE.SphereGeometry(1, 96, 64),
     new THREE.ShaderMaterial({
-      uniforms: { uLight: { value: lightDir }, uDeep: { value: new THREE.Color("#174a75") }, uRim: { value: new THREE.Color("#3b8cc4") } },
+      uniforms: { uLight: { value: lightDir }, uDeep: { value: new THREE.Color("#2E6BFF") }, uRim: { value: new THREE.Color("#8FB2FF") } },
       vertexShader: `varying vec3 vN; varying vec3 vW;
         void main(){ vN = normalize(position); vW = (modelMatrix*vec4(position,1.)).xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
       fragmentShader: `uniform vec3 uLight, uDeep, uRim; varying vec3 vN; varying vec3 vW;
@@ -182,7 +182,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     lineMats.push(mat);
     return new LineSegments2(geo, mat);
   }
-  const borders = fatLines(G.buildLines(all, { r: 1.0016 }), { color: 0x24384f, width: 0.9, opacity: 0.55 });
+  const borders = fatLines(G.buildLines(all, { r: 1.0016 }), { color: 0x12133a, width: 0.9, opacity: 0.6 });
   scene.add(borders);
 
   const grat = [];
@@ -205,7 +205,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     outlined = f;
     if (outline) { scene.remove(outline); outline.geometry.dispose(); lineMats.splice(lineMats.indexOf(outline.material), 1); outline.material.dispose(); outline = null; }
     if (f) {
-      outline = fatLines(G.buildLines([f], { r: 1.0022 + (liftOf(f) || 0) }), { color: 0xffffff, width: 2.4, opacity: 0.95 });
+      outline = fatLines(G.buildLines([f], { r: 1.0022 + (liftOf(f) || 0) }), { color: 0xf7f5ef, width: 2.6, opacity: 1 });
       outline.userData.r = 1.0022 + (liftOf(f) || 0);
       outline.material.resolution.set(innerWidth, innerHeight);
       scene.add(outline);
@@ -310,7 +310,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     new THREE.SphereGeometry(1.14, 64, 48),
     new THREE.ShaderMaterial({
       side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      uniforms: { uColor: { value: new THREE.Color("#5fb8ff") } },
+      uniforms: { uColor: { value: new THREE.Color("#7FA4FF") } },
       vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix*normal); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
       fragmentShader: `uniform vec3 uColor; varying vec3 vN; void main(){ float i = pow(max(0., .72 + dot(vN, vec3(0,0,1.))), 3.2); gl_FragColor = vec4(uColor, 1.)*i*.9;
         #include <colorspace_fragment>
@@ -556,7 +556,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     return w;
   }
   // light text gets a dark halo, dark text a light one — always readable on land or sea
-  const haloFor = (rgb) => (rgb && (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) > 0.55 ? "rgba(6,14,28,0.78)" : "rgba(255,255,255,0.82)");
+  const haloFor = (rgb) => (rgb && (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) > 0.55 ? "rgba(18,19,58,0.78)" : "rgba(255,255,255,0.82)");
 
   function setLabels(data) {
     const size = acc.labelSize || ((l) => l.size || 1);
@@ -587,13 +587,13 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
         if (icon) {
           octx.beginPath(); octx.arc(p.x, p.y - r, r, 0, Math.PI * 2);
           octx.fillStyle = "rgba(255,255,255,0.94)"; octx.fill();
-          octx.lineWidth = 1.5; octx.strokeStyle = hot ? "#f59e0b" : "rgba(20,40,70,0.35)"; octx.stroke();
+          octx.lineWidth = 1.5; octx.strokeStyle = hot ? "#FFB020" : "rgba(18,19,58,0.35)"; octx.stroke();
           octx.beginPath(); octx.moveTo(p.x - 4, p.y - 3); octx.lineTo(p.x, p.y + 2); octx.lineTo(p.x + 4, p.y - 3); octx.fillStyle = "rgba(255,255,255,0.94)"; octx.fill();
           octx.font = `${Math.round(r * 1.15)}px ${EMOJI_FONT}`; octx.textAlign = "center"; octx.textBaseline = "middle";
           octx.fillText(icon, p.x, p.y - r + 1);
         } else {
-          octx.beginPath(); octx.arc(p.x, p.y, r + 2, 0, Math.PI * 2); octx.fillStyle = "rgba(6,14,28,0.75)"; octx.fill();
-          octx.beginPath(); octx.arc(p.x, p.y, r, 0, Math.PI * 2); octx.fillStyle = hot ? "#ffffff" : "#f59e0b"; octx.fill();
+          octx.beginPath(); octx.arc(p.x, p.y, r + 2, 0, Math.PI * 2); octx.fillStyle = "rgba(18,19,58,0.75)"; octx.fill();
+          octx.beginPath(); octx.arc(p.x, p.y, r, 0, Math.PI * 2); octx.fillStyle = hot ? "#ffffff" : "#FFB020"; octx.fill();
         }
       }
       const cy = icon ? p.y - r : p.y;
@@ -688,7 +688,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
           if (i) pos.push(...vecArr(lngOf(pts[i - 1]), latOf(pts[i - 1]), 1.0019), ...vecArr(lng, lat, 1.0019));
         }
       });
-      const c = parseColour(acc.pathColor ? (typeof acc.pathColor === "function" ? acc.pathColor(paths[0]) : acc.pathColor) : "#6ecdff") || { r: 0.43, g: 0.8, b: 1, a: 0.7 };
+      const c = parseColour(acc.pathColor ? (typeof acc.pathColor === "function" ? acc.pathColor(paths[0]) : acc.pathColor) : "#2E6BFF") || { r: 0.18, g: 0.42, b: 1, a: 0.8 };
       riverObj = fatLines(pos, { color: new THREE.Color().setRGB(c.r, c.g, c.b, THREE.SRGBColorSpace), width: 1.4, opacity: Math.min(1, c.a + 0.15) });
       riverObj.material.resolution.set(cssW, cssH);
       scene.add(riverObj);
@@ -833,7 +833,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
     ringT0 = performance.now();
     for (const d of data || []) {
       for (let k = 0; k < 3; k++) {
-        const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+        const mesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
         const p = vec(acc.ringLng ? acc.ringLng(d) : d.lng, acc.ringLat ? acc.ringLat(d) : d.lat, 1.003);
         mesh.position.copy(p);
         mesh.lookAt(p.clone().multiplyScalar(2));
@@ -852,7 +852,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       const t = (((now - ringT0) / (period * 1.7)) + r.phase / 3) % 1;
       const s = Math.max(1e-4, maxR * RAD * t);
       r.mesh.scale.setScalar(s);
-      const css = typeof colFn === "function" ? colFn(t) : "rgba(255,209,102," + (1 - t) + ")";
+      const css = typeof colFn === "function" ? colFn(t) : "rgba(255,176,32," + (1 - t) + ")";
       const c = parseColour(css);
       if (c) { r.mesh.material.color.setRGB(c.r, c.g, c.b, THREE.SRGBColorSpace); r.mesh.material.opacity = c.a * 0.9; }
     }
@@ -871,7 +871,7 @@ function create(container, { countries, extraLand = [], neighbors = [], priority
       const mid = (t) => s.clone().lerp(e, t).normalize().multiplyScalar(1 + 1.5 * alt);
       const curve = new THREE.CubicBezierCurve3(s.clone().multiplyScalar(1.002), mid(0.25), mid(0.75), e.clone().multiplyScalar(1.002));
       const pts = curve.getPoints(96), pos = [], col = [];
-      const [c0, c1] = (acc.arcColor ? acc.arcColor(d) : ["#ffd166", "#7ee0ff"]).map((x) => parseColour(x) || { r: 1, g: 1, b: 1, a: 1 });
+      const [c0, c1] = (acc.arcColor ? acc.arcColor(d) : ["#FFB020", "#7FA4FF"]).map((x) => parseColour(x) || { r: 1, g: 1, b: 1, a: 1 });
       for (let i = 0; i < pts.length - 1; i++) {
         pos.push(...pts[i].toArray(), ...pts[i + 1].toArray());
         for (const t of [i / (pts.length - 1), (i + 1) / (pts.length - 1)]) {
