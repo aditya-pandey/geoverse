@@ -4982,7 +4982,7 @@ function dockLogo() {
    so a link shared from a deep view or a preview still opens the app's front door. */
 async function shareApp() {
   const url = $('link[rel="canonical"]')?.href || "https://bhoogol.netlify.app/";
-  const data = { title: "Bhoogol · भूगोल", text: "Bhoogol means \u201cthe round Earth\u201d. Spin it, tap any country, and find out how much of the world you actually know.", url };
+  const data = { title: "Bhoogol · भूगोल", text: "Imagine holding the whole Earth in one hand. That\u2019s Bhoogol (भूगोल): a little round world where every country tells its story, one tap at a time.", url };
   if (isCoarse() && navigator.share) {
     try { await navigator.share(data); track("share", { method: "native", content_type: "app", item_id: "bhoogol" }); }
     catch (e) { /* closed the sheet: nothing to say */ }
