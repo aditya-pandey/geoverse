@@ -4937,6 +4937,20 @@ function dockLogo() {
   return true;
 }
 
+/* Sharing the app: a quiet icon in the top bar (and a button in About). Phones get the system share sheet;
+   desktops get the link copied, which is quicker than a share dialog there. Always the canonical address,
+   so a link shared from a deep view or a preview still opens the app's front door. */
+async function shareApp() {
+  const url = $('link[rel="canonical"]')?.href || "https://bhoogol.netlify.app/";
+  const data = { title: "Bhoogol · भूगोल", text: "Spin a 3D globe and learn geography. It's free.", url };
+  if (isCoarse() && navigator.share) {
+    try { await navigator.share(data); } catch (e) { /* closed the sheet: nothing to say */ }
+    return;
+  }
+  const ok = await copyText(url);
+  toast(ok ? "Link copied. Send it to someone curious." : `Copy this link: ${url}`, 3000);
+}
+
 /* Welcome card (first visit) and the walkthrough */
 function openWelcome() {
   if (S.quiz || S.selected || S.mode !== "explore" || !$("#welcome")) return; // never interrupt someone already busy
@@ -5082,6 +5096,8 @@ function initWelcome() {
   $("#coachSkip")?.addEventListener("click", () => endCoach());
   $("#creditsWelcome")?.addEventListener("click", () => { closeCredits(); startCoach(); });
   $("#creditsIntro")?.addEventListener("click", () => { closeCredits(); replayIntro(); });
+  $("#shareApp")?.addEventListener("click", shareApp);
+  $("#creditsShare")?.addEventListener("click", shareApp);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && Coach.i >= 0) endCoach(); });
   addEventListener("resize", () => placeCoach());
 }

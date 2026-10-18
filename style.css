@@ -1803,3 +1803,18 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
   .setup-back { padding: 8px 0; font: 600 15px/1 var(--font-sans); color: var(--link); }
   .setup-mode-name { min-width: 0; font: 700 15px/1.2 var(--font-display); color: var(--ink); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* ═══════════ SHARE (quiet: an icon beside search) ═══════════ */
+.share-app {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  color: var(--ink-muted); background: var(--surface); border: 2px solid var(--line);
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.share-app svg { width: 19px; height: 19px; }
+#topbar .share-app { margin-left: -14px; } /* sits with search, not apart from it */
+.share-app:hover { color: var(--ink); border-color: var(--line-strong); }
+@media (max-width: 768px) {
+  .share-app { width: 44px; height: 44px; }
+  #topbar .share-app { margin-left: 0; }
+  #topbar #searchWrap { margin-left: auto; } /* search and share pair up on the right */
+}

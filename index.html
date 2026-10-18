@@ -33,7 +33,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261018e" />
+<link rel="stylesheet" href="style.css?v=20261018f" />
 </head>
 <body>
 
@@ -85,6 +85,9 @@
       <kbd class="st-kbd" id="searchKbd">⌘K</kbd>
     </button>
   </div>
+  <button id="shareApp" class="share-app" type="button" title="Share Bhoogol" aria-label="Share Bhoogol">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m8 7.5 4-3.5 4 3.5"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+  </button>
 </header>
 
 <!-- ══════════ COMMAND PALETTE (⌘K / Ctrl+K) ══════════ -->
@@ -489,6 +492,7 @@
     </ul>
     <p class="credits-note">Map borders show how the source data draws them; India is shown with its official Survey of India boundary.</p>
     <div class="credits-replays">
+      <button id="creditsShare" class="bh-primary credits-replay" type="button">Share Bhoogol</button>
       <button id="creditsIntro" class="bh-raised credits-replay" type="button">Replay the opening</button>
       <button id="creditsWelcome" class="bh-raised credits-replay" type="button">Replay the welcome tour</button>
     </div>
@@ -548,14 +552,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261018e"),
-    load("engine.js?v=20261018e", true),
+    load("engine-core.js?v=20261018f"),
+    load("engine.js?v=20261018f", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261018e"></script>
+<script src="app.js?v=20261018f"></script>
 </body>
 </html>
