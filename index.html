@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019b" />
+<link rel="stylesheet" href="style.css?v=20261019c" />
 </head>
 <body>
 
@@ -106,6 +106,7 @@
     <button class="mode-tab" data-mode="quiz">
       <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M8 10.5v4M6 12.5h4"/><path d="M15.5 11.5h.01M18 13.5h.01"/></svg>
       <span>Arcade</span>
+      <span class="tab-dot hidden" id="dailyDot" title="Today's Bhoogol is waiting"></span>
     </button>
   </nav>
 
@@ -304,7 +305,13 @@
     <div id="challengeBanner" class="hidden" role="status"></div>
 
     <section class="setup-step setup-step1">
-    <label class="section-label">Pick a game</label>
+    <button class="daily-hero hidden" id="dailyHero" type="button">
+      <span class="dh-eyebrow"><span class="dh-badge">Daily</span> Today's Bhoogol <span id="dhNum" class="mono-num">#1</span></span>
+      <span class="dh-title">Line-up</span>
+      <span class="dh-status" id="dhStatus">Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.</span>
+      <span class="dh-cta" id="dhCta">Play today's</span>
+    </button>
+    <label class="section-label">Or pick a game</label>
     <div class="arcade-mode-grid" id="arcadeModeGrid">
       <button class="arcade-card active" data-arcade="mystery">
         <div class="ac-icon">
@@ -390,6 +397,30 @@
     <button id="quizStart">Start the game</button>
     <p class="quiz-best">Best here: <b id="quizBestLabel">0</b> pts · Overall: <b id="quizBestOverall">0</b> pts</p>
     </section>
+  </div>
+</div>
+
+<!-- Daily Bhoogol · Line-up -->
+<div id="dailyHud" class="hidden" role="region" aria-label="Today's Bhoogol">
+  <div class="daily-card" data-phase="order">
+    <div class="dl-head">
+      <p class="dl-eyebrow" id="dlEyebrow">Bhoogol #1</p>
+      <div class="dl-dots" id="dlDots" aria-hidden="true"></div>
+      <button class="dl-close" id="dlClose" type="button" title="Close (Esc)" aria-label="Close today's Bhoogol">✕</button>
+    </div>
+    <div class="dl-play">
+      <p class="dl-kind" id="dlKind">Fact · 1 of 3</p>
+      <h2 class="dl-q" id="dlQ">Who has the most people?</h2>
+      <p class="dl-end dl-top" id="dlTop">Most</p>
+      <ol class="dl-list" id="dlList" aria-label="Your order, top to bottom"></ol>
+      <p class="dl-end dl-bottom" id="dlBottom">Fewest</p>
+      <div class="dl-after" id="dlAfter" aria-live="polite"></div>
+    </div>
+    <div class="dl-done" id="dlDone"></div>
+    <div class="dl-actions">
+      <button id="dlAct" class="dl-act" type="button">Lock in</button>
+      <button id="dlMore" class="dl-more" type="button">More games</button>
+    </div>
   </div>
 </div>
 
@@ -515,7 +546,7 @@
       <li>Fonts — Baloo 2, Mukta, Kalam &amp; JetBrains Mono via <a href="https://fonts.google.com/" target="_blank" rel="noopener">Google Fonts</a> (SIL Open Font License)</li>
     </ul>
     <p class="credits-note">Map borders show how the source data draws them; India is shown with its official Survey of India boundary.</p>
-    <p class="credits-note">Bhoogol counts visits with Google Analytics to learn which features help people. No ads, and no data sold. <button id="trackToggle" class="coach-link" type="button">Don't count my visits</button></p>
+    <p class="credits-note">Bhoogol counts visits with Google Analytics to learn which features help people. No ads, and no data sold. Your daily Bhoogol score goes, without your name, into that day's "better than X% of players" count. <button id="trackToggle" class="coach-link" type="button">Don't count my visits</button></p>
     <div class="credits-replays">
       <button id="creditsShare" class="bh-primary credits-replay" type="button">Share Bhoogol</button>
       <button id="creditsIntro" class="bh-raised credits-replay" type="button">Replay the opening</button>
@@ -533,7 +564,7 @@
     <p class="welcome-lede">In Hindi, <i>bhoo</i> means Earth and <i>gol</i> means round. Spin the world, tap any country, and play your way around it.</p>
     <div class="welcome-actions">
       <button id="welcomeTour" class="bh-primary" type="button">Show me around</button>
-      <button id="welcomePlay" class="bh-raised" type="button">Play a quick game</button>
+      <button id="welcomePlay" class="bh-raised" type="button">Play today's Bhoogol</button>
       <button id="welcomeSkip" class="welcome-skip" type="button">I'll explore on my own</button>
     </div>
   </div>
@@ -577,14 +608,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019b"),
-    load("engine.js?v=20261019b", true),
+    load("engine-core.js?v=20261019c"),
+    load("engine.js?v=20261019c", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019b"></script>
+<script src="app.js?v=20261019c"></script>
 </body>
 </html>

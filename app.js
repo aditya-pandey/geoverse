@@ -817,7 +817,7 @@ function resumeTour() {
 
 // Tours and games take the whole screen on phones: the tab bar steps aside, the card's × is the way out
 function syncImmersive() {
-  document.body.classList.toggle("immersive", !!S.activeTour || !!S.quiz);
+  document.body.classList.toggle("immersive", !!S.activeTour || !!S.quiz || !!S.daily);
   updateHudLift();
 }
 
@@ -1052,6 +1052,7 @@ function polyBaseColor(d) {
     if (d === S.compare.b) return "rgba(61,220,151,0.78)";
   }
 
+  if (S.mode === "quiz" && S.daily) return dailyPolyColor(d);
   if (S.mode === "quiz" && S.quiz) {
     if (d === S.hoverD) return "rgba(255,255,255,0.35)";
     return "rgba(127,164,255,0.10)";
@@ -1173,7 +1174,7 @@ function initGlobe() {
     .htmlLat((w) => w.lat)
     .htmlLng((w) => w.lng)
     .htmlAltitude((w) => (w.__kind === "life" ? 0.03 : w.alt || 0.012))
-    .htmlElement((w) => (w.__kind === "life" ? buildLifeHolo(w) : buildArcBadge(w)))
+    .htmlElement((w) => (w.__kind === "life" ? buildLifeHolo(w) : w.__kind === "daily" ? buildDailyPin(w) : buildArcBadge(w)))
     .onGlobeClick((coords, ev) => {
       if (S.quiz?.arcadeMode === "pinpoint") return quizPinpointClick(coords);
       if (S.quiz?.type === "wonder") return quizWonderClick(coords);
@@ -1255,8 +1256,8 @@ function stageInsets() {
     if (tourHud && !tourHud.classList.contains("hidden")) {
       ins.bottom = Math.max(ins.bottom, navHeight() + tourHud.offsetHeight + 10);
     }
-    const qHud = $("#quizHud");
-    if (qHud && !qHud.classList.contains("hidden")) {
+    const qHud = ["#quizHud", "#dailyHud"].map($).find((x) => x && !x.classList.contains("hidden"));
+    if (qHud) {
       ins.bottom = Math.max(ins.bottom, navHeight() + qHud.offsetHeight + 10);
     }
   } else {
@@ -1270,8 +1271,8 @@ function stageInsets() {
       if (r.left < innerWidth / 2) ins.left = Math.max(ins.left, r.right + 24);
       else ins.right = Math.max(ins.right, innerWidth - r.left + 24);
     }
-    const qHud = $("#quizHud");
-    if (qHud && !qHud.classList.contains("hidden")) {
+    const qHud = ["#quizHud", "#dailyHud"].map($).find((x) => x && !x.classList.contains("hidden"));
+    if (qHud) {
       const r = qHud.getBoundingClientRect();
       if (r.left < innerWidth / 2) ins.left = Math.max(ins.left, r.right + 24);
       else ins.right = Math.max(ins.right, innerWidth - r.left + 24);
@@ -1550,11 +1551,11 @@ function setMode(mode) {
     return;
   }
   if (mode === S.mode) {
-    if (mode === "quiz" && !S.quiz) { openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
+    if (mode === "quiz" && !S.quiz) { closeDaily(true); openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
     return;
   }
   if (S.activeTour) pauseTour();
-  if (S.mode === "quiz") endQuiz(true);
+  if (S.mode === "quiz") { endQuiz(true); closeDaily(true); }
   if (S.mode === "earth") clearEarthLayers();
   track("mode_change", { mode });
   clearLifePin();
@@ -1600,6 +1601,7 @@ function setMode(mode) {
 /* ───────────────────────── COUNTRY SELECTION ───────────────────────── */
 function handleCountryClick(d, ev) {
   if (!d) return;
+  if (S.daily) { if (S.daily.phase !== "done" && S.daily.colour?.[d.gv?.cca3]) dailyPeek(d.gv.cca3); return; }
   if (d.__adm1) return openStatePanel(d);
   if (S.comparePick) return pickCompare(d);
   if (S.stateView) { exitStateView(false); selectCountry(d); return; }
@@ -2747,7 +2749,7 @@ function refreshHtmlLayer() {
   if (S.mode === "earth" && S.earthLayers.wonders) pins.push(...WONDERS);
   if (microActive()) pins.push(...S.micro);
   S.globe.markersData(pins);
-  S.globe.htmlElementsData([S.compare?.badge, S.lifePin].filter(Boolean));
+  S.globe.htmlElementsData([S.compare?.badge, S.lifePin, ...(S.daily ? dailyPins() : [])].filter(Boolean));
   refreshLabels();
 }
 
@@ -3700,6 +3702,7 @@ function setSetupStep(n) {
 }
 // Show the setup: a fresh visit starts at the games; a chosen game (challenge link, play again) skips ahead
 function openQuizSetup(step = 1) {
+  renderDailyHero();
   setSetupStep(S.pendingChallenge ? 2 : step);
   $("#quizSetup").classList.remove("hidden");
 }
@@ -4386,6 +4389,493 @@ function endQuiz(silent = false) {
   if (!silent) setMode("explore");
 }
 
+/* ───────────────────────── DAILY BHOOGOL · LINE-UP ───────────────────────── */
+// The same three Line-ups for everyone, every day: put five countries in order.
+// Puzzles live in data/daily/YYYY-MM.json, built ahead by tools/build_daily.mjs (and never edited once live).
+// "Better than X% of players" comes from the tiny /api/daily function (netlify/functions/daily.mjs).
+const DAILY_EPOCH = Date.UTC(2026, 9, 18); // Bhoogol #1
+const DAILY_LINK = "https://bhoogol.netlify.app/?daily";
+const DAILY_KIND = { fact: "Fact", quirky: "Quirky", serious: "Serious" };
+const DAILY_COLOURS = ["#F7D37E", "#9FE3C2", "#FFB49B", "#B5C4FF", "#E4BDF4"]; // the political pastels: a country's row and its land match
+const one = (v) => (v < 10 ? (+v.toFixed(1)).toString() : fmtFull.format(Math.round(v)));
+const kmText = (v) => `${fmtFull.format(Math.round(v / 10) * 10)} km`;
+// kind, how the question reads, what the ends of the list mean, how a value reads, and a "{a} … {b}" line for big gaps
+const DAILY_MEASURES = {
+  pop:          { label: "People", q: "Who has the most people?", top: "Most people", bottom: "Fewest", fmt: (v) => `${fmt.format(v)} people`, times: "has {r}× as many people as" },
+  area:         { label: "Size", q: "Which is the biggest?", top: "Biggest", bottom: "Smallest", fmt: (v) => `${fmt.format(v)} km²`, times: "is {r}× the size of" },
+  density:      { label: "Crowds", q: "Where are people packed in tightest?", top: "Most crowded", bottom: "Most elbow room", fmt: (v) => `${one(v)} people per km²`, times: "is {r}× as crowded as" },
+  urban:        { label: "City life", q: "Where do the most people live in cities?", top: "Most city folk", bottom: "Most country folk", fmt: (v) => `${one(v)}% in cities` },
+  neighbours:   { label: "Neighbours", q: "Who has the most neighbours?", top: "Most neighbours", bottom: "Fewest", fmt: (v) => (v === 0 ? "No land neighbours" : `${v} neighbour${v === 1 ? "" : "s"}`), int: true },
+  equator:      { label: "Equator", q: "Which is furthest from the equator?", top: "Furthest", bottom: "Closest", fmt: (v) => (v === 0 ? "Right on it" : `about ${kmText(v * 111)} away`), note: "Measured from the middle of each country." },
+  delhi:        { label: "From Delhi", q: "Which is furthest from Delhi?", top: "Furthest", bottom: "Closest", fmt: (v) => kmText(v), times: "is {r}× as far from Delhi as", note: "As the crow flies, to the middle of each country." },
+  kids:         { label: "Kids", q: "Where are the most kids?", top: "Most kids", bottom: "Fewest", fmt: (v) => `${one(v)}% are under 15` },
+  grandparents: { label: "Grandparents", q: "Where are the most grandparents?", top: "Most grandparents", bottom: "Fewest", fmt: (v) => `${one(v)}% are over 65` },
+  phones:       { label: "Phones", q: "Who has the most phone connections per person?", top: "Most phones", bottom: "Fewest", fmt: (v) => `${(v / 100).toFixed(1)} per person` },
+  rain:         { label: "Rain", q: "Which is the rainiest?", top: "Rainiest", bottom: "Driest", fmt: (v) => `${fmtFull.format(Math.round(v))} mm a year`, times: "gets {r}× the rain of" },
+  farmland:     { label: "Farmland", q: "Which has the most land under crops?", top: "Most farmland", bottom: "Least", fmt: (v) => `${one(v)}% of the land` },
+  water:        { label: "Fresh water", q: "Who has the most fresh water per person?", top: "Most water", bottom: "Least", fmt: (v) => `${fmt.format(v)} m³ per person`, times: "has {r}× the fresh water per person of", note: "Rivers and groundwater renewed each year, shared out per person." },
+  grain:        { label: "Grain", q: "Who grows the most grain per person?", top: "Most grain", bottom: "Least", fmt: (v) => `${fmtFull.format(Math.round(v))} kg per person a year`, times: "grows {r}× the grain per person of" },
+  life:         { label: "Long lives", q: "Where do people live the longest?", top: "Longest lives", bottom: "Shortest", fmt: (v) => `${one(v)} years` },
+  forest:       { label: "Forest", q: "Which is the most covered in forest?", top: "Most forest", bottom: "Least", fmt: (v) => `${one(v)}% forest` },
+  co2:          { label: "CO₂", q: "Who puts out the most CO₂ per person?", top: "Most CO₂", bottom: "Least", fmt: (v) => `${one(v)} t per person`, times: "puts out {r}× the CO₂ per person of" },
+  renew:        { label: "Renewables", q: "Who runs most on renewable energy?", top: "Most renewable", bottom: "Least", fmt: (v) => `${one(v)}% of energy` },
+  internet:     { label: "Online", q: "Where are the most people online?", top: "Most online", bottom: "Fewest", fmt: (v) => `${one(v)}% online` },
+  women:        { label: "Women in parliament", q: "Where do women hold the most seats in parliament?", top: "Most seats", bottom: "Fewest", fmt: (v) => `${one(v)}% of seats` },
+  income:       { label: "Income", q: "Which is the richest per person?", top: "Richest", bottom: "Poorest", fmt: (v) => `$${fmt.format(v)} per person`, times: "makes {r}× as much per person as" },
+  health:       { label: "Health spending", q: "Who spends the most on health per person?", top: "Spends most", bottom: "Least", fmt: (v) => `$${fmt.format(v)} per person`, times: "spends {r}× as much per person on health as" },
+};
+const DAILY_FROM_DATA = new Set(["neighbours", "equator", "delhi"]); // worked out from the map, not the World Bank
+
+// Today's puzzle number by the visitor's own calendar: everyone's new puzzle arrives at their midnight
+function dailyToday(now = new Date()) {
+  const day = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return { n: Math.round((day - DAILY_EPOCH) / 864e5) + 1, iso: new Date(day).toISOString().slice(0, 10) };
+}
+async function loadDaily(iso) {
+  S.dailyMonths ??= new Map();
+  const mon = iso.slice(0, 7);
+  if (!S.dailyMonths.has(mon)) {
+    S.dailyMonths.set(mon, fetch(`data/daily/${mon}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  }
+  const file = await S.dailyMonths.get(mon);
+  const entry = file?.days?.[iso];
+  // every country must be on our globe; a puzzle that isn't would be unplayable
+  return entry && entry.rounds.every((r) => r.c.every(([k]) => S.byCca3.has(k))) ? entry : null;
+}
+
+// What this device remembers: a random id for the scoreboard, and each day's rounds
+function dailyMemory() {
+  const m = store.get("gv-daily", null) || {};
+  m.days ||= {};
+  if (!m.device) {
+    const a = new Uint8Array(12);
+    try { crypto.getRandomValues(a); } catch (e) { a.forEach((_, i) => { a[i] = Math.random() * 256; }); }
+    m.device = [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+    store.set("gv-daily", m);
+  }
+  return m;
+}
+function saveDailyRecord() {
+  const D = S.daily;
+  if (!D) return;
+  const m = dailyMemory();
+  m.days[D.n] = D.rec;
+  // keep the last 400 days: plenty for streaks
+  const keys = Object.keys(m.days).map(Number).sort((a, b) => a - b);
+  keys.slice(0, Math.max(0, keys.length - 400)).forEach((k) => delete m.days[k]);
+  store.set("gv-daily", m);
+}
+function dailyStats(today) {
+  const days = dailyMemory().days;
+  const done = (n) => days[n]?.done;
+  let streak = 0;
+  for (let n = done(today) ? today : today - 1; done(n); n--) streak++;
+  let best = 0, run = 0;
+  Object.keys(days).map(Number).sort((a, b) => a - b).forEach((n, i, arr) => {
+    if (!done(n)) { run = 0; return; }
+    run = i && arr[i - 1] === n - 1 && done(n - 1) ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  return { played: Object.values(days).filter((d) => d.done).length, streak, best: Math.max(best, streak) };
+}
+
+const dailyTruth = (round) => round.c.slice().sort((a, b) => b[1] - a[1]).map(([k]) => k);
+function dailyMarks(order, truth) {
+  return order.map((k, i) => { const off = Math.abs(truth.indexOf(k) - i); return off === 0 ? "g" : off === 1 ? "y" : "r"; }).join("");
+}
+const dailyPoints = (marks) => [...marks].reduce((s, m) => s + (m === "g" ? 20 : m === "y" ? 10 : 0), 0);
+
+async function openDaily() {
+  const { n, iso } = dailyToday();
+  const entry = await loadDaily(iso);
+  if (!entry) { toast("Today's Bhoogol isn't ready yet. Try an Arcade game meanwhile.", 3200); if (S.mode !== "quiz") setMode("quiz"); return; }
+  if (S.quiz) endQuiz(true);
+  if (S.mode !== "quiz") setMode("quiz");
+  $("#quizSetup").classList.add("hidden");
+  $("#quizResult").classList.add("hidden");
+  const rec = dailyMemory().days[n] || { rounds: [] };
+  S.daily = { n, iso, entry, rec, round: 0, order: [], phase: "order" };
+  if (rec.done) S.daily.phase = "done";
+  else {
+    if (!rec.rounds.length) track("daily_start", { puzzle: n });
+    dailyRound(Math.min(rec.rounds.length, 2)); // a locked round stays locked, even after a reload
+  }
+  $("#dailyHud").classList.remove("hidden");
+  syncImmersive();
+  renderDaily();
+  if (S.daily.phase === "done") { dailyRank(); frameDaily(); }
+  scheduleUrl();
+}
+
+function dailyRound(i) {
+  const D = S.daily;
+  D.round = i;
+  D.phase = "order";
+  D.order = D.entry.rounds[i].c.map(([k]) => k);
+  D.truth = dailyTruth(D.entry.rounds[i]);
+  D.colour = Object.fromEntries(D.order.map((k, j) => [k, DAILY_COLOURS[j]]));
+  refreshPolys();
+  refreshHtmlLayer();
+  frameDaily();
+}
+
+function closeDaily(silent = false) {
+  if (!S.daily) return;
+  S.daily = null;
+  clearInterval(S.dailyTick);
+  $("#dailyHud").classList.add("hidden");
+  syncImmersive();
+  refreshPolys();
+  refreshHtmlLayer();
+  renderDailyHero();
+  if (!silent) { openQuizSetup(1); updateQuizBestLabels(); }
+  scheduleUrl();
+}
+
+// Fit the five countries on screen: aim at their middle, back off by how far apart they are
+function frameDaily() {
+  const D = S.daily;
+  if (!D || !S.globe) return;
+  const ks = D.phase === "done" ? D.entry.rounds.flatMap((r) => r.c.map(([k]) => k)) : D.order;
+  const pts = ks.map((k) => centroidOf(S.byCca3.get(k)));
+  const r = Math.PI / 180, v = [0, 0, 0];
+  pts.forEach(({ lat, lng }) => { v[0] += Math.cos(lat * r) * Math.cos(lng * r); v[1] += Math.cos(lat * r) * Math.sin(lng * r); v[2] += Math.sin(lat * r); });
+  const len = Math.hypot(...v) || 1;
+  const lat = Math.asin(v[2] / len) / r, lng = Math.atan2(v[1], v[0]) / r;
+  const spread = Math.max(...pts.map((p) => haversine(p, { lat, lng }))) / 111; // degrees
+  pauseRotate();
+  S.globe.pointOfView(viewFor(lat, lng, clamp(1.5 + spread / 45, 1.7, 3.4) * stageZoom()), 1400);
+}
+
+function dailyMove(from, to) {
+  const D = S.daily;
+  if (!D || D.phase !== "order" || from === to || to < 0 || to >= D.order.length) return;
+  const [k] = D.order.splice(from, 1);
+  D.order.splice(to, 0, k);
+  sfx("click");
+  renderDaily();
+  refreshHtmlLayer();
+}
+
+// A tap on a row (or on the land) shows where that country is
+function dailyPeek(k) {
+  const d = S.byCca3.get(k);
+  if (!d) return;
+  const { lat, lng } = centroidOf(d);
+  pauseRotate();
+  S.globe.pointOfView(viewFor(lat, lng, Math.max(1.6, S.globe.pointOfView().altitude)), 900);
+  ringPulse(lat, lng, 3, "255,176,32");
+  const row = $(`#dlList .dl-row[data-k="${k}"]`);
+  if (row) { row.classList.remove("ping"); void row.offsetWidth; row.classList.add("ping"); }
+}
+
+function lockDaily() {
+  const D = S.daily;
+  if (!D || D.phase !== "order") return;
+  const marks = dailyMarks(D.order, D.truth), pts = dailyPoints(marks);
+  D.rec.rounds[D.round] = { order: D.order.slice(), marks, pts };
+  if (D.round === 2) { D.rec.done = true; D.rec.score = D.rec.rounds.reduce((s, r) => s + r.pts, 0); }
+  saveDailyRecord();
+  D.phase = "reveal";
+  D.settled = false;
+  sfx(pts >= 80 ? "correct" : pts >= 40 ? "select" : "wrong");
+  track("daily_round", { puzzle: D.n, round: D.round + 1, measure: D.entry.rounds[D.round].m, points: pts });
+  renderDaily();
+  // first your order with its colours, then the cards slide into the true order
+  clearTimeout(S.dailySettle);
+  S.dailySettle = setTimeout(() => { if (S.daily === D && D.phase === "reveal") { D.settled = true; renderDaily(true); refreshHtmlLayer(); } }, 650);
+  if (D.rec.done) {
+    track("daily_end", { puzzle: D.n, score: D.rec.score });
+    track("post_score", { score: D.rec.score, level: "daily" });
+    if (D.rec.score >= 240) confetti({ particleCount: 110, spread: 85, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
+  }
+}
+
+function nextDaily() {
+  const D = S.daily;
+  if (!D || D.phase !== "reveal") return;
+  if (D.round < 2) { dailyRound(D.round + 1); renderDaily(); return; }
+  D.phase = "done";
+  refreshPolys();
+  refreshHtmlLayer();
+  renderDaily();
+  renderDailyHero();
+  dailyRank();
+}
+
+function dailyGapLine(round) {
+  const M = DAILY_MEASURES[round.m];
+  const s = round.c.slice().sort((a, b) => b[1] - a[1]);
+  const [ka, va] = s[0], [kb, vb] = s[s.length - 1];
+  const a = esc(nameOf(S.byCca3.get(ka))), b = esc(nameOf(S.byCca3.get(kb)));
+  const r = vb > 0 ? va / vb : Infinity;
+  if (M.times && r >= 2.5 && isFinite(r)) return `${a} ${M.times.replace("{r}", r < 10 ? (+r.toFixed(1)).toString() : fmtFull.format(Math.round(r)))} ${b}.`;
+  return `From ${a} at ${M.fmt(va)} down to ${b} at ${M.fmt(vb)}.`;
+}
+const dailySource = (round) => (DAILY_FROM_DATA.has(round.m) ? "Worked out from the map" : `World Bank${round.y ? `, ${round.y}` : ""}`);
+const ORDINAL = ["1st", "2nd", "3rd", "4th", "5th"];
+const dailyVerdict = (s) => (s === 300 ? "A perfect day!" : s >= 240 ? "Sharp eyes." : s >= 180 ? "Solid." : s >= 120 ? "Not bad at all." : "A tricky one today.");
+
+function renderDaily(flip = false) {
+  const D = S.daily, card = $("#dailyHud .daily-card");
+  if (!D || !card) return;
+  $("#dlEyebrow").textContent = `Bhoogol #${D.n}${D.entry.theme ? ` · ${D.entry.theme}` : ""}`;
+  $("#dlDots").innerHTML = [0, 1, 2].map((i) => `<i class="${D.phase === "done" || i < D.round || (i === D.round && D.phase === "reveal") ? "done" : i === D.round ? "on" : ""}"></i>`).join("");
+  card.dataset.phase = D.phase;
+  if (D.phase === "done") return renderDailyDone();
+
+  const round = D.entry.rounds[D.round], M = DAILY_MEASURES[round.m];
+  const val = Object.fromEntries(round.c);
+  $("#dlKind").textContent = `${DAILY_KIND[kindOf(round.m)]} · ${D.round + 1} of 3`;
+  $("#dlQ").textContent = M.q;
+  $("#dlTop").textContent = M.top;
+  $("#dlBottom").textContent = M.bottom;
+
+  const reveal = D.phase === "reveal", saved = D.rec.rounds[D.round];
+  const shown = reveal && D.settled ? D.truth : reveal ? saved.order : D.order;
+  const first = flip ? Object.fromEntries($$("#dlList .dl-row").map((el) => [el.dataset.k, el.getBoundingClientRect().top])) : null;
+  const max = Math.max(...round.c.map(([, v]) => v));
+  $("#dlList").innerHTML = shown.map((k, i) => {
+    const d = S.byCca3.get(k), flag = d?.gv?.flags?.svg;
+    const mine = reveal ? saved.order.indexOf(k) : i;
+    const mark = reveal ? saved.marks[mine] : "";
+    const note = reveal && D.settled && mark !== "g" ? `<span class="dl-you">you put it ${ORDINAL[mine]}</span>` : "";
+    return `<li class="dl-row${mark ? " m-" + mark : ""}" data-k="${k}" tabindex="0" style="--c:${D.colour[k]}"
+        aria-label="${esc(nameOf(d))}, ${ORDINAL[i]}${reveal ? `, ${M.fmt(val[k])}` : ""}">
+      <span class="dl-pos">${i + 1}</span>
+      ${flag ? `<img class="dl-flag" src="${flag}" alt="" loading="lazy">` : `<span class="dl-flag"></span>`}
+      <span class="dl-name">${esc(nameOf(d))}${reveal && D.settled ? `<span class="dl-val">${M.fmt(val[k])}</span>` : ""}${note}</span>
+      ${reveal && D.settled ? `<span class="dl-bar" style="--w:${Math.max(4, Math.round((Math.log1p(val[k]) / Math.log1p(max)) * 100))}%"></span>` : ""}
+      ${reveal ? `<span class="dl-mark" aria-hidden="true"></span>` : `<span class="dl-grip" aria-hidden="true"><i></i><i></i><i></i></span>`}
+    </li>`;
+  }).join("");
+  if (first) {
+    $$("#dlList .dl-row").forEach((el) => {
+      const dy = (first[el.dataset.k] ?? 0) - el.getBoundingClientRect().top;
+      if (!dy || !el.animate) return;
+      el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.2,.9,.25,1)" });
+    });
+  }
+  wireDailyRows();
+
+  const pts = saved?.pts ?? 0;
+  $("#dlAfter").innerHTML = reveal ? `
+      <p class="dl-round-score"><b>+${pts}</b> ${pts === 100 ? "Perfect order!" : pts >= 70 ? "So close." : pts >= 40 ? "Some right." : "A surprising one."}</p>
+      <p class="dl-gap">${dailyGapLine(round)}</p>
+      <p class="dl-src">${M.note ? esc(M.note) + " " : ""}Source: ${dailySource(round)}</p>` : `<p class="dl-howto">Drag to put them in order${isCoarse() ? "" : ", or use the arrow keys"}. Tap one to see it on the globe.</p>`;
+  const act = $("#dlAct");
+  act.textContent = reveal ? (D.round < 2 ? "Next Line-up" : "See today's score") : "Lock in";
+  act.classList.toggle("go", reveal);
+  act.disabled = reveal && !D.settled;
+}
+const DAILY_FACTS = ["pop", "area", "density", "urban", "neighbours", "equator", "delhi"], DAILY_QUIRKY = ["kids", "grandparents", "phones", "rain", "farmland", "water", "grain"];
+const kindOf = (m) => (DAILY_FACTS.includes(m) ? "fact" : DAILY_QUIRKY.includes(m) ? "quirky" : "serious");
+
+function renderDailyDone() {
+  const D = S.daily, rec = D.rec, st = dailyStats(D.n);
+  const sq = { g: "g", y: "y", r: "r" };
+  $("#dlDone").innerHTML = `
+    <div class="dl-total"><b class="mono-num">${rec.score}</b><span>/ 300</span></div>
+    <p class="dl-verdict">${dailyVerdict(rec.score)}</p>
+    <div class="dl-grid">${rec.rounds.map((r, i) => `<div class="dl-grid-row"><span class="dl-sq">${[...r.marks].map((m) => `<i class="m-${sq[m]}"></i>`).join("")}</span><span>${DAILY_MEASURES[D.entry.rounds[i].m].label}</span><b class="mono-num">${r.pts}</b></div>`).join("")}</div>
+    <p class="dl-rank" id="dlRank" aria-live="polite">${rec.pct != null ? `Better than <b>${rec.pct}%</b> of players today` : "Counting today's players…"}</p>
+    <div class="dl-hist" id="dlHist" aria-hidden="true"></div>
+    <div class="dl-stats">
+      <div><b class="mono-num">${st.played}</b><span>Played</span></div>
+      <div><b class="mono-num">${st.streak}</b><span>Day streak</span></div>
+      <div><b class="mono-num">${st.best}</b><span>Best streak</span></div>
+    </div>
+    <p class="dl-next">Next Bhoogol in <b id="dlCountdown">${dailyCountdown()}</b></p>`;
+  const act = $("#dlAct");
+  act.textContent = "Share my score";
+  act.classList.add("go");
+  act.disabled = false;
+  clearInterval(S.dailyTick);
+  S.dailyTick = setInterval(() => {
+    const el = $("#dlCountdown");
+    if (!S.daily || !el) return clearInterval(S.dailyTick);
+    if (dailyToday().n !== S.daily.n) { clearInterval(S.dailyTick); el.textContent = "now. Close this to play it."; renderDailyHero(); return; }
+    el.textContent = dailyCountdown();
+  }, 30000);
+}
+function dailyCountdown(now = new Date()) {
+  const mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const mins = Math.max(1, Math.ceil((mid - now) / 60000));
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+}
+
+// The scoreboard only runs on the live site; on a laptop server there's nothing to ask
+const dailyApiOn = () => /^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+async function dailyRank() {
+  const D = S.daily;
+  if (!D?.rec.done) return;
+  const say = (html) => { const el = $("#dlRank"); if (el && S.daily === D) el.innerHTML = html; };
+  if (!dailyApiOn()) { if (D.rec.pct == null) say("Your ranking shows on the live site."); return; }
+  try {
+    let res = null, mine = false;
+    const counting = !store.get("gv-notrack", false); // "Don't count my visits" keeps the score off the board too
+    if (counting && !D.rec.sent) {
+      res = await fetch("/api/daily", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ n: D.n, score: D.rec.score, device: dailyMemory().device }) });
+      if (res.ok || res.status === 429) { D.rec.sent = true; saveDailyRecord(); }
+      if (!res.ok) res = null;
+    }
+    mine = counting && D.rec.sent;
+    res ||= await fetch(`/api/daily?n=${D.n}`);
+    if (!res.ok) throw new Error("board");
+    const board = await res.json();
+    if (S.daily !== D) return;
+    const line = dailyRankLine(D.rec.score, board.hist, mine);
+    if (line.pct != null) { D.rec.pct = line.pct; saveDailyRecord(); }
+    say(line.html);
+    renderDailyHist(board.hist, D.rec.score);
+  } catch (e) {
+    if (D.rec.pct == null) say("Couldn't reach today's scoreboard. Your score is saved.");
+  }
+}
+// hist[i] = players who scored i × 10. Ties don't count as beaten.
+function dailyRankLine(score, hist, mine) {
+  const b = score / 10;
+  const count = hist.reduce((s, x) => s + x, 0), others = count - (mine ? 1 : 0);
+  const below = hist.slice(0, b).reduce((s, x) => s + x, 0);
+  if (others < 29) return { pct: null, html: others <= 0 ? "You're today's first player. Check back later to see where you rank." : `You're one of today's first ${others + 1} players. Check back later to see where you rank.` };
+  const above = hist.slice(b + 1).reduce((s, x) => s + x, 0);
+  if (!above) return { pct: 100, html: "<b>Top score today!</b> Nobody has beaten it yet." };
+  const pct = Math.round((below / others) * 100);
+  return { pct, html: `Better than <b>${pct}%</b> of ${fmtFull.format(others + 1)} players today` };
+}
+function renderDailyHist(hist, score) {
+  const el = $("#dlHist");
+  if (!el) return;
+  const bins = Array.from({ length: 10 }, (_, i) => hist.slice(i * 3, i * 3 + 3).reduce((s, x) => s + x, 0) + (i === 9 ? hist[30] || 0 : 0));
+  const top = Math.max(1, ...bins), mineBin = Math.min(9, Math.floor(score / 30));
+  el.innerHTML = bins.map((c, i) => `<i class="${i === mineBin ? "me" : ""}" style="--h:${Math.max(4, Math.round((c / top) * 100))}%"></i>`).join("") + `<span>0</span><span>300</span>`;
+}
+
+function dailyShareText() {
+  const D = S.daily, rec = D.rec, sq = { g: "🟩", y: "🟨", r: "🟥" };
+  return [
+    `Bhoogol #${D.n} · ${rec.score}/300`,
+    ...rec.rounds.map((r, i) => `${[...r.marks].map((m) => sq[m]).join("")} ${DAILY_MEASURES[D.entry.rounds[i].m].label}`),
+    ...(rec.pct != null ? [rec.pct === 100 ? "Top score today" : `Better than ${rec.pct}% of players`] : []),
+    DAILY_LINK,
+  ].join("\n");
+}
+async function shareDaily() {
+  const D = S.daily;
+  if (!D?.rec.done) return;
+  const text = dailyShareText();
+  if (isCoarse() && navigator.share) {
+    try { await navigator.share({ text }); track("share", { method: "native", content_type: "daily", item_id: String(D.n) }); }
+    catch (e) { /* closed the sheet */ }
+    return;
+  }
+  const ok = await copyText(text);
+  track("share", { method: "copy", content_type: "daily", item_id: String(D.n) });
+  toast(ok ? "Score copied. Paste it to a friend and see if they can beat it." : "Couldn't reach the clipboard", 3200);
+}
+
+function onDailyAction() {
+  const D = S.daily;
+  if (!D) return;
+  if (D.phase === "order") lockDaily();
+  else if (D.phase === "reveal") { if (D.settled) nextDaily(); }
+  else shareDaily();
+}
+
+// Drag a row to reorder; a tap without moving shows the country. Arrow keys move the focused row.
+function wireDailyRows() {
+  $$("#dlList .dl-row").forEach((row) => {
+    row.addEventListener("pointerdown", (e) => dailyDrag(e, row));
+    row.addEventListener("keydown", (e) => {
+      const D = S.daily;
+      if (!D) return;
+      const i = D.order.indexOf(row.dataset.k);
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dailyPeek(row.dataset.k); return; }
+      if (D.phase !== "order" || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dailyMove(i, i + (e.key === "ArrowUp" ? -1 : 1));
+      $(`#dlList .dl-row[data-k="${row.dataset.k}"]`)?.focus();
+    });
+  });
+}
+function dailyDrag(e, row) {
+  const D = S.daily;
+  if (!D || (e.button != null && e.button > 0)) return;
+  const rows = $$("#dlList .dl-row"), from = rows.indexOf(row);
+  const h = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight;
+  const y0 = e.clientY;
+  let to = from, moved = false;
+  try { row.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+  const move = (ev) => {
+    const dy = ev.clientY - y0;
+    if (D.phase !== "order" || (!moved && Math.abs(dy) < 6)) return;
+    if (!moved) { moved = true; row.classList.add("lift"); }
+    to = clamp(Math.round(from + dy / h), 0, rows.length - 1);
+    row.style.transform = `translateY(${clamp(dy, -from * h - 6, (rows.length - 1 - from) * h + 6)}px)`;
+    rows.forEach((r, i) => {
+      if (r === row) return;
+      const s = from < to && i > from && i <= to ? -h : from > to && i < from && i >= to ? h : 0;
+      r.style.transform = s ? `translateY(${s}px)` : "";
+    });
+  };
+  const up = () => {
+    row.removeEventListener("pointermove", move);
+    row.removeEventListener("pointerup", up);
+    row.removeEventListener("pointercancel", up);
+    if (!moved) return dailyPeek(row.dataset.k);
+    row.classList.remove("lift");
+    rows.forEach((r) => { r.style.transform = ""; });
+    if (to !== from) dailyMove(from, to);
+  };
+  row.addEventListener("pointermove", move);
+  row.addEventListener("pointerup", up);
+  row.addEventListener("pointercancel", up);
+}
+
+// On the globe: today's five glow in their row's colour; everything else steps back
+function dailyPolyColor(d) {
+  const D = S.daily;
+  const k = d.gv?.cca3;
+  if (D.phase === "done") return "rgba(127,164,255,0.06)";
+  if (k && D.colour[k]) return hexA(D.colour[k], d === S.hoverD ? 0.95 : 0.8);
+  return "rgba(127,164,255,0.06)";
+}
+function dailyPins() {
+  const D = S.daily;
+  if (!D || D.phase === "done") return [];
+  const order = D.phase === "reveal" && D.settled ? D.truth : D.phase === "reveal" ? D.rec.rounds[D.round].order : D.order;
+  return order.map((k, i) => {
+    const d = S.byCca3.get(k);
+    const [lat, lng] = d.gv.latlng?.length === 2 ? d.gv.latlng : [centroidOf(d).lat, centroidOf(d).lng];
+    return { __kind: "daily", lat, lng, alt: 0.02, k, pos: i + 1, colour: D.colour[k], name: nameOf(d) };
+  });
+}
+function buildDailyPin(p) {
+  const div = document.createElement("div");
+  div.className = "daily-pin";
+  div.style.setProperty("--c", p.colour);
+  div.innerHTML = `<b>${p.pos}</b><span>${esc(p.name)}</span>`;
+  return div;
+}
+
+// Arcade's first card: today's puzzle, and how you did if you've played it
+function renderDailyHero() {
+  const hero = $("#dailyHero");
+  const { n } = dailyToday();
+  const rec = dailyMemory().days[n];
+  const live = n >= 1;
+  $("#dailyDot")?.classList.toggle("hidden", !live || !!rec?.done);
+  if (!hero) return;
+  hero.classList.toggle("hidden", !live);
+  hero.classList.toggle("played", !!rec?.done);
+  $("#dhNum").textContent = `#${n}`;
+  $("#dhStatus").innerHTML = rec?.done
+    ? `Done today · <b class="mono-num">${rec.score}</b>/300${rec.pct != null ? ` · better than ${rec.pct}%` : ""}. Next one in ${dailyCountdown()}.`
+    : rec?.rounds?.length ? `You're ${rec.rounds.length} of 3 in. Pick up where you left off.` : "Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.";
+  $("#dhCta").textContent = rec?.done ? "See my score" : rec?.rounds?.length ? "Continue" : "Play today's";
+}
+
 /* ───────────────────────── BOTTOM SHEETS (mobile) ───────────────────────── */
 // Drawer + data/physical docks become draggable sheets: peek (globe stays usable above),
 // half and expanded. Drag the grip/header, flick, or tap the grip to cycle.
@@ -4529,7 +5019,7 @@ let urlQueued = false, urlPending = null, applyingUrl = false;
 
 function urlLevel() {
   let L = 0;
-  const quizUi = S.quiz || !$("#quizSetup").classList.contains("hidden") || !$("#quizResult").classList.contains("hidden");
+  const quizUi = S.quiz || S.daily || !$("#quizSetup").classList.contains("hidden") || !$("#quizResult").classList.contains("hidden");
   if (S.mode === "quiz" && quizUi) L++;
   if (panelVisible()) L++;
   if (S.stateView) L++;
@@ -4539,6 +5029,7 @@ function urlLevel() {
 }
 
 function buildUrl() {
+  if (S.daily) return location.pathname + "?daily" + location.hash;
   const p = new URLSearchParams();
   if (S.mode !== "explore") p.set("mode", S.mode);
   if (S.mode === "atlas" && S.atlasMetric !== "population") p.set("metric", S.atlasMetric);
@@ -4599,6 +5090,8 @@ async function applyUrl() {
   applyingUrl = true;
   try {
     const p = new URLSearchParams(location.search);
+    if (p.has("daily")) { if (!S.daily) await openDaily(); return; }
+    if (S.daily) closeDaily(true);
     const challenge = p.get("challenge");
     if (challenge && !S.quiz) { applyChallenge(challenge); return; }
 
@@ -4695,6 +5188,7 @@ function handleEscape() {
   if (!$("#toursModal")?.classList.contains("hidden")) return closeStoryToursModal();
   if (S.activeTour) return exitStoryTour();
   if (!$("#progressPop").classList.contains("hidden")) return closeProgressPop();
+  if (S.daily) return closeDaily();
   if (!$("#quizSetup").classList.contains("hidden") || !$("#quizResult").classList.contains("hidden")) return setMode("explore");
   if (S.quiz) return endQuiz();
   if (S.lifePin) return clearLifePin();
@@ -4881,6 +5375,11 @@ function initUI() {
   }));
   $("#quizStart").addEventListener("click", startQuiz);
   $("#quizSkip").addEventListener("click", skipRound);
+  $("#dailyHero")?.addEventListener("click", openDaily);
+  $("#dlAct")?.addEventListener("click", onDailyAction);
+  $("#dlClose")?.addEventListener("click", () => closeDaily());
+  $("#dlMore")?.addEventListener("click", () => closeDaily());
+  renderDailyHero();
   $("#quizNext")?.addEventListener("click", goNextRound);
   $("#quizHud .quiz-card")?.addEventListener("scroll", syncCardFade, { passive: true });
   // a folded clue opens again on tap
@@ -5234,7 +5733,7 @@ function endCoach(say = true) {
 
 function initWelcome() {
   $("#welcomeTour")?.addEventListener("click", () => { track("welcome_choice", { choice: "tour" }); startCoach(); });
-  $("#welcomePlay")?.addEventListener("click", () => { track("welcome_choice", { choice: "play" }); closeWelcome(); setMode("quiz"); });
+  $("#welcomePlay")?.addEventListener("click", () => { track("welcome_choice", { choice: "daily" }); closeWelcome(); openDaily(); });
   $("#welcomeSkip")?.addEventListener("click", () => {
     track("welcome_choice", { choice: "explore" });
     closeWelcome();

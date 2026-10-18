@@ -40,8 +40,11 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | **`level_end`** | An arcade game finishes | `level_name`, `success`, `score`, `correct`, `rounds`, `best_streak`, `region`, `difficulty` |
 | **`post_score`** | Its score | `score`, `level` |
 | `level_quit` | Quit mid-game | `level_name`, `round` |
-| **`share`** | App link, challenge link or scorecard shared | `method` (native/copy), `content_type` (app/challenge/scorecard), `item_id` |
-| `welcome_shown` / `welcome_choice` | First-visit welcome card | `choice` (tour/play/explore) |
+| **`share`** | App link, challenge link or scorecard shared | `method` (native/copy), `content_type` (app/challenge/scorecard/daily), `item_id` |
+| `daily_start` | Today's Bhoogol is opened for the first time that day | `puzzle` (puzzle number) |
+| `daily_round` | A Line-up is locked in | `puzzle`, `round` (1–3), `measure`, `points` |
+| `daily_end` | All three Line-ups done (also sends `post_score` with `level` = daily) | `puzzle`, `score` (0–300) |
+| `welcome_shown` / `welcome_choice` | First-visit welcome card | `choice` (tour/daily/explore) |
 | **`tutorial_begin`** / **`tutorial_complete`** / `tutorial_skip` | The walkthrough | `tutorial`, `play_now`, `step` |
 | `intro_skip` / `intro_replay` | The opening animation | (none) |
 | `setting_change` | Sound, names, pins, terrain view | `setting`, `setting_value` (not `value`, which GA reserves for money) |
@@ -61,12 +64,12 @@ These steps are for you to do in the GA admin, since they can't be done from cod
 4. **Register custom dimensions** so the parameters appear in reports. Go to **Admin → Custom definitions → Create custom dimension**, scope **Event**, and add:
    - `country_code`, `country_name`, `region`, `mode`, `tab`, `metric`, `tour_id`
    - `game`, `quiz_type`, `difficulty`, `level_name`, `challenge`
-   - `choice`, `setting`, `setting_value`, `layout`, `species`, `country_a`, `country_b`
+   - `puzzle`, `measure`, `choice`, `setting`, `setting_value`, `layout`, `species`, `country_a`, `country_b`
    - Name the `region` dimension something like "Country region", so it isn't confused with GA's built-in Region (the visitor's location).
    - The **Event parameter** dropdown only lists parameters GA has already received. On a new property, type the name in directly.
 
-   Then **Custom metrics**, unit Standard unless noted: `load_ms` (milliseconds), `correct`, `best_streak`.
-5. **Mark key events.** Go to **Admin → Events** (or Key events) and mark `level_end`, `tour_complete`, `share` and `tutorial_complete` as **key events**.
+   Then **Custom metrics**, unit Standard unless noted: `load_ms` (milliseconds), `correct`, `best_streak`, `points`.
+5. **Mark key events.** Go to **Admin → Events** (or Key events) and mark `daily_end`, `level_end`, `tour_complete`, `share` and `tutorial_complete` as **key events**.
 6. **Leave Google signals off.** Under **Admin → Data collection**, it isn't needed and the code already turns it off.
 7. **Optional: exclude yourself.** Go to **Admin → Data streams → Configure tag settings → Define internal traffic**, add your IP, then activate the "Internal traffic" filter in **Admin → Data filters**. Or simply use About → "Don't count my visits" on your own devices.
 8. **Optional: the old address.** If GitHub Pages still serves aditya-pandey.github.io/geoverse, its visits count too. Either switch GitHub Pages off, or filter reports by **Hostname = bhoogol.netlify.app**.
@@ -77,3 +80,11 @@ These steps are for you to do in the GA admin, since they can't be done from cod
 - **Which games are played and finished:** `level_name` × `level_start` vs `level_end` counts, plus average `score`.
 - **First-visit funnel:** `welcome_shown` → `welcome_choice` → `tutorial_begin` → `tutorial_complete` → `level_start`.
 - **Health:** `exception` by `description`, and average `load_ms` split by `layout`.
+- **Daily habit:** `daily_end` count per day, and users with `daily_end` on 2+ days (Explore → Cohort).
+
+## Daily Bhoogol scoreboard
+
+"Better than X% of players" is not Google Analytics. It is a tiny Netlify Function (`netlify/functions/daily.mjs`, at `/api/daily`) that keeps one tally per puzzle in Netlify Blobs:
+- **What's stored:** the puzzle number, the score, and a random id the browser made up, so one device counts once. The network address is kept only as a salted hash, to cap one network at 6 scores a day. No names and no raw IPs.
+- **"Don't count my visits":** with this on, the score isn't sent; the page still reads the tally to show the percentage.
+- **Local testing:** on `localhost` the page doesn't call the function at all.

@@ -1,0 +1,9 @@
+{
+  "name": "bhoogol",
+  "private": true,
+  "type": "module",
+  "description": "Bhoogol is a static site. This file only exists so Netlify can install what the Daily Bhoogol score function needs.",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.4"
+  }
+}
