@@ -5037,6 +5037,8 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
   if (body) {
     let t = null;
     body.addEventListener("touchstart", (e) => {
+      // a touch on a handle is the handle's (when the whole sheet scrolls, the grip sits inside it)
+      if (handles.some((hd) => hd.contains(e.target))) { t = null; return; }
       t = isMobile() && e.touches.length === 1 ? { x0: e.touches[0].clientX, y0: e.touches[0].clientY, h0: el.offsetHeight, mode: null, samples: [[e.touches[0].clientY, e.timeStamp]] } : null;
     }, { passive: true });
     body.addEventListener("touchmove", (e) => {
@@ -5068,13 +5070,14 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
 function initSheets() {
   initSheet($("#panel"), {
     def: "half",
+    body: $("#panelBody"),
     dismiss: () => closePanel(),
     onSnap: () => { // keep the subject centred in whatever globe is left visible
       if (S.compare) frameCompare(700);
       else if (S.selected) frameCountry(S.selected, 700);
     },
   });
-  initSheet($("#atlasDock"), { def: "peek" });
+  initSheet($("#atlasDock"), { def: "peek", body: $("#atlasDock") });
   // Story tours: peek = title + Next · half (default) = the hook and a taste of why · full = everything
   const tour = $("#tourActiveHud");
   if (tour) {
@@ -5096,7 +5099,15 @@ function initSheets() {
       },
     });
   }
-  initSheet($("#earthDock"), { def: "peek" });
+  initSheet($("#earthDock"), { def: "peek", body: $("#earthDock") });
+  // soft fades at the edges of the country card's text, like the tour card
+  const pb = $("#panelBody");
+  if (pb) {
+    const fade = () => { pb.classList.toggle("fade-top", pb.scrollTop > 4); pb.classList.toggle("fade-bottom", pb.scrollHeight - pb.scrollTop - pb.clientHeight > 6); };
+    pb.addEventListener("scroll", fade, { passive: true });
+    new MutationObserver(() => requestAnimationFrame(fade)).observe(pb, { childList: true });
+    addEventListener("resize", fade);
+  }
 
   const relayout = () => {
     for (const [el, sh] of sheets) if (sheetShown(el)) setSheet(el, sh.state, false);
