@@ -44,7 +44,7 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | `welcome_shown` / `welcome_choice` | First-visit welcome card | `choice` (tour/play/explore) |
 | **`tutorial_begin`** / **`tutorial_complete`** / `tutorial_skip` | The walkthrough | `tutorial`, `play_now`, `step` |
 | `intro_skip` / `intro_replay` | The opening animation | (none) |
-| `setting_change` | Sound, names, pins, terrain view | `setting`, `value` |
+| `setting_change` | Sound, names, pins, terrain view | `setting`, `setting_value` (not `value`, which GA reserves for money) |
 | `analytics_opt_out` | Someone turns counting off | (none) |
 | **`exception`** | JavaScript error, lost 3D view, failed start-up | `description`, `fatal` |
 
@@ -61,7 +61,9 @@ These steps are for you to do in the GA admin, since they can't be done from cod
 4. **Register custom dimensions** so the parameters appear in reports. Go to **Admin → Custom definitions → Create custom dimension**, scope **Event**, and add:
    - `country_code`, `country_name`, `region`, `mode`, `tab`, `metric`, `tour_id`
    - `game`, `quiz_type`, `difficulty`, `level_name`, `challenge`
-   - `choice`, `setting`, `value`, `layout`, `species`, `country_a`, `country_b`
+   - `choice`, `setting`, `setting_value`, `layout`, `species`, `country_a`, `country_b`
+   - Name the `region` dimension something like "Country region", so it isn't confused with GA's built-in Region (the visitor's location).
+   - The **Event parameter** dropdown only lists parameters GA has already received. On a new property, type the name in directly.
 
    Then **Custom metrics**, unit Standard unless noted: `load_ms` (milliseconds), `correct`, `best_streak`.
 5. **Mark key events.** Go to **Admin → Events** (or Key events) and mark `level_end`, `tour_complete`, `share` and `tutorial_complete` as **key events**.

@@ -4645,10 +4645,10 @@ function initUI() {
   $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $("#styleToggle")?.addEventListener("click", () => {
     setMapStyle(S.mapStyle === "terrain" ? "political" : "terrain");
-    track("setting_change", { setting: "map_style", value: S.mapStyle });
+    track("setting_change", { setting: "map_style", setting_value: S.mapStyle });
     toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
   });
-  $("#soundToggle")?.addEventListener("click", () => { setSound(!S.sound); track("setting_change", { setting: "sound", value: S.sound ? "on" : "off" }); });
+  $("#soundToggle")?.addEventListener("click", () => { setSound(!S.sound); track("setting_change", { setting: "sound", setting_value: S.sound ? "on" : "off" }); });
   const brand = $(".brand");
   if (brand) {
     Object.assign(brand, { tabIndex: 0, title: "About Bhoogol & credits" });
@@ -4661,12 +4661,12 @@ function initUI() {
   $("#creditsModal").addEventListener("click", (e) => { if (e.target.id === "creditsModal") closeCredits(); });
   $("#namesToggle")?.addEventListener("click", () => {
     setNames(!S.names);
-    track("setting_change", { setting: "names", value: S.names ? "on" : "off" });
+    track("setting_change", { setting: "names", setting_value: S.names ? "on" : "off" });
     toast(S.names ? "🏷️ Country names on" : "🏷️ Country names hidden");
   });
   $("#pinToggle").addEventListener("click", () => {
     setPins(!S.pins);
-    track("setting_change", { setting: "pins", value: S.pins ? "on" : "off" });
+    track("setting_change", { setting: "pins", setting_value: S.pins ? "on" : "off" });
     toast(S.pins ? "📍 Pins on — tiny nations & islands are easy to tap" : "📍 Pins hidden");
   });
 
