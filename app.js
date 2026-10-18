@@ -3600,7 +3600,7 @@ function makeRound(type, t, pool, rng, diff) {
     return {
       target: t, correct, options: shuffleWith(rng, [correct, ...wrong]), fly: true,
       html: `${flag(t)} Capital of ${gold(nameOf(t))}?`, text: `Capital of ${nameOf(t)}?`, answer: correct,
-      explain: `❌ It's ${correct}.`,
+      explain: `It's ${correct}.`,
     };
   }
   if (type === "city") {
@@ -3609,7 +3609,7 @@ function makeRound(type, t, pool, rng, diff) {
     return {
       target: t, correct: nameOf(t), options: shuffleWith(rng, [nameOf(t), ...wrong]),
       html: `${gold(city)} is the capital of…?`, text: `${city} is the capital of…?`, answer: nameOf(t),
-      explain: `❌ ${city} is the capital of ${nameOf(t)}.`,
+      explain: `${city} is the capital of ${nameOf(t)}.`,
     };
   }
   if (type === "borders") {
@@ -3621,7 +3621,7 @@ function makeRound(type, t, pool, rng, diff) {
     return {
       target: t, correct: nameOf(t), options: shuffleWith(rng, [nameOf(t), ...wrong]),
       html: `Which country borders ${gold(list)}?`, text: `Which country borders ${neighbours.map(nameOf).join(", ")}?`,
-      answer: nameOf(t), explain: `❌ It was ${nameOf(t)}.`,
+      answer: nameOf(t), explain: `It was ${nameOf(t)}.`,
     };
   }
   if (type === "duel") {
@@ -3637,7 +3637,7 @@ function makeRound(type, t, pool, rng, diff) {
       html: `Which has the bigger ${gold(metric === "population" ? "population" : "area")}?`,
       text: `Bigger ${metric}: ${nameOf(t)} or ${nameOf(rival)}?`,
       answer: `${nameOf(winner)} (${fmt.format(val(winner))}${unit})`,
-      explain: `❌ ${nameOf(winner)}: ${fmt.format(val(winner))} vs ${nameOf(loser)}: ${fmt.format(val(loser))}${unit}`,
+      explain: `${nameOf(winner)}: ${fmt.format(val(winner))} vs ${nameOf(loser)}: ${fmt.format(val(loser))}${unit}`,
     };
   }
   // flag
@@ -3646,7 +3646,7 @@ function makeRound(type, t, pool, rng, diff) {
     target: t, correct: nameOf(t), options: shuffleWith(rng, [nameOf(t), ...wrong]),
     html: `<img src="${t.gv.flags.png}" alt="Mystery flag" style="height:64px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.5)" /><br/>Whose flag is this?`,
     text: `Whose flag is this? ${flagEmoji(t.gv.cca2)}`, answer: nameOf(t),
-    explain: `❌ That's the flag of ${nameOf(t)}.`,
+    explain: `That's the flag of ${nameOf(t)}.`,
   };
 }
 
@@ -3800,8 +3800,13 @@ function nextRound() {
   $("#quizRound").textContent = `${q.round}/${ROUNDS}`;
   $("#quizScore").textContent = `${q.score} pts`;
   setStreak(q);
+  q.waiting = false;
   $("#quizFeedback").textContent = "";
   $("#quizFeedback").className = "";
+  $("#quizHud .quiz-card")?.classList.remove("won", "lost");
+  $("#quizNext")?.classList.add("hidden");
+  $("#quizSkip")?.classList.remove("hidden");
+  setTimeout(syncCardFade, 80);
   $("#quizStoryFact").classList.add("hidden");
   $("#quizStoryFact").innerHTML = "";
 
@@ -3823,6 +3828,7 @@ function nextRound() {
     $("#mysteryClueText3").textContent = "Guess twice to unlock Clue 3...";
     $("#mysteryClue3").className = "clue-item locked";
     setClueNote(q);
+    setClueSteps(1);
     refreshPolys();
   } else if (q.arcadeMode === "chain") {
     q.target = r.target;
@@ -3876,6 +3882,52 @@ function nextRound() {
   }
 }
 
+// A round's result lives at the top of the card, where you're already looking.
+// kind: "win" · "miss" (round over, not won) · "try" (wrong, guesses left) · "info"
+function roundSay(kind, html) {
+  const fb = $("#quizFeedback");
+  fb.innerHTML = html;
+  fb.className = "fb-" + kind;
+  const card = $("#quizHud .quiz-card");
+  card?.classList.toggle("won", kind === "win");
+  card?.classList.toggle("lost", kind === "miss");
+  if (card) card.scrollTop = 0;
+  requestAnimationFrame(syncCardFade);
+}
+// A round is over: no timer, the player moves on when they've taken it in
+function roundOver() {
+  const q = S.quiz;
+  if (!q) return;
+  q.waiting = true;
+  $("#quizSkip")?.classList.add("hidden");
+  const nb = $("#quizNext");
+  if (nb) {
+    nb.textContent = q.round >= ROUNDS ? "See results" : "Next round";
+    nb.classList.remove("hidden");
+    nb.focus?.({ preventScroll: true });
+  }
+  syncCardFade();
+}
+function goNextRound() {
+  const q = S.quiz;
+  if (!q || !q.waiting) return;
+  nextRound();
+}
+// A soft fade at the card's bottom edge whenever more of it is below
+function syncCardFade() {
+  const c = $("#quizHud .quiz-card");
+  if (c) c.classList.toggle("more-below", c.scrollHeight - c.scrollTop - c.clientHeight > 6);
+}
+// Clue stepper: how many clues there are, how many are open; older clues fold to one line
+function setClueSteps(open) {
+  $$("#clueSteps i").forEach((el, i) => { el.classList.toggle("on", i < open); el.classList.toggle("now", i === open - 1); });
+  ["#mysteryClue1", "#mysteryClue2", "#mysteryClue3"].forEach((sel, i) => {
+    const el = $(sel);
+    if (el && i < open - 1) el.classList.add("past");
+  });
+  requestAnimationFrame(syncCardFade);
+}
+
 // The streak only speaks up once it's a streak
 function setStreak(q) {
   $("#quizStreak").textContent = q.streak >= 2 ? `${q.streak} in a row` : "";
@@ -3904,14 +3956,12 @@ function quizMysteryClick(d, ev) {
   const q = S.quiz;
   if (!q || q.locked || !d || q.arcadeMode !== "mystery") return;
   const target = q.target;
-  const fb = $("#quizFeedback");
 
   if (d === target) {
     q.locked = true;
     const cluePts = q.attempts === 0 ? 300 : q.attempts === 1 ? 200 : 100;
     const pts = award(cluePts);
-    fb.innerHTML = `✅ <b>Bullseye!</b> That's <b>${nameOf(d)}</b> (+${pts} pts)`;
-    fb.className = "good";
+    roundSay("win", `<b>Correct!</b> It's ${esc(nameOf(d))} <span class="fb-pts">+${pts}</span>`);
     logRound("correct", nameOf(d));
     flash(d, "rgba(61,220,151,0.9)", 1400);
     ringPulse(centroidOf(d).lat, centroidOf(d).lng, 4, "16,185,129");
@@ -3922,23 +3972,23 @@ function quizMysteryClick(d, ev) {
     });
 
     if (q.cur.fact) showQuizStoryFact(q.cur.fact);
-    setTimeout(nextRound, 2600);
+    roundOver();
   } else {
     q.attempts++;
     const dist = Math.round(haversine(centroidOf(d), centroidOf(target)));
     const dir = bearingArrow(centroidOf(d), centroidOf(target));
 
     let tempClass = "cold";
-    let tempLabel = "❄️ Freezing Cold";
+    let tempLabel = "Cold";
     let flashColor = "rgba(127,164,255,0.85)";
 
     if (dist < 1500) {
       tempClass = "hot";
-      tempLabel = "🔥 Burning Hot!";
+      tempLabel = "Very close";
       flashColor = "rgba(184,58,31,0.9)";
     } else if (dist <= 5000) {
       tempClass = "warm";
-      tempLabel = "☀️ Getting Warmer";
+      tempLabel = "Warmer";
       flashColor = "rgba(255,176,32,0.85)";
     }
 
@@ -3948,16 +3998,14 @@ function quizMysteryClick(d, ev) {
     if (q.attempts >= q.maxAttempts) {
       q.locked = true;
       q.streak = 0;
-      fb.innerHTML = `❌ Out of clues! It was <b>${nameOf(target)}</b>`;
-      fb.className = "bad";
+      roundSay("miss", `Out of clues. It was <b>${esc(nameOf(target))}</b>.`);
       logRound("wrong", nameOf(d));
       flash(target, "rgba(255,176,32,0.95)", 2400);
       flyTo(target, 1100);
       if (q.cur.fact) showQuizStoryFact(q.cur.fact);
-      setTimeout(nextRound, 3000);
+      roundOver();
     } else {
-      fb.innerHTML = `<span class="radar-pill ${tempClass}">${tempLabel}</span> That's <b>${nameOf(d)}</b> — ${fmtFull.format(dist)} km away, head <b>${dir}</b>!`;
-      fb.className = "bad";
+      roundSay("try", `<span class="radar-pill ${tempClass}">${tempLabel}</span> That's ${esc(nameOf(d))}, ${fmtFull.format(dist)} km away. Head <b>${dir}</b>.`);
       if (q.attempts === 1) {
         $("#mysteryClueText2").textContent = q.cur.clues[1];
         $("#mysteryClue2").className = "clue-item";
@@ -3966,6 +4014,7 @@ function quizMysteryClick(d, ev) {
         $("#mysteryClue3").className = "clue-item";
       }
       setClueNote(q);
+      setClueSteps(q.attempts + 1);
     }
     setStreak(q);
   }
@@ -3986,27 +4035,24 @@ function answerChain(isHigher) {
   targetStatEl.textContent = r.valTargetStr;
 
   const isCorrect = isHigher ? r.valTarget >= r.valBase : r.valTarget <= r.valBase;
-  const fb = $("#quizFeedback");
 
   if (isCorrect) {
     const pts = award(150);
-    fb.innerHTML = `✅ <b>Correct!</b> ${nameOf(r.target)} has ${r.valTargetStr} (+${pts} pts)`;
-    fb.className = "good";
+    roundSay("win", `<b>Correct!</b> ${esc(nameOf(r.target))} has ${r.valTargetStr} <span class="fb-pts">+${pts}</span>`);
     logRound("correct", isHigher ? "More" : "Less");
     flash(r.target, "rgba(61,220,151,0.9)", 1400);
     confetti({ particleCount: 75, spread: 70, origin: { x: 0.5, y: 0.4 }, colors: ["#3DDC97", "#2E6BFF", "#FFB020"] });
     flyTo(r.target, 1100);
     if (r.fact) showQuizStoryFact(r.fact);
-    setTimeout(nextRound, 2000);
+    roundOver();
   } else {
     q.streak = 0;
-    fb.innerHTML = `❌ <b>Streak Broken!</b> ${nameOf(r.target)} has ${r.valTargetStr}`;
-    fb.className = "bad";
+    roundSay("miss", `<b>Not this time.</b> ${esc(nameOf(r.target))} has ${r.valTargetStr}.`);
     logRound("wrong", isHigher ? "More" : "Less");
     flash(r.target, "rgba(184,58,31,0.9)", 1400);
     flyTo(r.target, 1100);
     if (r.fact) showQuizStoryFact(r.fact);
-    setTimeout(nextRound, 2600);
+    roundOver();
   }
   setStreak(q);
   $("#quizScore").textContent = `${q.score} pts`;
@@ -4039,17 +4085,13 @@ function quizPinpointClick(coords) {
   $("#pinpointDistance").textContent = `${fmtFull.format(dist)} km off target`;
   $("#pinpointScore").textContent = `+${pts} pts`;
 
-  const fb = $("#quizFeedback");
   if (pts >= 700) {
-    fb.innerHTML = `🎯 <b>Incredible accuracy!</b> Just ${fmtFull.format(dist)} km away.`;
-    fb.className = "good";
-    confetti({ particleCount: 90, spread: 80, origin: { x: 0.5, y: 0.4 } });
+    roundSay("win", `<b>Spot on!</b> Just ${fmtFull.format(dist)} km away <span class="fb-pts">+${pts}</span>`);
+    confetti({ particleCount: 90, spread: 80, origin: { x: 0.5, y: 0.4 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
   } else if (pts >= 350) {
-    fb.innerHTML = `👍 <b>Good estimation!</b> ${fmtFull.format(dist)} km away.`;
-    fb.className = "good";
+    roundSay("win", `<b>Close!</b> ${fmtFull.format(dist)} km away <span class="fb-pts">+${pts}</span>`);
   } else {
-    fb.innerHTML = `📍 Target was ${fmtFull.format(dist)} km away.`;
-    fb.className = "bad";
+    roundSay("miss", `${esc(t.name)} was ${fmtFull.format(dist)} km from your pin.${pts ? ` <span class="fb-pts">+${pts}</span>` : ""}`);
   }
 
   logRound(pts >= 400 ? "correct" : "wrong", `${fmtFull.format(dist)} km off`);
@@ -4060,7 +4102,7 @@ function quizPinpointClick(coords) {
   setStreak(q);
   $("#quizScore").textContent = `${q.score} pts`;
 
-  setTimeout(nextRound, 3200);
+  roundOver();
 }
 
 // Record each round exactly once for the results review + emoji scorecard
@@ -4087,33 +4129,29 @@ function quizWonderClick(coords) {
   const w = q.target;
   const tol = q.cur.km;
   const dist = haversine(coords, w);
-  const fb = $("#quizFeedback");
 
   if (dist <= tol) {
     q.locked = true;
     const bonus = dist < tol * 0.35 ? 40 : 0;
     const pts = award(100 + bonus);
-    fb.textContent = `✅ +${pts} pts — only ${fmtFull.format(Math.round(dist))} km off${bonus ? " · bullseye!" : ""}`;
-    fb.className = "good";
+    roundSay("win", `<b>${bonus ? "Bullseye!" : "Found it!"}</b> Only ${fmtFull.format(Math.round(dist))} km off <span class="fb-pts">+${pts}</span>`);
     logRound("correct", `${fmtFull.format(Math.round(dist))} km off`);
     ringPulse(w.lat, w.lng, 3.5, "61,220,132");
     confetti({ particleCount: 90, spread: 75, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
-    setTimeout(nextRound, 1600);
+    roundOver();
   } else {
     q.attempts++;
     if (q.attempts >= q.maxAttempts) {
       q.locked = true;
       q.streak = 0;
-      fb.innerHTML = `❌ It's here — <b>${esc(w.name)}</b>`;
-      fb.className = "bad";
+      roundSay("miss", `Here it is: <b>${esc(w.name)}</b>.`);
       logRound("wrong", `${fmtFull.format(Math.round(dist / 100) * 100)} km off`);
       ringPulse(w.lat, w.lng, 4, "255,209,102");
       S.globe.pointOfView({ lat: w.lat, lng: w.lng, altitude: 1.1 }, 1100);
       pauseRotate();
-      setTimeout(nextRound, 2500);
+      roundOver();
     } else {
-      fb.innerHTML = `${fmtFull.format(Math.round(dist / 100) * 100)} km away — head ${bearingArrow(coords, w)}`;
-      fb.className = "bad";
+      roundSay("try", `${fmtFull.format(Math.round(dist / 100) * 100)} km away. Head <b>${bearingArrow(coords, w)}</b>.`);
     }
     setStreak(q);
   }
@@ -4142,13 +4180,11 @@ function award(base) {
 function quizMapClick(d, ev) {
   const q = S.quiz;
   if (q.type !== "find" || q.locked || !d) return;
-  const fb = $("#quizFeedback");
 
   if (d === q.target) {
     q.locked = true;
     const pts = award(100);
-    fb.textContent = `✅ +${pts} pts — that's ${nameOf(d)}!`;
-    fb.className = "good";
+    roundSay("win", `<b>Correct!</b> That's ${esc(nameOf(d))} <span class="fb-pts">+${pts}</span>`);
     logRound("correct");
     flash(d, "rgba(61,220,151,0.9)", 1100);
     confetti({
@@ -4156,24 +4192,22 @@ function quizMapClick(d, ev) {
       origin: { x: (ev?.clientX ?? innerWidth / 2) / innerWidth, y: (ev?.clientY ?? innerHeight / 2) / innerHeight },
       colors: ["#3DDC97", "#FFB020", "#2E6BFF", "#F7F5EF"],
     });
-    setTimeout(nextRound, 1300);
+    roundOver();
   } else {
     q.attempts++;
     flash(d, "rgba(184,58,31,0.85)", 700);
     if (q.attempts >= q.maxAttempts) {
       q.locked = true;
       q.streak = 0;
-      fb.innerHTML = `❌ It was here — <b>${esc(nameOf(q.target))}</b>`;
-      fb.className = "bad";
+      roundSay("miss", `It was <b>${esc(nameOf(q.target))}</b>.`);
       logRound("wrong", nameOf(d));
       flash(q.target, "rgba(255,176,32,0.9)", 2100);
       flyTo(q.target, 1000);
-      setTimeout(nextRound, 2400);
+      roundOver();
     } else {
       const dist = haversine(centroidOf(d), centroidOf(q.target));
       const hint = q.attempts === q.maxAttempts - 1 && q.maxAttempts > 2 ? ` · hint: it's in ${q.target.gv.subregion || q.target.gv.region}` : "";
-      fb.innerHTML = `That's ${esc(nameOf(d))}. Head ${bearingArrow(centroidOf(d), centroidOf(q.target))} ≈ ${fmtFull.format(Math.round(dist / 100) * 100)} km${hint}`;
-      fb.className = "bad";
+      roundSay("try", `That's ${esc(nameOf(d))}. Head <b>${bearingArrow(centroidOf(d), centroidOf(q.target))}</b>, about ${fmtFull.format(Math.round(dist / 100) * 100)} km${hint}.`);
     }
     setStreak(q);
   }
@@ -4185,21 +4219,18 @@ function choiceAnswer(btn) {
   if (!q || q.locked) return;
   q.locked = true;
   const good = btn.dataset.c === "1";
-  const fb = $("#quizFeedback");
   $$(".q-opt").forEach((b) => { if (b.dataset.c === "1") b.classList.add("correct"); });
 
   if (good) {
     const pts = award(100);
-    fb.textContent = `✅ +${pts} pts!`;
-    fb.className = "good";
+    roundSay("win", `<b>Correct!</b> <span class="fb-pts">+${pts}</span>`);
     logRound("correct");
     flash(q.target, "rgba(61,220,151,0.9)", 1100);
     confetti({ particleCount: 80, spread: 70, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
   } else {
     btn.classList.add("wrong");
     q.streak = 0;
-    fb.textContent = q.explain || "❌ Not quite.";
-    fb.className = "bad";
+    roundSay("miss", `<b>Not quite.</b> ${q.explain ? esc(q.explain) : `It's ${esc(btn.parentNode?.querySelector('[data-c="1"]')?.textContent.replace(/^[A-J]/, "").trim() || "the highlighted one")}.`}`);
     logRound("wrong", btn.textContent.replace(/^[A-J]/, "").trim());
   }
   if (!q.cur.fly && q.target) flyTo(q.target, 1100);
@@ -4207,7 +4238,7 @@ function choiceAnswer(btn) {
   if (fact) showQuizStoryFact(fact);
   $("#quizScore").textContent = `${q.score} pts`;
   setStreak(q);
-  setTimeout(nextRound, 2200);
+  roundOver();
 }
 
 function skipRound() {
@@ -4219,40 +4250,35 @@ function skipRound() {
     q.locked = true;
     flash(q.target, "rgba(255,176,32,0.95)", 2000);
     flyTo(q.target, 1000);
-    $("#quizFeedback").innerHTML = `It was <b>${esc(nameOf(q.target))}</b>`;
-    $("#quizFeedback").className = "bad";
+    roundSay("info", `Skipped. It was <b>${esc(nameOf(q.target))}</b>.`);
     if (q.cur.fact) showQuizStoryFact(q.cur.fact);
-    setTimeout(nextRound, 2500);
+    roundOver();
   } else if (q.arcadeMode === "chain") {
     q.locked = true;
-    $("#quizFeedback").innerHTML = `Skipped duel — ${nameOf(q.cur.target)} has ${q.cur.valTargetStr}`;
-    $("#quizFeedback").className = "bad";
-    setTimeout(nextRound, 2000);
+    roundSay("info", `Skipped. ${esc(nameOf(q.cur.target))} has ${q.cur.valTargetStr}.`);
+    roundOver();
   } else if (q.arcadeMode === "pinpoint") {
     q.locked = true;
     const t = q.target;
     ringPulse(t.lat, t.lng, 3.5, "245,158,11");
     S.globe.pointOfView({ lat: t.lat, lng: t.lng, altitude: 1.2 }, 1000);
-    $("#quizFeedback").innerHTML = `Target was here — <b>${t.name}</b>`;
-    $("#quizFeedback").className = "bad";
+    roundSay("info", `Skipped. Here's <b>${esc(t.name)}</b>.`);
     if (q.cur.fact) showQuizStoryFact(q.cur.fact);
-    setTimeout(nextRound, 2600);
+    roundOver();
   } else if (q.type === "find") {
     q.locked = true;
     flash(q.target, "rgba(255,176,32,0.9)", 1800);
     flyTo(q.target, 900);
-    $("#quizFeedback").innerHTML = `It was <b>${esc(nameOf(q.target))}</b>`;
-    $("#quizFeedback").className = "bad";
-    setTimeout(nextRound, 2000);
+    roundSay("info", `Skipped. It was <b>${esc(nameOf(q.target))}</b>.`);
+    roundOver();
   } else if (q.type === "wonder") {
     q.locked = true;
     const w = q.target;
     ringPulse(w.lat, w.lng, 4, "255,209,102");
     S.globe.pointOfView({ lat: w.lat, lng: w.lng, altitude: 1.1 }, 1000);
     pauseRotate();
-    $("#quizFeedback").innerHTML = `It's here — <b>${esc(w.name)}</b>`;
-    $("#quizFeedback").className = "bad";
-    setTimeout(nextRound, 2200);
+    roundSay("info", `Skipped. Here's <b>${esc(w.name)}</b>.`);
+    roundOver();
   } else nextRound();
 }
 
@@ -4691,6 +4717,8 @@ function onKey(e) {
   if (e.key === "/") { e.preventDefault(); openPalette(); return; }
   if (e.key === "Escape") { handleEscape(); return; }
 
+  // Quiz: Enter moves on once a round is over
+  if (S.quiz?.waiting && e.key === "Enter" && !$("#quizHud").classList.contains("hidden")) { e.preventDefault(); goNextRound(); return; }
   // Quiz: 1–9 / 0 or A–D pick an answer
   if (S.quiz && !S.quiz.locked && !$("#quizHud").classList.contains("hidden")) {
     const opts = $$("#quizOptions:not(.hidden) .q-opt");
@@ -4853,6 +4881,13 @@ function initUI() {
   }));
   $("#quizStart").addEventListener("click", startQuiz);
   $("#quizSkip").addEventListener("click", skipRound);
+  $("#quizNext")?.addEventListener("click", goNextRound);
+  $("#quizHud .quiz-card")?.addEventListener("scroll", syncCardFade, { passive: true });
+  // a folded clue opens again on tap
+  $("#mysteryCluesBox")?.addEventListener("click", (e) => {
+    const c = e.target.closest?.(".clue-item.past");
+    if (c) c.classList.toggle("open");
+  });
   $("#quizQuit").addEventListener("click", () => {
     if (S.quiz) track("level_quit", { level_name: S.quiz.arcadeMode === "blitz" ? `blitz:${S.quiz.type}` : S.quiz.arcadeMode, round: (S.quiz.log?.length || 0) + 1 });
     endQuiz();

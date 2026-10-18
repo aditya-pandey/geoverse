@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019a" />
+<link rel="stylesheet" href="style.css?v=20261019b" />
 </head>
 <body>
 
@@ -405,10 +405,12 @@
         </button>
       </div>
     </div>
+    <div id="quizFeedback" role="status" aria-live="polite"></div>
     <div id="quizPrompt"></div>
 
     <!-- Mode A: Mystery Hunt Clues -->
     <div id="mysteryCluesBox" class="mystery-clues hidden">
+      <div class="clue-steps" id="clueSteps" aria-label="Clues"><span>Clue</span><i class="on">1</i><i>2</i><i>3</i></div>
       <div class="clue-item" id="mysteryClue1"><span class="clue-pts">300 pts</span><span class="clue-text" id="mysteryClueText1">Clue 1...</span></div>
       <div class="clue-item locked" id="mysteryClue2"><span class="clue-pts">200 pts</span><span class="clue-text" id="mysteryClueText2">Locked clue</span></div>
       <div class="clue-item locked" id="mysteryClue3"><span class="clue-pts">100 pts</span><span class="clue-text" id="mysteryClueText3">Locked clue</span></div>
@@ -452,11 +454,11 @@
 
     <!-- Mode D / Classic Options -->
     <div id="quizOptions" class="hidden"></div>
-    <div id="quizFeedback"></div>
     <div id="quizStoryFact" class="quiz-story-fact hidden"></div>
 
     <div class="quiz-actions">
       <button id="quizSkip">Skip</button>
+      <button id="quizNext" class="quiz-next hidden" type="button">Next round</button>
       <button id="quizQuit" class="quit">Quit</button>
     </div>
   </div>
@@ -575,14 +577,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019a"),
-    load("engine.js?v=20261019a", true),
+    load("engine-core.js?v=20261019b"),
+    load("engine.js?v=20261019b", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019a"></script>
+<script src="app.js?v=20261019b"></script>
 </body>
 </html>

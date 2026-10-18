@@ -1934,3 +1934,57 @@ html.pointer-input :focus-visible { outline: none; }
   .q-opt { min-height: 52px; font-size: 16px; padding: 10px 10px; }
   .quiz-actions button { height: 44px; min-height: 44px; font-size: 16px; padding: 0 18px; }
 }
+
+/* ═══════════ ROUND RESULT: the answer at the top, the player moves on ═══════════ */
+#quizFeedback { min-height: 0; margin: 0 0 10px; font-size: 16px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+#quizFeedback:empty { display: none; }
+#quizFeedback[class^="fb-"] { padding: 10px 14px; border-radius: var(--radius); border: 1px solid transparent; animation: fbIn .32s var(--ease-settle) both; }
+#quizFeedback b { font-weight: 700; }
+#quizFeedback.fb-win  { background: rgba(61, 220, 151, .16); border-color: rgba(61, 220, 151, .5); }
+#quizFeedback.fb-win > b:first-child { color: var(--mint); font-family: var(--font-display); font-size: 19px; }
+#quizFeedback.fb-miss { background: rgba(255, 138, 112, .12); border-color: rgba(255, 138, 112, .42); }
+#quizFeedback.fb-miss > b:first-child { color: var(--danger-ink); }
+#quizFeedback.fb-try  { background: var(--surface-raised); }
+#quizFeedback.fb-info { background: var(--surface-raised); color: var(--ink-muted); }
+#quizFeedback.fb-info b { color: var(--ink); }
+.fb-pts { display: inline-block; margin-left: 4px; padding: 1px 9px; border-radius: var(--radius-pill); background: var(--mint); color: var(--space);
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700; vertical-align: 1px; }
+#quizFeedback .radar-pill { margin-right: 4px; }
+@keyframes fbIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #quizFeedback[class^="fb-"] { animation: none; } }
+
+/* the whole card says it: a mint edge when you got it */
+.quiz-card.hud { transition: border-color .3s, box-shadow .3s; }
+.quiz-card.hud.won { border-color: rgba(61, 220, 151, .7); box-shadow: var(--lift), 0 0 0 3px rgba(61, 220, 151, .18); }
+.quiz-card.hud.lost { border-color: rgba(255, 138, 112, .45); }
+
+/* Next round: the one thing to press */
+.quiz-actions #quizNext {
+  font-family: var(--font-display); font-weight: 700; font-size: 17px; padding: 0 26px;
+  color: var(--on-marigold) !important; background: var(--marigold) !important;
+  border-radius: var(--radius-pill); box-shadow: 0 4px 0 var(--marigold-ledge) !important;
+}
+.quiz-actions #quizNext:hover { filter: brightness(1.05); }
+.quiz-actions #quizNext:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--marigold-ledge) !important; }
+.quiz-actions #quizNext::after { content: " →"; }
+
+/* clue stepper: three dots, so you know there is more than one clue */
+.clue-steps { display: flex; align-items: center; gap: 6px; margin: 0 2px 2px; font-size: 13px; color: var(--ink-muted); }
+.clue-steps span { margin-right: 2px; }
+.clue-steps i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--ink-muted); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.clue-steps i.on { color: var(--on-marigold); background: rgba(255, 176, 32, .55); box-shadow: none; }
+.clue-steps i.now { background: var(--marigold); }
+.clue-steps i + i { position: relative; margin-left: 10px; }
+.clue-steps i + i::before { content: ""; position: absolute; right: 100%; top: 50%; width: 10px; height: 2px; background: var(--line-strong); }
+.clue-steps i.on + i.on::before { background: rgba(255, 176, 32, .55); }
+
+/* older clues fold to one line; tap to reopen. The newest stays the hero */
+.clue-item.past { padding: 8px 12px; cursor: pointer; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.clue-item.past .clue-text { font-size: 15px !important; color: var(--ink-muted); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.clue-item.past.open .clue-text { -webkit-line-clamp: unset; display: block; color: var(--ink); }
+.clue-item.past .clue-pts { opacity: .6; }
+.clue-item:not(.locked):not(.past) { box-shadow: inset 3px 0 0 var(--marigold); }
+
+/* more below? a soft fade at the bottom edge says so */
+.quiz-card.hud.more-below { -webkit-mask-image: linear-gradient(#000 calc(100% - 44px), transparent); mask-image: linear-gradient(#000 calc(100% - 44px), transparent); }
