@@ -6,7 +6,6 @@ to assets/brand/bhoogol-wordmark-night.svg:
                     (hidden until the dock) in the "oo";
   · .intro-world  — two spinning worlds laid exactly over the "oo": a circle of ocean with a strip of
                     land that slides past (Americas, then Afro-Eurasia, …), so each reads as a turning globe;
-  · #loaderFill   — the teacher's underline, revealed left-to-right as the data loads.
 Run from this folder:  python3 build_intro.py
 """
 import re
@@ -49,13 +48,7 @@ def spinner(side, cx, cy):
 
 
 spin = "".join(spinner(*w) for w in worlds)
-# the underline sits under the letters (from the b's left edge to the l's right edge)
-ul_left, ul_right = OX / VBW * 100, (OX + WM_W) / VBW * 100
-underline = (f'<div class="intro-ul" style="left:{ul_left:.3f}%;width:{ul_right - ul_left:.3f}%">'
-             f'<div id="loaderFill"><svg viewBox="0 104 256 48" preserveAspectRatio="none" aria-hidden="true">'
-             f'<path fill="{F.MARIGOLD}" d="{F.mark_underline()}"/></svg></div></div>')
-
-markup = f'<div class="intro-mark">{word}{spin}{underline}</div>'
+markup = f'<div class="intro-mark">{word}{spin}</div>'
 s = open(INDEX).read()
 s, n = re.subn(r"<!-- intro:start -->.*?<!-- intro:end -->", f"<!-- intro:start -->{markup}<!-- intro:end -->", s, flags=re.S)
 assert n == 1, "intro markers not found in index.html"

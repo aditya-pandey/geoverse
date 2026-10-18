@@ -874,7 +874,8 @@ function currentArcs() {
 
 /* ───────────────────────── DATA LOAD ───────────────────────── */
 function loaderStep(pct, msg) {
-  $("#loaderFill").style.width = pct + "%";
+  const fill = $("#loaderFill");
+  if (fill) fill.style.width = pct + "%";
   $("#loaderMsg").textContent = msg;
 }
 
@@ -4823,9 +4824,9 @@ function handLoop(W, H, { rx, ry, wmax = 7, tilt = -4, sq = 2, turns = 1.16, sta
 }
 
 // The opening is the logo assembling itself: two worlds roll in like kanche and keep spinning in the "oo",
-// the letters pop in around them, and a teacher's underline draws as the data loads (all CSS, see
+// the letters pop in around them while the data loads (all CSS, see
 // index.html → intro artwork). When the world is ready the worlds settle into their logo pose, the
-// wordmark flies into its place in the top bar, and the eastern world grows into the real globe.
+// wordmark (worlds and all) flies into its place in the top bar, and the scene fades onto the globe.
 const INTRO_ALT = 4.5; // the altitude initGlobe() starts the camera at
 const SPIN = 240;      // one turn of a world's land strip, in its own units (brand/identity → build_intro.py)
 const Intro = { ready: false, skip: false, done: false, t: 0, onDone: null, calm: false, force: false, t0: 0, html: "" };
@@ -4862,7 +4863,6 @@ function replayIntro() {
   Object.assign(Intro, { ready: false, skip: false, done: false, calm: false, force: true, t0: globalThis.performance?.now?.() ?? 0 });
   bindIntroSkip();
   S.globe.pointOfView({ lat: 12, lng: 25, altitude: INTRO_ALT });
-  setTimeout(() => loaderStep(100, "Ready"), 1200); // the data is already here: just draw the underline
   playIntro(() => S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400), false);
 }
 
@@ -4926,20 +4926,14 @@ function settleWorlds(k = 1) {
   }
 }
 
-// Fly the wordmark onto the top-bar logo (same artwork, so it lands exactly) and grow the eastern world into
-// the globe the camera is looking at. Returns false if there's nothing to measure (then we just fade).
+// Fly the whole wordmark onto the top-bar logo (same artwork, so it lands exactly). The spinning worlds have
+// already settled into their logo pose, so the docking class swaps them for the identical worlds inside the
+// wordmark and they travel with it. Returns false if there's nothing to measure (then we just fade).
 function dockLogo() {
-  const word = $(".intro-word"), brand = $(".brand-lockup"), east = $(".intro-world.r"), west = $(".intro-world.l");
+  const word = $(".intro-word"), brand = $(".brand-lockup");
   const a = word?.getBoundingClientRect?.(), b = brand?.getBoundingClientRect?.();
   if (!a?.width || !b?.width) return false;
   word.style.transform = `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${b.width / a.width})`;
-  const vw = globalThis.innerWidth || 1200, vh = globalThis.innerHeight || 800, R = globeRadiusPx(INTRO_ALT);
-  for (const [w, k] of [[east, 1], [west, 0.6]]) {
-    const r = w?.getBoundingClientRect?.();
-    if (!r?.width) continue;
-    w.style.animation = "none"; // a finished roll-in still holds its end pose and would win over the transform
-    w.style.transform = `translate(${vw / 2 - (r.left + r.width / 2)}px, ${vh / 2 - (r.top + r.height / 2)}px) scale(${(2 * R / r.width) * k})`;
-  }
   return true;
 }
 

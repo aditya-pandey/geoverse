@@ -124,13 +124,10 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 @keyframes bh-spin { to { transform: translateX(-240px); } }
 .intro-world .shade { transition: opacity .4s; }
 
-.intro-ul { position: absolute; top: 96%; height: 16px; opacity: 0; animation: bh-fade .4s ease calc(2.15s * var(--k)) both; }
-#loaderFill { width: 0%; height: 100%; overflow: hidden; transition: width var(--t-slow) var(--ease-settle); }
-#loaderFill svg { display: block; width: min(560px, 84vw); height: 100%; }
 @keyframes bh-fade { from { opacity: 0; } to { opacity: 1; } }
 .intro-msg {
   position: absolute; left: 16px; right: 16px; top: calc(45% + min(160px, 24vw)); text-align: center;
-  font-size: 14px; color: var(--ink-muted); opacity: 0; animation: bh-fade .4s ease calc(2.3s * var(--k)) both; transition: opacity .3s;
+  font-size: 14px; color: var(--ink-muted); opacity: 0; animation: bh-fade .4s ease calc(1.9s * var(--k)) both; transition: opacity .3s;
 }
 .intro-skip {
   position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
@@ -144,12 +141,11 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 #loader.settled .intro-world .shade { opacity: 0; }
 #loader.docking .intro-word { transition: transform calc(1.1s * var(--k)) var(--ease-settle); }
 #loader.docking .intro-word .stat-world { opacity: 1; }
-#loader.docking .intro-world { transition: transform calc(1.15s * var(--k)) cubic-bezier(.55, 0, .3, 1), opacity .5s ease calc(.4s * var(--k)); }
-#loader.docking .intro-world.l { opacity: 0; }
-#loader.docking .intro-stars, #loader.docking .intro-ul, #loader.docking .intro-msg, #loader.docking .intro-skip { opacity: 0; transition: opacity .35s; }
+#loader.docking .intro-world { opacity: 0; transition: none; } /* the identical worlds inside the wordmark take over */
+#loader.docking .intro-stars, #loader.docking .intro-msg, #loader.docking .intro-skip { opacity: 0; transition: opacity .35s; }
 #loader.ready .intro-msg { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .intro-word .ltr, .intro-world.l, .intro-world.r, .intro-world .strip, .intro-ul, .intro-msg { animation: none !important; opacity: 1; }
+  .intro-word .ltr, .intro-world.l, .intro-world.r, .intro-world .strip, .intro-msg { animation: none !important; opacity: 1; }
 }
 
 /* ═══════════ TOP BAR ═══════════ */
