@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019c" />
+<link rel="stylesheet" href="style.css?v=20261019e" />
 </head>
 <body>
 
@@ -239,6 +239,7 @@
 <!-- ══════════ ACTIVE STORY TOUR HUD ══════════ -->
 <div id="tourActiveHud" class="hidden" role="region" aria-label="Story tour">
   <div class="tour-hud-card">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="tour-hud-top">
       <div class="th-head">
         <p class="th-eyebrow"><span class="th-tour-title" id="thTourTitle">Story tour</span> · <span id="thStopBadge">1 of 5</span></p>
@@ -262,6 +263,7 @@
       <p id="thSparkText" class="th-lead"></p>
       <h4 class="th-h">Why it's here</h4>
       <p id="thExplainText" class="th-text"></p>
+      <button id="thMore" class="th-more" type="button">Read more</button>
       <div id="thScaleBox">
         <h4 class="th-h">To give you a sense of scale</h4>
         <p id="thScaleText" class="th-text"></p>
@@ -418,6 +420,7 @@
     </div>
     <div class="dl-done" id="dlDone"></div>
     <div class="dl-actions">
+      <p class="dl-pts hidden" id="dlPts" aria-live="polite"></p>
       <button id="dlAct" class="dl-act" type="button">Lock in</button>
       <button id="dlMore" class="dl-more" type="button">More games</button>
     </div>
@@ -608,14 +611,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019c"),
-    load("engine.js?v=20261019c", true),
+    load("engine-core.js?v=20261019e"),
+    load("engine.js?v=20261019e", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019c"></script>
+<script src="app.js?v=20261019e"></script>
 </body>
 </html>

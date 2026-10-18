@@ -2126,3 +2126,83 @@ html.pointer-input :focus-visible { outline: none; }
   .dl-total b { font-size: 48px; }
   .daily-hero { margin-bottom: 14px; }
 }
+
+/* ── Line-up, smoother on phones ──
+   While ordering, the card fits without scrolling, so a swipe on a row is always a drag.
+   Once locked, rows stop dragging and a swipe scrolls. The button row never scrolls away. */
+.daily-card { padding-bottom: 0; }
+.dl-actions { position: sticky; bottom: 0; z-index: 3; align-items: center; margin: 12px -18px 0; padding: 10px 18px 16px;
+  background: linear-gradient(rgba(27, 29, 74, 0), var(--surface) 10px); }
+.dl-pts { margin: 0; display: grid; line-height: 1.1; flex: none; min-width: 72px; }
+.dl-pts b { font-size: 22px; color: var(--mint); }
+.dl-pts span { font-size: 13px; color: var(--ink-muted); }
+.daily-card[data-phase="reveal"] .dl-row, .daily-card[data-phase="done"] .dl-row { touch-action: pan-y; }
+.dl-meta { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 1px; }
+.dl-meta .dl-val, .dl-meta .dl-you { display: inline; }
+.dl-you { font-style: normal; color: var(--danger-ink); font-size: 13px; }
+.dl-row.m-y .dl-you { color: var(--marigold); }
+.dl-gap { margin-top: 12px; }
+.daily-card.more-below { -webkit-mask-image: none; mask-image: none; }
+.daily-card.more-below .dl-actions { box-shadow: 0 -14px 18px -6px rgba(18, 19, 58, .9); }
+
+@media (max-width: 767px) {
+  .daily-card { max-height: 72dvh; padding: 10px 14px 0; }
+  .dl-actions { margin: 10px -14px 0; padding: 8px 14px 12px; }
+  .dl-kind { margin-top: 6px; }
+  .dl-q { font-size: 20px; margin-bottom: 6px; }
+  .dl-list { gap: 5px; margin: 4px 0; }
+  .dl-row { min-height: 46px; padding: 4px 8px 4px 5px; gap: 8px; }
+  .dl-pos { width: 26px; height: 26px; font-size: 14px; }
+  .dl-flag { width: 26px; height: 18px; }
+  .dl-name { font-size: 16px; }
+  .dl-howto { margin-top: 6px; font-size: 13px; }
+  .dl-act { height: 46px; font-size: 17px; }
+  .dl-total { margin-top: 6px; }
+  .dl-verdict { margin-bottom: 10px; }
+  .dl-stats div { padding: 8px 4px; }
+}
+/* short phones: tighter still, so ordering never needs a scroll */
+@media (max-width: 767px) and (max-height: 720px) {
+  .dl-row { min-height: 42px; }
+  .dl-flag { display: none; }
+  .dl-howto { display: none; }
+  .dl-end { font-size: 12px; }
+}
+
+/* ═══════════ STORY TOUR · A SHEET ON PHONES (peek · half · full) ═══════════
+   JS sets the height; the card fills it. Swipe the text to grow it; once full, the text scrolls. */
+.th-more { display: none; }
+.th-story-body.fade-top.fade-bottom { -webkit-mask-image: linear-gradient(transparent, #000 28px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(transparent, #000 28px, #000 calc(100% - 36px), transparent); }
+.th-story-body.fade-top:not(.fade-bottom) { -webkit-mask-image: linear-gradient(transparent, #000 28px); mask-image: linear-gradient(transparent, #000 28px); }
+.th-story-body.fade-bottom:not(.fade-top) { -webkit-mask-image: linear-gradient(#000 calc(100% - 36px), transparent); mask-image: linear-gradient(#000 calc(100% - 36px), transparent); }
+
+@media (max-width: 768px) {
+  #tourActiveHud[data-sheet] { max-height: none; transition: height .34s cubic-bezier(.2,.9,.3,1); }
+  #tourActiveHud[data-sheet] .tour-hud-card { height: 100%; max-height: none; }
+  #tourActiveHud .sheet-grip { height: 16px; margin-bottom: -6px; }
+  #tourActiveHud .sheet-grip::before { top: 6px; }
+  #tourActiveHud .tour-hud-top { touch-action: none; padding-top: 6px; }
+  #tourActiveHud .th-title-block { touch-action: none; transition: padding .2s; }
+  #tourActiveHud .th-title-block h3 { transition: font-size .2s; }
+  .th-story-body { touch-action: pan-y; }
+
+  /* peek: the story folds away */
+  #tourActiveHud[data-sheet="peek"] .th-story-body { display: none; }
+  #tourActiveHud[data-sheet="peek"] .min-icon-svg { transform: rotate(180deg); }
+  #tourActiveHud[data-sheet="peek"] .th-title-block h3 { font-size: 21px; }
+
+  /* half: the hook, and a taste of why, then Read more */
+  #tourActiveHud[data-sheet="half"] .th-photo-wrap,
+  #tourActiveHud[data-sheet="half"] #thScaleBox,
+  #tourActiveHud[data-sheet="half"] .th-details,
+  #tourActiveHud[data-sheet="half"] .th-explore { display: none; }
+  #tourActiveHud[data-sheet="half"] #thExplainText { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  #tourActiveHud[data-sheet="half"] .th-more { display: inline-block; margin: 6px 0 4px; padding: 8px 0; font: 600 16px/1.2 var(--font-sans); color: var(--link); background: none; border: 0; }
+  #tourActiveHud[data-sheet="half"] .th-more::after { content: " ↑"; }
+
+  /* full, scrolled: the big title steps back so the story has room */
+  #tourActiveHud .tour-hud-card.scrolled .th-title-block { padding-bottom: 6px; }
+  #tourActiveHud .tour-hud-card.scrolled .th-title-block h3 { font-size: 19px; }
+  #tourActiveHud .tour-hud-card.scrolled .th-country-tag { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { #tourActiveHud[data-sheet] { transition: none; } }

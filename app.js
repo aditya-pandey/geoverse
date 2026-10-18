@@ -845,6 +845,7 @@ async function renderActiveTourStop() {
   $("#thLocationName").textContent = s.name;
   $("#thLocationSub").textContent = `${s.country} · ${sentenceCase(s.type || "")}`;
   $(".th-story-body")?.scrollTo?.(0, 0);
+  requestAnimationFrame(syncTourScroll);
   $("#thSparkText").textContent = s.spark;
   $("#thExplainText").textContent = s.explain;
   $("#thScaleText").textContent = s.scale;
@@ -889,6 +890,15 @@ async function renderActiveTourStop() {
 
   // Arcs between current and next stop
   refreshArcs();
+}
+
+// While reading: the big title shrinks once you scroll, and soft fades show there's more above or below
+function syncTourScroll() {
+  const b = $("#tourActiveHud .th-story-body"), card = $("#tourActiveHud .tour-hud-card");
+  if (!b || !card) return;
+  card.classList.toggle("scrolled", b.scrollTop > 24);
+  b.classList.toggle("fade-top", b.scrollTop > 4);
+  b.classList.toggle("fade-bottom", b.scrollHeight - b.scrollTop - b.clientHeight > 6);
 }
 
 function exitStoryTour() {
@@ -4639,12 +4649,12 @@ function renderDaily(flip = false) {
     const d = S.byCca3.get(k), flag = d?.gv?.flags?.svg;
     const mine = reveal ? saved.order.indexOf(k) : i;
     const mark = reveal ? saved.marks[mine] : "";
-    const note = reveal && D.settled && mark !== "g" ? `<span class="dl-you">you put it ${ORDINAL[mine]}</span>` : "";
+    const meta = reveal && D.settled ? `<span class="dl-meta"><span class="dl-val">${M.fmt(val[k])}</span>${mark !== "g" ? `<span class="dl-you">you: ${ORDINAL[mine]}</span>` : ""}</span>` : "";
     return `<li class="dl-row${mark ? " m-" + mark : ""}" data-k="${k}" tabindex="0" style="--c:${D.colour[k]}"
         aria-label="${esc(nameOf(d))}, ${ORDINAL[i]}${reveal ? `, ${M.fmt(val[k])}` : ""}">
       <span class="dl-pos">${i + 1}</span>
       ${flag ? `<img class="dl-flag" src="${flag}" alt="" loading="lazy">` : `<span class="dl-flag"></span>`}
-      <span class="dl-name">${esc(nameOf(d))}${reveal && D.settled ? `<span class="dl-val">${M.fmt(val[k])}</span>` : ""}${note}</span>
+      <span class="dl-name">${esc(nameOf(d))}${meta}</span>
       ${reveal && D.settled ? `<span class="dl-bar" style="--w:${Math.max(4, Math.round((Math.log1p(val[k]) / Math.log1p(max)) * 100))}%"></span>` : ""}
       ${reveal ? `<span class="dl-mark" aria-hidden="true"></span>` : `<span class="dl-grip" aria-hidden="true"><i></i><i></i><i></i></span>`}
     </li>`;
@@ -4659,14 +4669,20 @@ function renderDaily(flip = false) {
   wireDailyRows();
 
   const pts = saved?.pts ?? 0;
+  const ptsEl = $("#dlPts");
+  if (ptsEl) {
+    ptsEl.innerHTML = reveal ? `<b class="mono-num">+${pts}</b><span>${pts === 100 ? "Perfect!" : pts >= 70 ? "So close" : pts >= 40 ? "Some right" : "A surprising one"}</span>` : "";
+    ptsEl.classList.toggle("hidden", !reveal);
+  }
   $("#dlAfter").innerHTML = reveal ? `
-      <p class="dl-round-score"><b>+${pts}</b> ${pts === 100 ? "Perfect order!" : pts >= 70 ? "So close." : pts >= 40 ? "Some right." : "A surprising one."}</p>
       <p class="dl-gap">${dailyGapLine(round)}</p>
-      <p class="dl-src">${M.note ? esc(M.note) + " " : ""}Source: ${dailySource(round)}</p>` : `<p class="dl-howto">Drag to put them in order${isCoarse() ? "" : ", or use the arrow keys"}. Tap one to see it on the globe.</p>`;
+      <p class="dl-src">${M.note ? esc(M.note) + " " : ""}Source: ${dailySource(round)}</p>` : `<p class="dl-howto">${isCoarse() ? "Drag to reorder. Tap one to find it on the globe." : "Drag to reorder, or use the arrow keys. Click one to find it on the globe."}</p>`;
   const act = $("#dlAct");
   act.textContent = reveal ? (D.round < 2 ? "Next Line-up" : "See today's score") : "Lock in";
   act.classList.toggle("go", reveal);
   act.disabled = reveal && !D.settled;
+  if (!reveal && !flip) card.scrollTop = 0; // a new Line-up starts at the top
+  requestAnimationFrame(syncDailyFade);
 }
 const DAILY_FACTS = ["pop", "area", "density", "urban", "neighbours", "equator", "delhi"], DAILY_QUIRKY = ["kids", "grandparents", "phones", "rain", "farmland", "water", "grain"];
 const kindOf = (m) => (DAILY_FACTS.includes(m) ? "fact" : DAILY_QUIRKY.includes(m) ? "quirky" : "serious");
@@ -4690,6 +4706,9 @@ function renderDailyDone() {
   act.textContent = "Share my score";
   act.classList.add("go");
   act.disabled = false;
+  $("#dlPts")?.classList.add("hidden");
+  $("#dailyHud .daily-card").scrollTop = 0;
+  requestAnimationFrame(syncDailyFade);
   clearInterval(S.dailyTick);
   S.dailyTick = setInterval(() => {
     const el = $("#dlCountdown");
@@ -4702,6 +4721,12 @@ function dailyCountdown(now = new Date()) {
   const mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const mins = Math.max(1, Math.ceil((mid - now) / 60000));
   return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+}
+
+// More of the card below? a soft fade at its bottom edge says so
+function syncDailyFade() {
+  const c = $("#dailyHud .daily-card");
+  if (c) c.classList.toggle("more-below", c.scrollHeight - c.scrollTop - c.clientHeight > 6);
 }
 
 // The scoreboard only runs on the live site; on a laptop server there's nothing to ask
@@ -4819,11 +4844,12 @@ function dailyDrag(e, row) {
       r.style.transform = s ? `translateY(${s}px)` : "";
     });
   };
-  const up = () => {
+  // a cancel means the browser took the touch (e.g. to scroll the card): never treat it as a tap
+  const up = (ev) => {
     row.removeEventListener("pointermove", move);
     row.removeEventListener("pointerup", up);
     row.removeEventListener("pointercancel", up);
-    if (!moved) return dailyPeek(row.dataset.k);
+    if (!moved) { if (ev?.type === "pointerup") dailyPeek(row.dataset.k); return; }
     row.classList.remove("lift");
     rows.forEach((r) => { r.style.transform = ""; });
     if (to !== from) dailyMove(from, to);
@@ -4881,20 +4907,36 @@ function renderDailyHero() {
 // half and expanded. Drag the grip/header, flick, or tap the grip to cycle.
 const SNAP = { peek: 0.28, half: 0.55, full: 0.88 };
 const SNAP_ORDER = ["peek", "half", "full"];
-const sheets = new Map(); // element → { state, def, dismiss, onSnap }
+const sheets = new Map(); // element → { state, def, dismiss, onSnap, snap, onTap }
+
+// One gesture, one meaning (like Maps): on a sheet's text, a swipe moves the SHEET until it's full,
+// and only then scrolls the text; at the top of the text, pulling down shrinks the sheet again.
+// Decided on the first move of a touch, because a browser only lets us stop scrolling before it starts.
+function sheetGestureMode({ state, dy, dx = 0, scrollTop = 0 }) {
+  if (Math.abs(dx) > Math.abs(dy)) return "native"; // sideways: carousels, tabs
+  if (dy < 0) return state === "full" ? "native" : "sheet"; // up: grow first, then read
+  return scrollTop > 0 ? "native" : "sheet"; // down: back to the top of the text, then shrink
+}
+// Where a released sheet settles: a flick goes one step in its direction, otherwise the nearest height
+function sheetTarget(snaps, h, v) {
+  if (v > 0.45) return [...snaps].reverse().find(([, px]) => px < h - 10) || snaps[0];
+  if (v < -0.45) return snaps.find(([, px]) => px > h + 10) || snaps[snaps.length - 1];
+  return snaps.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a));
+}
 
 const sheetShown = (el) => !el.classList.contains("hidden");
 
-function sheetPx(state) {
+function sheetPx(state, el) {
   const max = innerHeight - navHeight() - 8;
-  return Math.round(Math.min(max, innerHeight * SNAP[state]));
+  const own = el && sheets.get(el)?.snap?.(state);
+  return Math.round(Math.min(max, own ?? innerHeight * SNAP[state]));
 }
 
 // Height of the tallest visible sheet — the camera and floating HUD keep clear of it
 function tallestSheet() {
   if (!isMobile()) return 0;
   let h = 0;
-  for (const [el, sh] of sheets) if (sheetShown(el)) h = Math.max(h, sheetPx(sh.state));
+  for (const [el, sh] of sheets) if (sheetShown(el)) h = Math.max(h, sheetPx(sh.state, el));
   return h;
 }
 
@@ -4909,7 +4951,7 @@ function setSheet(el, state, animate = true) {
     delete el.dataset.sheet;
   } else {
     el.style.transition = animate ? "height .34s cubic-bezier(.2,.9,.3,1)" : "none";
-    el.style.height = sheetPx(state) + "px";
+    el.style.height = sheetPx(state, el) + "px";
     el.dataset.sheet = state;
   }
   updateHudLift();
@@ -4925,8 +4967,8 @@ function updateHudLift() {
   document.body.classList.toggle("sheet-tall", tall);
 }
 
-function initSheet(el, { def = "half", dismiss = null, onSnap = null } = {}) {
-  const sh = { state: def, def, dismiss, onSnap };
+function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null } = {}) {
+  const sh = { state: def, def, dismiss, onSnap, snap, onTap };
   sheets.set(el, sh);
 
   // every time the sheet appears it opens at its default snap
@@ -4940,8 +4982,23 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null } = {}) {
     }
   }).observe(el, { attributes: true, attributeFilter: ["class"] });
 
-  const handles = [el.querySelector(".sheet-grip"), el.id === "panel" ? $("#panelHeader") : null].filter(Boolean);
+  const handles = [el.querySelector(".sheet-grip"), el.id === "panel" ? $("#panelHeader") : null, ...extra].filter(Boolean);
   let drag = null;
+  const maxPx = () => innerHeight - navHeight() - 8;
+
+  // let go: dismiss, or settle at a height
+  const release = (samples) => {
+    const [ya, ta] = samples[0], [yb, tb] = samples[samples.length - 1];
+    const v = (yb - ya) / Math.max(1, tb - ta); // px per ms, positive = downward flick
+    const h = el.offsetHeight;
+    if (sh.dismiss && (h < sheetPx("peek", el) * 0.7 || (v > 0.9 && h <= sheetPx("peek", el) + 24))) {
+      el.style.transition = "transform .22s ease";
+      el.style.transform = "translateY(110%)";
+      setTimeout(() => { el.style.transform = ""; el.style.transition = ""; sh.dismiss(); }, 210);
+      return;
+    }
+    setSheet(el, sheetTarget(SNAP_ORDER.map((s) => [s, sheetPx(s, el)]), h, v)[0]);
+  };
 
   const onDown = (e) => {
     if (!isMobile() || (e.button ?? 0) > 0 || e.target.closest("button, a, input, iframe")) return;
@@ -4954,7 +5011,7 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null } = {}) {
     if (!drag.moved && Math.abs(dy) < 6) return;
     drag.moved = true;
     el.style.transition = "none";
-    el.style.height = clamp(drag.h0 - dy, 64, innerHeight - navHeight() - 8) + "px";
+    el.style.height = clamp(drag.h0 - dy, 64, maxPx()) + "px";
     drag.samples.push([e.clientY, e.timeStamp]);
     if (drag.samples.length > 5) drag.samples.shift();
   };
@@ -4962,31 +5019,49 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null } = {}) {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
-    if (!d.moved) { // tap on the grip cycles peek → half → full
-      if (d.tap) setSheet(el, SNAP_ORDER[(SNAP_ORDER.indexOf(sh.state) + 1) % SNAP_ORDER.length]);
+    if (!d.moved) { // a tap: the sheet's own action, or the grip cycles peek → half → full
+      if (sh.onTap && (d.tap || !e.target.closest?.(".sheet-grip"))) sh.onTap(sh.state);
+      else if (d.tap) setSheet(el, SNAP_ORDER[(SNAP_ORDER.indexOf(sh.state) + 1) % SNAP_ORDER.length]);
       return;
     }
-    const [ya, ta] = d.samples[0], [yb, tb] = d.samples[d.samples.length - 1];
-    const v = (yb - ya) / Math.max(1, tb - ta); // px per ms, positive = downward flick
-    const h = el.offsetHeight;
-    if (sh.dismiss && (h < sheetPx("peek") * 0.7 || (v > 0.9 && h <= sheetPx("peek") + 24))) {
-      el.style.transition = "transform .22s ease";
-      el.style.transform = "translateY(110%)";
-      setTimeout(() => { el.style.transform = ""; el.style.transition = ""; sh.dismiss(); }, 210);
-      return;
-    }
-    const snaps = SNAP_ORDER.map((s) => [s, sheetPx(s)]);
-    let target;
-    if (v > 0.45) target = [...snaps].reverse().find(([, px]) => px < h - 10) || snaps[0];
-    else if (v < -0.45) target = snaps.find(([, px]) => px > h + 10) || snaps[snaps.length - 1];
-    else target = snaps.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a));
-    setSheet(el, target[0]);
+    release(d.samples);
   };
   for (const hd of handles) {
     hd.addEventListener("pointerdown", onDown);
     hd.addEventListener("pointermove", onMove);
     hd.addEventListener("pointerup", onUp);
     hd.addEventListener("pointercancel", onUp);
+  }
+
+  // the text itself: grow the sheet first, scroll once it's full (touch only; a mouse wheel just scrolls)
+  if (body) {
+    let t = null;
+    body.addEventListener("touchstart", (e) => {
+      t = isMobile() && e.touches.length === 1 ? { x0: e.touches[0].clientX, y0: e.touches[0].clientY, h0: el.offsetHeight, mode: null, samples: [[e.touches[0].clientY, e.timeStamp]] } : null;
+    }, { passive: true });
+    body.addEventListener("touchmove", (e) => {
+      if (!t) return;
+      const { clientX: x, clientY: y } = e.touches[0];
+      const dy = y - t.y0, dx = x - t.x0;
+      if (!t.mode) {
+        if (!dy && !dx) return;
+        t.mode = sheetGestureMode({ state: sh.state, dy, dx, scrollTop: body.scrollTop });
+      }
+      if (t.mode !== "sheet") return;
+      if (e.cancelable) e.preventDefault();
+      el.style.transition = "none";
+      el.style.height = clamp(t.h0 - dy, 64, maxPx()) + "px";
+      t.samples.push([y, e.timeStamp]);
+      if (t.samples.length > 5) t.samples.shift();
+    }, { passive: false });
+    const end = () => {
+      const d = t;
+      t = null;
+      if (d?.mode === "sheet" && d.samples.length > 1) release(d.samples);
+      else if (d?.mode === "sheet") setSheet(el, sh.state);
+    };
+    body.addEventListener("touchend", end);
+    body.addEventListener("touchcancel", end);
   }
 }
 
@@ -5000,6 +5075,27 @@ function initSheets() {
     },
   });
   initSheet($("#atlasDock"), { def: "peek" });
+  // Story tours: peek = title + Next · half (default) = the hook and a taste of why · full = everything
+  const tour = $("#tourActiveHud");
+  if (tour) {
+    const part = (sel) => tour.querySelector(sel)?.offsetHeight || 0;
+    initSheet(tour, {
+      def: "half",
+      handles: [tour.querySelector(".tour-hud-top"), tour.querySelector(".th-title-block")],
+      body: tour.querySelector(".th-story-body"),
+      snap: (st) => {
+        const peek = part(".sheet-grip") + part(".tour-hud-top") + part(".th-title-block") + part(".tour-hud-actions") + 2;
+        return st === "peek" ? Math.max(150, peek) : st === "half" ? Math.max(peek + 200, innerHeight * 0.52) : innerHeight * 0.86;
+      },
+      onTap: (st) => setSheet(tour, st === "half" ? "full" : "half"), // tap the title: read more / less
+      onSnap: (st) => {
+        tour.querySelector(".th-story-body")?.scrollTo?.(0, 0);
+        syncTourScroll();
+        const at = S.activeTour, s = at?.tour.stops[at.stopIndex];
+        if (s) S.globe.pointOfView(viewFor(s.lat, s.lng, s.alt * stageZoom()), 700);
+      },
+    });
+  }
   initSheet($("#earthDock"), { def: "peek" });
 
   const relayout = () => {
@@ -5270,8 +5366,11 @@ function initUI() {
   $("#toursTabBtn")?.addEventListener("click", openStoryToursModal);
   $("#toursClose")?.addEventListener("click", closeStoryToursModal);
   $("#tourExitBtn")?.addEventListener("click", exitStoryTour);
+  $("#thMore")?.addEventListener("click", () => setSheet($("#tourActiveHud"), "full"));
+  $("#tourActiveHud .th-story-body")?.addEventListener("scroll", syncTourScroll, { passive: true });
   $("#tourMinBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (isMobile()) { const hud = $("#tourActiveHud"); setSheet(hud, hud.dataset.sheet === "peek" ? "half" : "peek"); return; }
     const card = $("#tourActiveHud .tour-hud-card");
     if (!card) return;
     const isCollapsed = card.classList.toggle("collapsed");
@@ -5282,7 +5381,7 @@ function initUI() {
     }
   });
   $("#tourActiveHud .tour-hud-top")?.addEventListener("click", (e) => {
-    if (e.target.closest("button")) return;
+    if (e.target.closest("button") || isMobile()) return; // phones: the sheet handles taps
     const card = $("#tourActiveHud .tour-hud-card");
     if (card && card.classList.contains("collapsed")) {
       card.classList.remove("collapsed");
@@ -5379,6 +5478,7 @@ function initUI() {
   $("#dlAct")?.addEventListener("click", onDailyAction);
   $("#dlClose")?.addEventListener("click", () => closeDaily());
   $("#dlMore")?.addEventListener("click", () => closeDaily());
+  $("#dailyHud .daily-card")?.addEventListener("scroll", syncDailyFade, { passive: true });
   renderDailyHero();
   $("#quizNext")?.addEventListener("click", goNextRound);
   $("#quizHud .quiz-card")?.addEventListener("scroll", syncCardFade, { passive: true });
