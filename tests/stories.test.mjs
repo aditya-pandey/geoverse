@@ -53,6 +53,7 @@ test("numbers in the stories match the World Bank data", () => {
   for (const [k, s] of entries) {
     const c = s.checks || {};
     if (c.pop) { const p = src.wb.pop[k][0]; assert.ok(p >= c.pop[0] && p <= c.pop[1], `${k} population ${p}`); }
+    if (c.areaTimesIndia) { const r = src.wb.area[k][0] / india; assert.ok(r >= c.areaTimesIndia[0] && r <= c.areaTimesIndia[1], `${k} is ${r.toFixed(2)}× India`); }
     if (c.areaInIndia) { const r = india / src.wb.area[k][0]; assert.ok(r >= c.areaInIndia[0] && r <= c.areaInIndia[1], `${k} fits in India ${r.toFixed(1)}×`); }
   }
 });

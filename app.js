@@ -2143,7 +2143,7 @@ async function renderPanelTab(d) {
       ${borders.length ? `<div class="section-h">Neighbours — click to hop</div><div class="pill-row">${borders.map((b) => `<button class="pill click" data-cca3="${b.gv.cca3}">${flagEmoji(b.gv.cca2)} ${nameOf(b)}</button>`).join("")}</div>` : ""}
       <div class="wiki-block" id="ovWiki"><div class="loading-dots">Reading the encyclopedia</div></div>`;
 
-    $("#overviewCompareBtn")?.addEventListener("click", () => startCompare(d));
+    $("#overviewCompareBtn")?.addEventListener("click", () => startComparePick());
     $$("#panelBody .pill.click").forEach((p) =>
       p.addEventListener("click", () => selectCountry(S.byCca3.get(p.dataset.cca3))));
     wireRankBadges(d);

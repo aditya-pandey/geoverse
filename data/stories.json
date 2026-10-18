@@ -6,9 +6,22 @@
     "people": "About 8 lakh people live mostly in the river valleys in between. The forests are protected by the constitution itself: at least 60% of the land must stay forest, forever.",
     "surprise": "Gangkhar Puensum (7,570 m) is the highest mountain nobody has ever climbed. Bhutan doesn't allow it: the big peaks are home to the gods, and the gods like their privacy.",
     "scale": "About the size of Kerala, with fewer people than Chandigarh. India could hold 85 Bhutans.",
-    "sources": ["World Bank: population 2025, area 2024", "Constitution of the Kingdom of Bhutan (2008), Article 5", "Wikipedia: Gangkhar Puensum"],
-    "checks": { "pop": [700000, 800000], "areaInIndia": [80, 90] },
-    "status": "sample"
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Constitution of the Kingdom of Bhutan (2008), Article 5",
+      "Wikipedia: Gangkhar Puensum"
+    ],
+    "checks": {
+      "pop": [
+        700000,
+        800000
+      ],
+      "areaInIndia": [
+        80,
+        90
+      ]
+    },
+    "status": "reviewed"
   },
   "ISL": {
     "hook": "An island that's slowly being pulled in two.",
@@ -16,9 +29,21 @@
     "people": "About 3.9 lakh Icelanders turned all that heat under their feet into a home comfort: nine homes in ten are warmed by hot water piped straight from the ground.",
     "surprise": "There are no mosquitoes. None at all. Scientists still aren't completely sure why.",
     "scale": "You can drive the road all the way round it in about two days. India could hold 32 Icelands, and it has fewer people than Chandigarh.",
-    "sources": ["World Bank: population 2025, area 2024", "Wikipedia: Mid-Atlantic Ridge, Þingvellir, Geothermal power in Iceland, Route 1 (Iceland)"],
-    "checks": { "pop": [350000, 420000], "areaInIndia": [30, 34] },
-    "status": "sample"
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Mid-Atlantic Ridge, Þingvellir, Geothermal power in Iceland, Route 1 (Iceland)"
+    ],
+    "checks": {
+      "pop": [
+        350000,
+        420000
+      ],
+      "areaInIndia": [
+        30,
+        34
+      ]
+    },
+    "status": "reviewed"
   },
   "CHL": {
     "hook": "The world's longest, skinniest country.",
@@ -26,9 +51,17 @@
     "people": "Most Chileans live in the mild middle, around Santiago. Up north, the Atacama is the driest desert outside the poles: some of its weather stations have never recorded a single drop of rain.",
     "surprise": "Those bone-dry, cloudless nights make it the best stargazing on Earth, which is why so many of the world's biggest telescopes are built here.",
     "scale": "Longer than India is from Kashmir to Kanyakumari, yet on average only a little wider than the drive from Mumbai to Pune.",
-    "sources": ["World Bank: area 2024", "Wikipedia: Geography of Chile, Atacama Desert, European Southern Observatory"],
-    "checks": { "areaInIndia": [4, 4.6] },
-    "status": "sample"
+    "sources": [
+      "World Bank: area 2024",
+      "Wikipedia: Geography of Chile, Atacama Desert, European Southern Observatory"
+    ],
+    "checks": {
+      "areaInIndia": [
+        4,
+        4.6
+      ]
+    },
+    "status": "reviewed"
   },
   "MNG": {
     "hook": "More horses than people.",
@@ -36,9 +69,21 @@
     "people": "About 36 lakh people live here, the fewest per km² of any country. Nearly half live in Ulaanbaatar, the coldest capital on Earth. Many others still move with their herds, taking their round felt gers with them.",
     "surprise": "At Naadam, the big summer festival, the jockeys in the long-distance horse races are children.",
     "scale": "Almost half the size of India, with roughly as many people as Jaipur.",
-    "sources": ["World Bank: population 2025, area 2024, population density", "Wikipedia: Ulaanbaatar, Naadam, Livestock in Mongolia"],
-    "checks": { "pop": [3300000, 3800000], "areaInIndia": [2, 2.2] },
-    "status": "sample"
+    "sources": [
+      "World Bank: population 2025, area 2024, population density",
+      "Wikipedia: Ulaanbaatar, Naadam, Livestock in Mongolia"
+    ],
+    "checks": {
+      "pop": [
+        3300000,
+        3800000
+      ],
+      "areaInIndia": [
+        2,
+        2.2
+      ]
+    },
+    "status": "reviewed"
   },
   "KEN": {
     "hook": "Snow on the equator.",
@@ -46,8 +91,559 @@
     "people": "The high Rift Valley towns, more than 2,000 m up, have raised many of the world's greatest distance runners. Thin air, strong lungs.",
     "surprise": "Kenya went cashless before most of the world. Since 2007, most adults have paid for things by text message through M-Pesa: chai, school fees, even a cow.",
     "scale": "A bit bigger than Maharashtra and Gujarat put together. India could hold almost six Kenyas.",
-    "sources": ["World Bank: area 2024", "Wikipedia: Mount Kenya, Great Rift Valley, Iten, M-Pesa"],
-    "checks": { "areaInIndia": [5.3, 5.9] },
-    "status": "sample"
+    "sources": [
+      "World Bank: area 2024",
+      "Wikipedia: Mount Kenya, Great Rift Valley, Iten, M-Pesa"
+    ],
+    "checks": {
+      "areaInIndia": [
+        5.3,
+        5.9
+      ]
+    },
+    "status": "reviewed"
+  },
+  "IND": {
+    "hook": "A piece of land that crashed into Asia, and is still pushing.",
+    "land": "About 50 million years ago, the Indian plate slammed into Asia after a long drift north. The crumple zone is the Himalayas, and the push goes on, about 5 cm a year, so the mountains are still rising.",
+    "people": "About 146 crore people, more than any other country, speaking hundreds of languages. Every summer the monsoon sets the mood: farms, cricket matches and wedding dates all wait for the rain.",
+    "surprise": "One country holds both a real desert, the Thar, and one of the wettest places on Earth: Mawsynram in Meghalaya, which gets about 11,800 mm of rain a year.",
+    "scale": "More than one in every six people on Earth lives here. Driving from Kashmir to Kanyakumari takes about four days.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Indian Plate, Himalayas, Mawsynram, Thar Desert"
+    ],
+    "checks": {
+      "pop": [
+        1400000000.0,
+        1500000000.0
+      ]
+    },
+    "status": "draft"
+  },
+  "USA": {
+    "hook": "A rainforest, a desert, tundra and live volcanoes, under one flag.",
+    "land": "From Alaska's tundra to Hawaii's volcanoes, with the Rockies, the Great Plains and the Mississippi in between. The plains are a weather highway: icy Arctic air crashes into warm, wet air from the Gulf, which is why it gets more tornadoes than anywhere else.",
+    "people": "About 34 crore people, most of them descended from someone who arrived from somewhere else. Even today, about 1 in 7 was born in another country.",
+    "surprise": "Alaska is the most northern, the most western and, thanks to islands that cross the 180° line, also the most eastern state of all.",
+    "scale": "About three times the size of India. Flying from New York to Los Angeles takes about as long as Delhi to Singapore.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Tornadoes in the United States, Aleutian Islands",
+      "US Census Bureau: foreign-born population"
+    ],
+    "checks": {
+      "pop": [
+        330000000.0,
+        350000000.0
+      ],
+      "areaTimesIndia": [
+        2.8,
+        3.1
+      ]
+    },
+    "status": "draft"
+  },
+  "CHN": {
+    "hook": "Land for five time zones, running on a single clock.",
+    "land": "China steps down like a giant staircase: the Tibetan Plateau, the roof of the world, at the top; then basins and mountains; then the flat, crowded east, where great rivers like the Yangtze, Asia's longest, reach the sea.",
+    "people": "About 141 crore people, and more than 9 in 10 of them live east of a line drawn from the far north-east to the south-west, on less than half of the land.",
+    "surprise": "Because the whole country keeps Beijing time, winter sunrise in the far west can come after 9:30 in the morning.",
+    "scale": "Almost the same size as the United States, and about three times India. One clock for all of it.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Time in China, Heihe–Tengchong Line, Yangtze"
+    ],
+    "checks": {
+      "pop": [
+        1380000000.0,
+        1430000000.0
+      ],
+      "areaTimesIndia": [
+        2.8,
+        3.0
+      ]
+    },
+    "status": "draft"
+  },
+  "JPN": {
+    "hook": "Volcanic islands that shake, steam, and still run on time.",
+    "land": "About 14,000 islands strung along the Ring of Fire, where four tectonic plates meet. Around a tenth of the world's active volcanoes are here, and the ground trembles somewhere almost every day.",
+    "people": "About 12 crore people, mostly squeezed onto narrow coastal plains, because around three-quarters of the land is mountains. Hot springs, called onsen, bubble up all over, warmed by those same volcanoes.",
+    "surprise": "The bullet trains, the Shinkansen, have carried billions of passengers since 1964, and their average delay is under a minute.",
+    "scale": "A bit bigger than Rajasthan. Tokyo to Osaka, about 500 km, takes about two and a half hours by bullet train.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Japan, Volcanoes of Japan, Shinkansen"
+    ],
+    "checks": {
+      "pop": [
+        115000000.0,
+        130000000.0
+      ],
+      "areaInIndia": [
+        8.4,
+        9
+      ]
+    },
+    "status": "draft"
+  },
+  "GBR": {
+    "hook": "As far north as Canada's prairies, yet green and mild all year.",
+    "land": "These islands sit as far north as Canada's cold prairies, but warm water flowing up from the tropics keeps the winters mild and the fields famously green. Famously wet, too.",
+    "people": "About 7 crore people in four nations, England, Scotland, Wales and Northern Ireland, that share one country, one king and four football teams.",
+    "surprise": "Nowhere here is more than about 120 km from the sea.",
+    "scale": "Almost exactly the size of Uttar Pradesh, with less than a third of its people.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Climate of the United Kingdom, North Atlantic Current, Coton in the Elms"
+    ],
+    "checks": {
+      "pop": [
+        66000000.0,
+        72000000.0
+      ],
+      "areaInIndia": [
+        13,
+        14
+      ]
+    },
+    "status": "draft"
+  },
+  "FRA": {
+    "hook": "Three seas, the Alps, and more cheeses than days in the year.",
+    "land": "The mainland touches the Atlantic, the English Channel and the Mediterranean, and climbs to Mont Blanc (4,806 m), the highest peak in the Alps.",
+    "people": "About 6.9 crore people, and visitors outnumber them: it's the most visited country on Earth, with around 10 crore tourists a year.",
+    "surprise": "Thanks to islands scattered across the oceans, France has more time zones than any other country: 12.",
+    "scale": "The mainland is about one-sixth the size of India. Paris to the Mediterranean by fast train takes about three hours.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Mont Blanc, Tourism in France, Time in France"
+    ],
+    "checks": {
+      "pop": [
+        65000000.0,
+        71000000.0
+      ]
+    },
+    "status": "draft"
+  },
+  "DEU": {
+    "hook": "Where the Alps slide all the way down to the North Sea.",
+    "land": "The land drops from the Alps in the south, through forests and river valleys, to the flat coasts of the North Sea and the Baltic. The Rhine runs through it, and the Danube begins in its Black Forest.",
+    "people": "About 8.3 crore people, the most of any country in the European Union. Bread is serious business here: more than 3,000 kinds are officially registered.",
+    "surprise": "Long stretches of its motorways, the Autobahn, still have no speed limit at all.",
+    "scale": "About the size of Rajasthan, and with roughly as many people too.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Germany, Danube, German bread, Autobahn"
+    ],
+    "checks": {
+      "pop": [
+        81000000.0,
+        86000000.0
+      ],
+      "areaInIndia": [
+        8.9,
+        9.5
+      ]
+    },
+    "status": "draft"
+  },
+  "BRA": {
+    "hook": "Home to a forest so big it makes its own rain.",
+    "land": "About 60% of the Amazon rainforest grows here. Its trees breathe out so much water vapour that they form flying rivers in the sky, carrying rain thousands of kilometres south to farms and cities.",
+    "people": "About 21 crore people, most along the Atlantic coast, far from the forest. It's the only country in the Americas where Portuguese is the main language.",
+    "surprise": "The Amazon River carries more water to the sea than the next seven biggest rivers put together.",
+    "scale": "About two and a half times the size of India, and it borders every South American country except Chile and Ecuador.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Amazon rainforest, Flying rivers, Amazon River"
+    ],
+    "checks": {
+      "pop": [
+        205000000.0,
+        220000000.0
+      ],
+      "areaTimesIndia": [
+        2.5,
+        2.7
+      ]
+    },
+    "status": "draft"
+  },
+  "AUS": {
+    "hook": "An island continent that drifted alone for millions of years.",
+    "land": "The flattest and driest continent where people live. Its red centre, the Outback, is ringed by beaches, rainforest and, off the north-east coast, the Great Barrier Reef, the largest structure built by living things.",
+    "people": "About 2.8 crore people, and almost 9 in 10 live within 50 km of the sea. The middle is mostly empty, hot and beautiful.",
+    "surprise": "Tens of millions of years on its own gave it animals found nowhere else, like the koala and the platypus, a mammal that lays eggs.",
+    "scale": "Almost two and a half times the size of India, with fewer people than the Delhi metro area.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Australia, Great Barrier Reef, Platypus"
+    ],
+    "checks": {
+      "pop": [
+        26000000.0,
+        29000000.0
+      ],
+      "areaTimesIndia": [
+        2.3,
+        2.4
+      ]
+    },
+    "status": "draft"
+  },
+  "CAN": {
+    "hook": "The second-biggest country, with more lakes than the rest combined.",
+    "land": "Ice sheets scraped this land almost bare in the last Ice Age, leaving behind an ancient rock shield, an endless evergreen forest and millions of lakes.",
+    "people": "About 4.2 crore people, and most of them live within about 160 km of the US border, where the weather is kindest.",
+    "surprise": "It has the longest coastline of any country, more than 2 lakh km: enough to wrap around the Earth five times.",
+    "scale": "Almost five times the size of India, with fewer people than Tamil Nadu.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Canada, Canadian Shield, List of countries by length of coastline"
+    ],
+    "checks": {
+      "pop": [
+        39000000.0,
+        44000000.0
+      ],
+      "areaTimesIndia": [
+        4.6,
+        4.9
+      ]
+    },
+    "status": "draft"
+  },
+  "RUS": {
+    "hook": "So wide that bedtime in one corner is breakfast in another.",
+    "land": "The biggest country on Earth spans 11 time zones, from the Baltic Sea to the Pacific. Most of it is Siberia: endless forest, frozen ground and Lake Baikal, the deepest lake in the world.",
+    "people": "About 14 crore people, and about three in four of them live in the west, on the European side of the Ural Mountains.",
+    "surprise": "Lake Baikal holds about a fifth of all the unfrozen fresh water on Earth's surface, more than all five of North America's Great Lakes together.",
+    "scale": "More than five times the size of India. The train from Moscow to Vladivostok takes about a week.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Time in Russia, Lake Baikal, Trans-Siberian Railway"
+    ],
+    "checks": {
+      "pop": [
+        140000000.0,
+        147000000.0
+      ],
+      "areaTimesIndia": [
+        5.0,
+        5.4
+      ]
+    },
+    "status": "draft"
+  },
+  "ITA": {
+    "hook": "A boot kicking into the Mediterranean, with volcanoes for laces.",
+    "land": "Mostly mountains and hills: the Alps across the top and the Apennines down the spine. Etna and Vesuvius make it Europe's volcano country, and Stromboli has been erupting almost non-stop for over 2,000 years.",
+    "people": "About 5.9 crore people, in towns stacked on hilltops and along the coasts. It has more UNESCO World Heritage Sites than any other country.",
+    "surprise": "Two whole countries fit inside it: Vatican City and San Marino.",
+    "scale": "About the size of Maharashtra, and roughly 1,200 km from the Alps to the toe of the boot.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Italy, Stromboli, World Heritage Sites by country"
+    ],
+    "checks": {
+      "pop": [
+        57000000.0,
+        61000000.0
+      ],
+      "areaInIndia": [
+        10.5,
+        11.2
+      ]
+    },
+    "status": "draft"
+  },
+  "EGY": {
+    "hook": "Almost everyone lives on a thin green ribbon through the desert.",
+    "land": "About 95% of the land is desert. Cutting through it is the Nile, by most counts the longest river on Earth, which fans out into a wide green delta before it reaches the Mediterranean.",
+    "people": "About 12 crore people, and around 95% of them live along the Nile and its delta, on roughly 5% of the land.",
+    "surprise": "The Great Pyramid of Giza was the tallest building on Earth for about 3,800 years.",
+    "scale": "About a third the size of India. The Nile's journey to the sea is about as far as Delhi to London.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Egypt, Nile, Great Pyramid of Giza"
+    ],
+    "checks": {
+      "pop": [
+        110000000.0,
+        125000000.0
+      ],
+      "areaInIndia": [
+        3.1,
+        3.4
+      ]
+    },
+    "status": "draft"
+  },
+  "NPL": {
+    "hook": "Eight of the world's ten highest mountains, in a country barely 200 km wide.",
+    "land": "It rises from the flat, hot Terai, about 60 m above the sea, to the top of Everest at 8,849 m, all in less than 200 km.",
+    "people": "About 3 crore people, many in terraced hill villages. The Kathmandu Valley alone has seven monument zones on UNESCO's World Heritage list.",
+    "surprise": "Its flag isn't a rectangle: it's two stacked triangles, the only national flag of its kind.",
+    "scale": "A bit smaller than Odisha, and almost exactly the size of Bangladesh, with about a sixth of its people.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Nepal, Mount Everest, Kathmandu Valley, Flag of Nepal"
+    ],
+    "checks": {
+      "pop": [
+        28000000.0,
+        31000000.0
+      ],
+      "areaInIndia": [
+        22,
+        22.6
+      ]
+    },
+    "status": "draft"
+  },
+  "LKA": {
+    "hook": "A teardrop-shaped island of tea, elephants and cinnamon.",
+    "land": "It rises from palm-lined beaches to misty central hills, where tea gardens cover the slopes. It's one of the best places on Earth to see wild Asian elephants, and blue whales swim off its southern coast.",
+    "people": "About 2.2 crore people. In the hills they pick tea; down south, a few fishermen still fish perched on wooden stilts in the surf.",
+    "surprise": "True cinnamon comes from here: most of the world's Ceylon cinnamon still grows on the island.",
+    "scale": "About half the size of Tamil Nadu. India could hold 50 of them.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Sri Lanka, Stilt fishing, Cinnamomum verum"
+    ],
+    "checks": {
+      "pop": [
+        20000000.0,
+        23000000.0
+      ],
+      "areaInIndia": [
+        48,
+        52
+      ]
+    },
+    "status": "draft"
+  },
+  "PAK": {
+    "hook": "Where three of the world's mightiest mountain ranges meet.",
+    "land": "In the far north, the Himalaya, the Karakoram and the Hindu Kush meet, and K2 (8,611 m), the second-highest peak on Earth, stands guard. From there the Indus flows south through deserts and plains to the Arabian Sea.",
+    "people": "About 25 crore people, the fifth-most of any country, many farming the Indus plains with one of the largest canal networks in the world.",
+    "surprise": "The Karakoram Highway climbs to about 4,700 m at the Khunjerab Pass, one of the highest paved border crossings anywhere.",
+    "scale": "About a quarter the size of India, with more people than Brazil.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: K2, Indus River, Indus Basin Irrigation System, Khunjerab Pass"
+    ],
+    "checks": {
+      "pop": [
+        240000000.0,
+        270000000.0
+      ],
+      "areaInIndia": [
+        4,
+        4.3
+      ]
+    },
+    "status": "draft"
+  },
+  "BGD": {
+    "hook": "Where the Ganga and the Brahmaputra finally meet the sea.",
+    "land": "Most of the land is the biggest river delta on Earth, built from mud carried down from the Himalayas. Much of it lies less than 10 m above the sea, and rivers can change course from one year to the next.",
+    "people": "About 17.6 crore people on a piece of land the size of Nepal, one of the most crowded countries on Earth. Boats are as normal as buses.",
+    "surprise": "The Sundarbans, shared with India, is the largest mangrove forest on Earth, and its tigers swim between the islands.",
+    "scale": "Almost exactly the size of Nepal, with six times as many people.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Ganges Delta, Geography of Bangladesh, Sundarbans"
+    ],
+    "checks": {
+      "pop": [
+        170000000.0,
+        180000000.0
+      ],
+      "areaInIndia": [
+        22,
+        22.6
+      ]
+    },
+    "status": "draft"
+  },
+  "IDN": {
+    "hook": "More than 17,000 islands, strung along the equator.",
+    "land": "The islands stretch more than 5,000 km along the equator, and sit right on the Ring of Fire: it has more active volcanoes than any other country.",
+    "people": "About 28.6 crore people, more than half of them on one island, Java, speaking over 700 languages between them.",
+    "surprise": "Komodo dragons, the biggest lizards on Earth, live in the wild only on a handful of its islands.",
+    "scale": "Its islands stretch further than Delhi is from Moscow. Together they add up to a bit more than half the size of India.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Indonesia, List of volcanoes in Indonesia, Java, Komodo dragon"
+    ],
+    "checks": {
+      "pop": [
+        270000000.0,
+        295000000.0
+      ],
+      "areaInIndia": [
+        1.65,
+        1.75
+      ]
+    },
+    "status": "draft"
+  },
+  "ZAF": {
+    "hook": "A country with three capital cities.",
+    "land": "It sits at the southern tip of Africa, where the Atlantic and Indian Oceans meet near Cape Agulhas. Inland, a high grassy plateau, the Highveld, ends at the dramatic cliffs of the Drakensberg.",
+    "people": "About 6.5 crore people and 12 official languages, one of them sign language. Pretoria runs the government, Cape Town makes the laws, and Bloemfontein hears appeals.",
+    "surprise": "Table Mountain, above Cape Town, is one of the oldest mountains on Earth, around six times older than the Himalayas.",
+    "scale": "A little over a third the size of India.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Cape Agulhas, Languages of South Africa, Table Mountain"
+    ],
+    "checks": {
+      "pop": [
+        62000000.0,
+        67000000.0
+      ],
+      "areaInIndia": [
+        2.6,
+        2.8
+      ]
+    },
+    "status": "draft"
+  },
+  "MEX": {
+    "hook": "Where corn and chillies were first farmed, and chocolate was first drunk.",
+    "land": "High plateaus between two mountain ranges, with deserts in the north and rainforest in the south. The capital is built on an old lake bed, and parts of it sink by tens of centimetres a year.",
+    "people": "About 13 crore people, the largest Spanish-speaking population in the world.",
+    "surprise": "In the Yucatán, thousands of cenotes, sinkholes of clear blue water, trace the rim of the crater left by the asteroid that wiped out the dinosaurs.",
+    "scale": "About 60% of the size of India. Its capital sits about 2,240 m up, as high as Ooty.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Maize, Chili pepper, History of chocolate, Mexico City, Cenote, Chicxulub crater"
+    ],
+    "checks": {
+      "pop": [
+        125000000.0,
+        136000000.0
+      ],
+      "areaInIndia": [
+        1.6,
+        1.75
+      ]
+    },
+    "status": "draft"
+  },
+  "SAU": {
+    "hook": "One of the biggest countries on Earth without a single permanent river.",
+    "land": "Most of the land is desert, including the Rub' al Khali, the Empty Quarter, the largest continuous sand desert in the world, where dunes can stand more than 250 m tall.",
+    "people": "About 3.7 crore people, mostly in cities like Riyadh and Jeddah. Much of their water comes from the sea: it's one of the world's biggest makers of desalinated water.",
+    "surprise": "With all that desert, it has still bought camels from Australia, home to the world's biggest herd of wild camels.",
+    "scale": "About two-thirds the size of India, with roughly as many people as Kerala.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Saudi Arabia, Rub' al Khali, Desalination, Australian feral camel"
+    ],
+    "checks": {
+      "pop": [
+        35000000.0,
+        39000000.0
+      ],
+      "areaInIndia": [
+        1.5,
+        1.56
+      ]
+    },
+    "status": "draft"
+  },
+  "ARE": {
+    "hook": "Pearl-diving villages in living memory, the world's tallest tower today.",
+    "land": "Seven emirates on the edge of the Arabian Desert, with mangrove coasts and red dunes inland. Summer days often climb past 45°C.",
+    "people": "About 1.2 crore people, and almost 9 in 10 of them came from other countries, more from India than from anywhere else.",
+    "surprise": "The Burj Khalifa is 828 m tall. Watch the sunset from the ground, ride up fast enough, and you can watch it set again.",
+    "scale": "A little bigger than West Bengal, with about a tenth of its people.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Emirates of the United Arab Emirates, Demographics of the United Arab Emirates, Burj Khalifa"
+    ],
+    "checks": {
+      "pop": [
+        10500000.0,
+        12000000.0
+      ],
+      "areaInIndia": [
+        32,
+        34
+      ]
+    },
+    "status": "draft"
+  },
+  "SGP": {
+    "hook": "A city that is also a country, and keeps getting bigger.",
+    "land": "One main island and around 60 small ones at the tip of the Malay Peninsula. By piling sand into the sea, it has grown about a quarter bigger since the 1960s.",
+    "people": "About 61 lakh people, with four official languages: English, Malay, Mandarin and Tamil.",
+    "surprise": "Almost half of it is green: parks, nature reserves and gardens are threaded right through the city.",
+    "scale": "About half the size of Delhi. You can drive across it in under an hour.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Singapore, Land reclamation in Singapore, Languages of Singapore"
+    ],
+    "checks": {
+      "pop": [
+        5800000.0,
+        6300000.0
+      ],
+      "areaInIndia": [
+        4000,
+        5000
+      ]
+    },
+    "status": "draft"
+  },
+  "KOR": {
+    "hook": "Seven-tenths mountains, and some of the fastest internet on Earth.",
+    "land": "The southern half of a peninsula, wrapped by sea on three sides, with more than 3,000 islands off its coasts. About 70% of it is hills and mountains.",
+    "people": "About 5.2 crore people, and around half of them live in and around Seoul.",
+    "surprise": "Until 2023, people here counted themselves one year old on the day they were born, and everyone got a year older together on New Year's Day.",
+    "scale": "A little bigger than Bihar, with less than half its people.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of South Korea, Seoul Capital Area, East Asian age reckoning"
+    ],
+    "checks": {
+      "pop": [
+        50000000.0,
+        53000000.0
+      ],
+      "areaInIndia": [
+        32,
+        33.5
+      ]
+    },
+    "status": "draft"
+  },
+  "THA": {
+    "hook": "The only country in Southeast Asia never ruled by a European power.",
+    "land": "Its shape is often compared to an elephant's head, with the long southern peninsula as the trunk. Hills in the north, rice plains along the Chao Phraya in the middle, and beaches on two seas in the south.",
+    "people": "About 7.2 crore people, more than 9 in 10 of them Buddhist, with around 40,000 temples.",
+    "surprise": "Bangkok's full ceremonial name is one of the longest place names on Earth, 168 letters in English. Thais simply call it Krung Thep, the City of Angels.",
+    "scale": "About the size of Maharashtra and Gujarat together, with roughly as many people as Gujarat.",
+    "sources": [
+      "World Bank: population 2025, area 2024",
+      "Wikipedia: Geography of Thailand, Buddhism in Thailand, Bangkok"
+    ],
+    "checks": {
+      "pop": [
+        70000000.0,
+        73000000.0
+      ],
+      "areaInIndia": [
+        6.2,
+        6.6
+      ]
+    },
+    "status": "draft"
   }
 }
