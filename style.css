@@ -2214,3 +2214,22 @@ html.pointer-input :focus-visible { outline: none; }
 @media (max-width: 768px) {
   #atlasDock .sheet-grip, #earthDock .sheet-grip { position: sticky; top: 0; z-index: 2; background: var(--surface, #1B1D4A); }
 }
+
+/* ═══════════ GAME CARDS (Arcade, Daily) · sheets on phones ═══════════
+   JS sets the height; the card fills it and scrolls inside. Peek keeps only the header. */
+@media (max-width: 768px) {
+  #quizHud[data-sheet], #dailyHud[data-sheet] { display: flex; transition: height .3s cubic-bezier(.2,.9,.3,1); }
+  #quizHud[data-sheet] .quiz-card.hud, #dailyHud[data-sheet] .daily-card { height: 100%; max-height: none; }
+  #quizHud .sheet-grip, #dailyHud .sheet-grip { position: sticky; top: 0; z-index: 4; height: 16px; margin: -12px -16px -4px; background: var(--surface); }
+  #dailyHud .sheet-grip { margin: -10px -14px -4px; }
+  #quizHud .sheet-grip::before, #dailyHud .sheet-grip::before { top: 6px; }
+  #quizHud .quiz-meta, #dailyHud .dl-head { touch-action: none; }
+  #dailyHud .dl-head { position: sticky; top: 16px; z-index: 3; background: var(--surface); }
+
+  #quizHud[data-sheet="peek"] .quiz-card.hud > :not(.quiz-meta):not(.sheet-grip) { display: none !important; }
+  #quizHud[data-sheet="peek"] .min-icon-svg { transform: rotate(180deg); }
+  #quizHud[data-sheet="peek"] .quiz-card.hud { overflow: hidden; }
+  #dailyHud[data-sheet="peek"] .dl-play, #dailyHud[data-sheet="peek"] .dl-done { display: none; }
+  #dailyHud[data-sheet="peek"] .daily-card { overflow: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { #quizHud[data-sheet], #dailyHud[data-sheet] { transition: none; } }

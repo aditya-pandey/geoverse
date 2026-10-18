@@ -4967,7 +4967,7 @@ function updateHudLift() {
   document.body.classList.toggle("sheet-tall", tall);
 }
 
-function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null } = {}) {
+function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null, ignore = null } = {}) {
   const sh = { state: def, def, dismiss, onSnap, snap, onTap };
   sheets.set(el, sh);
 
@@ -5038,7 +5038,7 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
     let t = null;
     body.addEventListener("touchstart", (e) => {
       // a touch on a handle is the handle's (when the whole sheet scrolls, the grip sits inside it)
-      if (handles.some((hd) => hd.contains(e.target))) { t = null; return; }
+      if (handles.some((hd) => hd.contains(e.target)) || ignore?.(e.target)) { t = null; return; }
       t = isMobile() && e.touches.length === 1 ? { x0: e.touches[0].clientX, y0: e.touches[0].clientY, h0: el.offsetHeight, mode: null, samples: [[e.touches[0].clientY, e.timeStamp]] } : null;
     }, { passive: true });
     body.addEventListener("touchmove", (e) => {
@@ -5100,6 +5100,37 @@ function initSheets() {
     });
   }
   initSheet($("#earthDock"), { def: "peek", body: $("#earthDock") });
+  // Game cards (Arcade, Daily): peek = just the header, so the globe is yours to play on ·
+  // half = exactly as tall as this round needs (re-fitted as it changes) · full = for long results
+  const gameSheet = (wrap, card, head, cap, peekSel, ignore = null) => {
+    if (!wrap || !card) return;
+    const natural = () => {
+      const h = wrap.style.height;
+      wrap.style.height = "auto";
+      const n = card.offsetHeight;
+      wrap.style.height = h;
+      return n;
+    };
+    const peek = () => peekSel.reduce((sum, sel) => sum + (card.querySelector(sel)?.offsetHeight || 0), 0) + 30;
+    initSheet(wrap, {
+      def: "half",
+      body: card,
+      handles: [head],
+      ignore,
+      snap: (st) => (st === "peek" ? peek() : st === "half" ? Math.max(peek() + 40, Math.min(natural(), innerHeight * cap)) : innerHeight * 0.86),
+      onTap: (st) => setSheet(wrap, st === "peek" ? "half" : "peek"),
+    });
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued || !isMobile() || !sheetShown(wrap)) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; if (sheets.get(wrap).state === "half") setSheet(wrap, "half"); });
+    }).observe(card, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  };
+  gameSheet($("#quizHud"), $("#quizHud .quiz-card"), $("#quizHud .quiz-meta"), 0.52, [".quiz-meta"]);
+  gameSheet($("#dailyHud"), $("#dailyHud .daily-card"), $("#dailyHud .dl-head"), 0.72, [".dl-head", ".dl-actions"],
+    (t) => S.daily?.phase === "order" && t.closest?.(".dl-row")); // while ordering, a row drag reorders
+
   // soft fades at the edges of the country card's text, like the tour card
   const pb = $("#panelBody");
   if (pb) {
@@ -5405,6 +5436,7 @@ function initUI() {
 
   $("#quizMinBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (isMobile()) { const hud = $("#quizHud"); setSheet(hud, hud.dataset.sheet === "peek" ? "half" : "peek"); return; }
     const card = $("#quizHud .quiz-card.hud");
     if (!card) return;
     const isCollapsed = card.classList.toggle("collapsed");
@@ -5412,6 +5444,7 @@ function initUI() {
   });
   $("#quizHud .quiz-card.hud")?.addEventListener("click", (e) => {
     if (e.target.closest("button") || e.target.closest(".q-opt")) return;
+    if (isMobile()) { if ($("#quizHud").dataset.sheet === "peek") setSheet($("#quizHud"), "half"); return; }
     const card = $("#quizHud .quiz-card.hud");
     if (card && card.classList.contains("collapsed")) {
       card.classList.remove("collapsed");

@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019f" />
+<link rel="stylesheet" href="style.css?v=20261019g" />
 </head>
 <body>
 
@@ -405,6 +405,7 @@
 <!-- Daily Bhoogol · Line-up -->
 <div id="dailyHud" class="hidden" role="region" aria-label="Today's Bhoogol">
   <div class="daily-card" data-phase="order">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="dl-head">
       <p class="dl-eyebrow" id="dlEyebrow">Bhoogol #1</p>
       <div class="dl-dots" id="dlDots" aria-hidden="true"></div>
@@ -429,6 +430,7 @@
 
 <div id="quizHud" class="hidden">
   <div class="quiz-card hud">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="quiz-meta">
       <span id="quizRound" class="mono-num">1/10</span>
       <span id="quizScore" class="mono-num">0 pts</span>
@@ -611,14 +613,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019f"),
-    load("engine.js?v=20261019f", true),
+    load("engine-core.js?v=20261019g"),
+    load("engine.js?v=20261019g", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019f"></script>
+<script src="app.js?v=20261019g"></script>
 </body>
 </html>
