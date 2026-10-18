@@ -50,6 +50,9 @@ const store = {
 function track(name, params = {}) {
   try { if (globalThis.GV_GA && typeof globalThis.gtag === "function") globalThis.gtag("event", name, params); } catch (e) { /* ignore */ }
 }
+// Focus rings belong to keyboard users: hide them after a tap or click, show them again on Tab
+addEventListener("pointerdown", () => document.documentElement.classList.add("pointer-input"), { capture: true, passive: true });
+addEventListener("keydown", (e) => { if (e.key === "Tab") document.documentElement.classList.remove("pointer-input"); }, { capture: true });
 // JavaScript errors reach the Exceptions report (the first few per visit, so one bad loop can't flood it)
 let errorsSent = 0;
 addEventListener("error", (e) => {
@@ -112,6 +115,7 @@ const flagEmoji = (cca2) =>
 
 const nameOf = (d) => d?.gv?.name?.common || d?.properties?.name || d?.properties?.shapeName || "Unknown";
 
+const sentenceCase = (s) => { s = String(s || "").toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
 const titleCase = (s) => /[a-z]/.test(s) ? s : s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
 function centroidOf(d) {
@@ -737,22 +741,29 @@ function openStoryToursModal() {
   if (!modal) return;
   modal.classList.remove("hidden");
   const grid = $("#toursGrid");
-  grid.innerHTML = STORY_TOURS.map((t) => {
+  const p = S.pausedTour;
+  const resume = p ? `
+      <button class="tour-resume" id="tourResume" type="button">
+        <span class="tr-text"><span class="tr-eyebrow">Paused</span><b>${esc(p.tour.title)}</b><span class="tr-sub">Chapter ${p.stopIndex + 1} of ${p.tour.stops.length} · ${esc(p.tour.stops[p.stopIndex]?.name || "")}</span></span>
+        <span class="tr-go">Resume</span>
+      </button>` : "";
+  grid.innerHTML = resume + STORY_TOURS.map((t) => {
     const done = S.toursCompleted.has(t.id);
     return `
       <div class="tour-card-item" data-tour-id="${t.id}">
         <div>
           <div class="tci-top">
             <span class="tci-icon">${t.icon}</span>
-            <span class="tci-badge">${done ? "✅ COMPLETED" : t.duration}</span>
+            <span class="tci-badge">${done ? "Completed" : t.duration}</span>
           </div>
           <div class="tci-title">${t.title}</div>
           <div class="tci-desc">${t.description}</div>
         </div>
-        <button class="tci-btn">${done ? "Replay Tour →" : "Start Expedition →"}</button>
+        <button class="tci-btn">${done ? "Replay" : "Start"}</button>
       </div>`;
   }).join("");
 
+  $("#tourResume")?.addEventListener("click", resumeTour);
   grid.querySelectorAll(".tour-card-item").forEach((card) => {
     card.addEventListener("click", () => {
       modal.classList.add("hidden");
@@ -772,10 +783,42 @@ function startStoryTour(tourId) {
   clearCompare();
   endQuiz(true);
   S.activeTour = { tour, stopIndex: 0 };
+  S.pausedTour = null; // a new tour replaces one that was paused
   track("tour_begin", { tour_id: tour.id });
   $("#tourActiveHud .tour-hud-card")?.classList.remove("collapsed");
   $("#tourActiveHud")?.classList.remove("hidden");
+  syncImmersive();
   renderActiveTourStop();
+}
+
+// Switching to another tab mid-tour pauses it (its card hides); the Tours tab offers to resume where you were
+function pauseTour() {
+  if (!S.activeTour) return;
+  S.pausedTour = S.activeTour;
+  S.activeTour = null;
+  $("#tourActiveHud")?.classList.add("hidden");
+  refreshArcs();
+  syncImmersive();
+  toast(`${S.pausedTour.tour.title} is paused. Resume it from Tours.`, 3200);
+}
+function resumeTour() {
+  const t = S.pausedTour;
+  if (!t) return;
+  S.pausedTour = null;
+  closeStoryToursModal();
+  if (S.mode !== "explore") setMode("explore");
+  closePanel();
+  S.activeTour = t;
+  track("tour_resume", { tour_id: t.tour.id, stop: t.stopIndex + 1 });
+  $("#tourActiveHud")?.classList.remove("hidden");
+  syncImmersive();
+  renderActiveTourStop();
+}
+
+// Tours and games take the whole screen on phones: the tab bar steps aside, the card's × is the way out
+function syncImmersive() {
+  document.body.classList.toggle("immersive", !!S.activeTour || !!S.quiz);
+  updateHudLift();
 }
 
 async function renderActiveTourStop() {
@@ -785,19 +828,23 @@ async function renderActiveTourStop() {
   const s = tour.stops[stopIndex];
   if (!s) return;
 
-  const pad = (n) => String(n).padStart(2, "0");
   $("#thTourTitle").textContent = tour.title;
-  if ($("#thStopBadge")) $("#thStopBadge").textContent = `${pad(stopIndex + 1)} / ${pad(tour.stops.length)}`;
+  if ($("#thStopBadge")) $("#thStopBadge").textContent = `${stopIndex + 1} of ${tour.stops.length}`;
+  if ($("#thDots")) $("#thDots").innerHTML = tour.stops.map((_, i) => `<i class="${i < stopIndex ? "done" : i === stopIndex ? "on" : ""}"></i>`).join("");
   if ($("#thCoordsBadge")) {
     const latStr = `${Math.abs(s.lat).toFixed(2)}° ${s.lat >= 0 ? "N" : "S"}`;
     const lngStr = `${Math.abs(s.lng).toFixed(2)}° ${s.lng >= 0 ? "E" : "W"}`;
     $("#thCoordsBadge").textContent = `${latStr}, ${lngStr}`;
   }
-  if ($("#thChapterTag")) $("#thChapterTag").textContent = `CHAPTER ${pad(stopIndex + 1)}`;
-  if ($("#thTypeTag")) $("#thTypeTag").textContent = (s.type || "GEOGRAPHY").toUpperCase();
+  if ($("#tourExploreBtn")) {
+    $("#tourExploreBtn").textContent = `Explore ${s.country} →`;
+  }
+  if ($("#thChapterTag")) $("#thChapterTag").textContent = `Chapter ${stopIndex + 1}`;
+  if ($("#thTypeTag")) $("#thTypeTag").textContent = sentenceCase(s.type || "Geography");
 
   $("#thLocationName").textContent = s.name;
-  $("#thLocationSub").textContent = `${s.country} · ${s.type}`;
+  $("#thLocationSub").textContent = `${s.country} · ${sentenceCase(s.type || "")}`;
+  $(".th-story-body")?.scrollTo?.(0, 0);
   $("#thSparkText").textContent = s.spark;
   $("#thExplainText").textContent = s.explain;
   $("#thScaleText").textContent = s.scale;
@@ -805,7 +852,7 @@ async function renderActiveTourStop() {
   // Animate globe camera smoothly to this stop using viewFor so it's framed in the clear stage
   pauseRotate();
   S.globe.pointOfView(viewFor(s.lat, s.lng, s.alt * stageZoom()), 1400);
-  ringPulse(s.lat, s.lng, 3.5, "56,189,248");
+  ringPulse(s.lat, s.lng, 3.5, "255,176,32");
 
   // Fetch real Wikipedia photo asynchronously
   const imgEl = $("#thPhoto");
@@ -824,7 +871,7 @@ async function renderActiveTourStop() {
   // Update navigation buttons
   $("#tourPrevBtn").disabled = stopIndex === 0;
   $("#tourPrevBtn").style.opacity = stopIndex === 0 ? "0.4" : "1";
-  $("#tourNextBtn").textContent = stopIndex === tour.stops.length - 1 ? "Finish Expedition 🏆" : "Next Chapter →";
+  $("#tourNextBtn").textContent = stopIndex === tour.stops.length - 1 ? "Finish" : "Next";
 
   // Wire Explore Country button
   const expBtn = $("#tourExploreBtn");
@@ -847,6 +894,7 @@ async function renderActiveTourStop() {
 function exitStoryTour() {
   S.activeTour = null;
   $("#tourActiveHud")?.classList.add("hidden");
+  syncImmersive();
   refreshArcs();
   setMode("explore");
 }
@@ -1505,6 +1553,7 @@ function setMode(mode) {
     if (mode === "quiz" && !S.quiz) { openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
     return;
   }
+  if (S.activeTour) pauseTour();
   if (S.mode === "quiz") endQuiz(true);
   if (S.mode === "earth") clearEarthLayers();
   track("mode_change", { mode });
@@ -1529,6 +1578,9 @@ function setMode(mode) {
   if (mode === "atlas") {
     renderLegend();
     renderAtlasReadout(null);
+    // data maps read best from a distance: bars become a skyline, not walls
+    const pov = S.globe.pointOfView();
+    if (pov.altitude < 2) S.globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: 2.4 * stageZoom() }, 900);
     $("#hudHint").textContent = isCoarse()
       ? "Tap a country to inspect · Tap again to dive in"
       : "Hover countries to read the data · Click to dive in";
@@ -1613,8 +1665,8 @@ function updateProgress() {
 }
 
 const QUIZ_TYPE_LABEL = {
-  find: "📍 Find", capital: "🏛️ Capitals", flag: "🚩 Flags", city: "🏙️ City→Country", borders: "🤝 Neighbours", duel: "📏 Bigger/Smaller", wonder: "✨ Wonder Hunt",
-  mystery: "🔍 3-Clue Mystery Hunt", chain: "🔥 Globe Chain", pinpoint: "🎯 Pinpoint Drop", blitz: "⚡ Classic Trivia Blitz"
+  find: "Find the country", capital: "Capitals", flag: "Flags", city: "City → country", borders: "Neighbours", duel: "Bigger or smaller", wonder: "Wonders",
+  mystery: "Mystery country", chain: "Higher or lower", pinpoint: "Pinpoint", blitz: "Trivia blitz"
 };
 const DIFF_LABEL = { E: "Easy", N: "Normal", H: "Hard" };
 
@@ -1769,7 +1821,7 @@ async function openInfoPanel({ title, subtitle, emoji, wikiTitles, flagUrl, flag
 
   $("#panelBody").innerHTML = `
     <div class="field-notes-box">
-      <div class="field-badge amber">EXPLORER FIELD NOTES · ${esc((subtitle || "GEOGRAPHY").toUpperCase())}</div>
+      <div class="field-badge amber">Explorer field notes · ${esc(sentenceCase(subtitle || "Geography"))}</div>
       <div class="story-photo-banner" id="infoPhotoBanner" style="display:none">
         <img id="infoPhotoImg" alt="${esc(title)}" loading="lazy" />
         <div class="story-photo-credit">Wikimedia Commons</div>
@@ -1995,7 +2047,7 @@ async function renderPanelTab(d) {
       </div>
 
       <div class="geo-identity-card">
-        <div class="gic-eyebrow">GEOGRAPHIC IDENTITY · ${c?.region ? c.region.toUpperCase() : "GLOBAL"}</div>
+        <div class="gic-eyebrow">Geographic identity · ${c?.region ? esc(c.region) : "Global"}</div>
         <h3 class="gic-spark">${story.spark}</h3>
         <p class="gic-explain">${story.howItWorks}</p>
       </div>
@@ -2927,7 +2979,7 @@ async function loadLifeDetail(card, sp, country) {
     : (sp.n.includes("Jaguar") || sp.n.includes("Monkey") ? "Equatorial Rainforest" : "Temperate & Montane")));
 
   box.innerHTML = `
-    <div class="field-badge emerald">WILDLIFE FIELD NOTES · ${esc(taxon.toUpperCase())}</div>
+    <div class="field-badge emerald">Wildlife field notes · ${esc(sentenceCase(taxon))}</div>
     ${wiki?.thumb ? `
       <div class="story-photo-banner" style="height:150px;margin-bottom:10px">
         <img src="${wiki.thumb}" alt="${sp.n}" loading="lazy" />
@@ -3401,8 +3453,8 @@ const DIFF_RULES = {
 const QUIZ_HINTS = {
   find: "Click the country on the globe!",
   wonder: "Click the spot on the globe!",
-  mystery: "Spin the globe and click the mystery country!",
-  chain: "Guess if the next country has MORE or FEWER/SMALLER!",
+  mystery: "Read the clue, then find the country on the globe.",
+  chain: "Guess whether the next country has more or less.",
   pinpoint: "Click/tap the target location on the 3D globe!",
   blitz: "Choose the correct answer!",
 };
@@ -3487,7 +3539,7 @@ function makeChainRounds(pool, rng) {
       valTargetStr,
       fact: `${nameOf(target)} has ${valTargetStr} compared to ${nameOf(base)}'s ${valBaseStr}.`,
       text: `${nameOf(target)} vs ${nameOf(base)} (${metricLabel})`,
-      answer: valTarget >= valBase ? "MORE" : "FEWER / SMALLER",
+      answer: valTarget >= valBase ? "More" : "Less",
     });
   }
   return rounds;
@@ -3556,7 +3608,7 @@ function makeRound(type, t, pool, rng, diff) {
     const wrong = pickOthers((f) => f !== t && f.gv.capital?.[0] !== city, 3).map(nameOf);
     return {
       target: t, correct: nameOf(t), options: shuffleWith(rng, [nameOf(t), ...wrong]),
-      html: `🏙️ ${gold(city)} is the capital of…?`, text: `${city} is the capital of…?`, answer: nameOf(t),
+      html: `${gold(city)} is the capital of…?`, text: `${city} is the capital of…?`, answer: nameOf(t),
       explain: `❌ ${city} is the capital of ${nameOf(t)}.`,
     };
   }
@@ -3568,7 +3620,7 @@ function makeRound(type, t, pool, rng, diff) {
     const list = neighbours.map((n) => `${flagEmoji(n.gv.cca2)} ${nameOf(n)}`).join(", ");
     return {
       target: t, correct: nameOf(t), options: shuffleWith(rng, [nameOf(t), ...wrong]),
-      html: `🤝 Which country borders ${gold(list)}?`, text: `Which country borders ${neighbours.map(nameOf).join(", ")}?`,
+      html: `Which country borders ${gold(list)}?`, text: `Which country borders ${neighbours.map(nameOf).join(", ")}?`,
       answer: nameOf(t), explain: `❌ It was ${nameOf(t)}.`,
     };
   }
@@ -3582,7 +3634,7 @@ function makeRound(type, t, pool, rng, diff) {
     const unit = metric === "area" ? " km²" : " people";
     return {
       target: winner, correct: label(winner), options: shuffleWith(rng, [label(t), label(rival)]),
-      html: `📏 Bigger ${gold(metric === "population" ? "population 👥" : "area 📐")}?`,
+      html: `Which has the bigger ${gold(metric === "population" ? "population" : "area")}?`,
       text: `Bigger ${metric}: ${nameOf(t)} or ${nameOf(rival)}?`,
       answer: `${nameOf(winner)} (${fmt.format(val(winner))}${unit})`,
       explain: `❌ ${nameOf(winner)}: ${fmt.format(val(winner))} vs ${nameOf(loser)}: ${fmt.format(val(loser))}${unit}`,
@@ -3723,6 +3775,7 @@ function startQuiz() {
   $("#quizHud").classList.remove("hidden");
   $("#hudHint").textContent = QUIZ_HINTS[arcadeMode] || QUIZ_HINTS[type] || "Play with the 3D globe!";
   track("level_start", { level_name: arcadeMode === "blitz" ? `blitz:${type}` : arcadeMode, game: arcadeMode, quiz_type: type, region, difficulty: diff, challenge: !!S.pendingChallenge });
+  syncImmersive();
   S.globe.pointOfView(viewFor(15, 20, 2.6 * stageZoom()), 900);
   refreshHtmlLayer();
   scheduleUrl();
@@ -3746,7 +3799,7 @@ function nextRound() {
 
   $("#quizRound").textContent = `${q.round}/${ROUNDS}`;
   $("#quizScore").textContent = `${q.score} pts`;
-  $("#quizStreak").textContent = `🔥 ${q.streak}`;
+  setStreak(q);
   $("#quizFeedback").textContent = "";
   $("#quizFeedback").className = "";
   $("#quizStoryFact").classList.add("hidden");
@@ -3760,7 +3813,7 @@ function nextRound() {
 
   if (q.arcadeMode === "mystery") {
     q.target = r.country;
-    $("#quizPrompt").innerHTML = `<h3>3-Clue Mystery Hunt</h3><p>Spin the globe and click the mystery country directly on the planet!</p>`;
+    $("#quizPrompt").innerHTML = promptHtml(`Mystery country · round ${q.round} of ${ROUNDS}`, "", isCoarse() ? "Read the clue, then tap the country on the globe." : "Read the clue, then click the country on the globe.");
     const mBox = $("#mysteryCluesBox");
     mBox.classList.remove("hidden");
     $("#mysteryClueText1").textContent = r.clues[0];
@@ -3769,6 +3822,7 @@ function nextRound() {
     $("#mysteryClue2").className = "clue-item locked";
     $("#mysteryClueText3").textContent = "Guess twice to unlock Clue 3...";
     $("#mysteryClue3").className = "clue-item locked";
+    setClueNote(q);
     refreshPolys();
   } else if (q.arcadeMode === "chain") {
     q.target = r.target;
@@ -3778,7 +3832,7 @@ function nextRound() {
     q.chainArc = { sLat: ca.lat, sLng: ca.lng, eLat: cb.lat, eLng: cb.lng, km: dist, glow: false };
     refreshArcs();
 
-    $("#quizPrompt").innerHTML = `<h3>Higher or Lower: Globe Chain</h3><p>Does <b>${nameOf(target)}</b> have MORE or FEWER/SMALLER ${r.metricLabel} than <b>${nameOf(base)}</b>?</p>`;
+    $("#quizPrompt").innerHTML = promptHtml("Higher or lower", `Does <b>${nameOf(target)}</b> have more or less ${r.metricLabel} than <b>${nameOf(base)}</b>?`);
     const cBox = $("#chainBox");
     cBox.classList.remove("hidden");
 
@@ -3803,7 +3857,7 @@ function nextRound() {
     refreshPolys();
   } else if (q.arcadeMode === "pinpoint") {
     q.target = r.target;
-    $("#quizPrompt").innerHTML = `<h3>Pinpoint Drop</h3><p>Click / tap as close as possible on the 3D globe to the target location!</p>`;
+    $("#quizPrompt").innerHTML = promptHtml("Pinpoint", "", isCoarse() ? "Tap the globe as close to the place as you can." : "Click the globe as close to the place as you can.");
     const pBox = $("#pinpointBox");
     pBox.classList.remove("hidden");
     $("#pinpointTargetName").textContent = r.target.name;
@@ -3815,11 +3869,28 @@ function nextRound() {
     // Mode D: Classic Trivia Blitz
     q.target = r.wonder || r.target;
     q.explain = r.explain || "";
-    $("#quizPrompt").innerHTML = r.html;
+    $("#quizPrompt").innerHTML = promptHtml(QUIZ_TYPE_LABEL[q.type] || "Trivia", r.html);
     if (r.options) buildOptions(r.options, r.correct);
     if (r.fly) flyTo(r.target, 1200);
     refreshPolys();
   }
+}
+
+// The streak only speaks up once it's a streak
+function setStreak(q) {
+  $("#quizStreak").textContent = q.streak >= 2 ? `${q.streak} in a row` : "";
+}
+// One quiet line instead of two empty locked cards
+function setClueNote(q) {
+  const left = Math.max(0, 2 - (q.attempts || 0));
+  const note = $("#mysteryNote");
+  if (note) note.textContent = left === 2 ? "Miss, and a second clue appears. Miss again for a third." : left === 1 ? "Miss once more for the last clue." : "";
+}
+// The question leads; the game's name is a small eyebrow; the how-to line shows once per visit
+function promptHtml(eyebrow, question, howto) {
+  const once = howto && !S.quizCoached;
+  if (once) S.quizCoached = true;
+  return `<p class="qp-eyebrow">${eyebrow}</p>${question ? `<div class="qp-q">${question}</div>` : ""}${once ? `<p class="qp-howto">${howto}</p>` : ""}`;
 }
 
 function showQuizStoryFact(fact) {
@@ -3894,8 +3965,9 @@ function quizMysteryClick(d, ev) {
         $("#mysteryClueText3").textContent = q.cur.clues[2];
         $("#mysteryClue3").className = "clue-item";
       }
+      setClueNote(q);
     }
-    $("#quizStreak").textContent = `🔥 ${q.streak}`;
+    setStreak(q);
   }
   $("#quizScore").textContent = `${q.score} pts`;
 }
@@ -3920,7 +3992,7 @@ function answerChain(isHigher) {
     const pts = award(150);
     fb.innerHTML = `✅ <b>Correct!</b> ${nameOf(r.target)} has ${r.valTargetStr} (+${pts} pts)`;
     fb.className = "good";
-    logRound("correct", isHigher ? "MORE" : "FEWER");
+    logRound("correct", isHigher ? "More" : "Less");
     flash(r.target, "rgba(61,220,151,0.9)", 1400);
     confetti({ particleCount: 75, spread: 70, origin: { x: 0.5, y: 0.4 }, colors: ["#3DDC97", "#2E6BFF", "#FFB020"] });
     flyTo(r.target, 1100);
@@ -3930,13 +4002,13 @@ function answerChain(isHigher) {
     q.streak = 0;
     fb.innerHTML = `❌ <b>Streak Broken!</b> ${nameOf(r.target)} has ${r.valTargetStr}`;
     fb.className = "bad";
-    logRound("wrong", isHigher ? "MORE" : "FEWER");
+    logRound("wrong", isHigher ? "More" : "Less");
     flash(r.target, "rgba(184,58,31,0.9)", 1400);
     flyTo(r.target, 1100);
     if (r.fact) showQuizStoryFact(r.fact);
     setTimeout(nextRound, 2600);
   }
-  $("#quizStreak").textContent = `🔥 ${q.streak}`;
+  setStreak(q);
   $("#quizScore").textContent = `${q.score} pts`;
 }
 
@@ -3985,7 +4057,7 @@ function quizPinpointClick(coords) {
 
   S.globe.pointOfView({ lat: t.lat, lng: t.lng, altitude: 1.2 }, 1200);
 
-  $("#quizStreak").textContent = `🔥 ${q.streak}`;
+  setStreak(q);
   $("#quizScore").textContent = `${q.score} pts`;
 
   setTimeout(nextRound, 3200);
@@ -4043,7 +4115,7 @@ function quizWonderClick(coords) {
       fb.innerHTML = `${fmtFull.format(Math.round(dist / 100) * 100)} km away — head ${bearingArrow(coords, w)}`;
       fb.className = "bad";
     }
-    $("#quizStreak").textContent = `🔥 ${q.streak}`;
+    setStreak(q);
   }
   $("#quizScore").textContent = `${q.score} pts`;
 }
@@ -4103,7 +4175,7 @@ function quizMapClick(d, ev) {
       fb.innerHTML = `That's ${esc(nameOf(d))}. Head ${bearingArrow(centroidOf(d), centroidOf(q.target))} ≈ ${fmtFull.format(Math.round(dist / 100) * 100)} km${hint}`;
       fb.className = "bad";
     }
-    $("#quizStreak").textContent = `🔥 ${q.streak}`;
+    setStreak(q);
   }
   $("#quizScore").textContent = `${q.score} pts`;
 }
@@ -4134,7 +4206,7 @@ function choiceAnswer(btn) {
   const fact = q.cur.fact || (q.target?.gv ? generateCountryStory(q.target)?.spark : "");
   if (fact) showQuizStoryFact(fact);
   $("#quizScore").textContent = `${q.score} pts`;
-  $("#quizStreak").textContent = `🔥 ${q.streak}`;
+  setStreak(q);
   setTimeout(nextRound, 2200);
 }
 
@@ -4206,7 +4278,7 @@ function finishQuiz() {
   $("#resultTitle").textContent = title;
   const modeLabel = QUIZ_TYPE_LABEL[q.arcadeMode] || QUIZ_TYPE_LABEL[q.type] || "Arcade";
   $("#resultStats").innerHTML =
-    `<b>${q.score} pts</b> · ${q.correct}/${ROUNDS} correct · best streak 🔥 ${q.bestStreak}` +
+    `<b>${q.score} pts</b> · ${q.correct}/${ROUNDS} correct · best streak ${q.bestStreak}` +
     `<br/><span class="res-meta">${modeLabel} · ${q.region} · ${DIFF_LABEL[q.diff]} · seed: <code>${q.seed}</code></span>` +
     (newBest ? `<br/><span style="color:var(--gold)">✨ New personal best for this game!</span>` : ``);
 
@@ -4224,6 +4296,7 @@ function finishQuiz() {
   track("level_end", { level_name: level, success: q.correct >= ROUNDS / 2, score: q.score, correct: q.correct, rounds: ROUNDS, best_streak: q.bestStreak, region: q.region, difficulty: q.diff });
   track("post_score", { score: q.score, level: level });
   S.quiz = null;
+  syncImmersive();
   refreshArcs();
   $("#quizResult").classList.remove("hidden");
   $("#quizResult .quiz-card").scrollTop = 0;
@@ -4278,6 +4351,7 @@ async function shareScorecard() {
 
 function endQuiz(silent = false) {
   S.quiz = null;
+  syncImmersive();
   refreshArcs(); // a game's arcs (Chain, Pinpoint) go away with it
   $("#quizHud").classList.add("hidden");
   $("#quizSetup").classList.add("hidden");
@@ -4328,7 +4402,7 @@ function setSheet(el, state, animate = true) {
 
 function updateHudLift() {
   const root = document.documentElement.style;
-  root.setProperty("--nav-h", navHeight() + "px");
+  root.setProperty("--nav-h", document.body.classList.contains("immersive") && isMobile() ? "env(safe-area-inset-bottom, 0px)" : navHeight() + "px");
   root.setProperty("--sheet-h", tallestSheet() + "px");
   let tall = false;
   if (isMobile()) for (const [el, sh] of sheets) if (sheetShown(el) && sh.state !== "peek") tall = true;
@@ -4728,7 +4802,7 @@ function initUI() {
       S.toursCompleted.add(S.activeTour.tour.id);
       store.set("gv-tours-completed", Array.from(S.toursCompleted));
       confetti({ particleCount: 120, spread: 85, origin: { y: 0.5 } });
-      toast("🏆 Expedition completed! Beautifully explored.");
+      toast(`Tour complete. That's the ${S.activeTour.tour.title}, all ${S.activeTour.tour.stops.length} stops.`, 3200);
       exitStoryTour();
     }
   });
