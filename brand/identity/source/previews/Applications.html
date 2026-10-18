@@ -1,0 +1,59 @@
+<!-- @dsCard group="Brand" height=520 subtitle="Share card, loading screen and home-screen icon" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Applications</title>
+<style>
+  .wrap { display: flex; gap: var(--space-5); padding: var(--space-5); align-items: flex-start; flex-wrap: wrap; }
+  /* share card: 1200×630 at 0.4 */
+  .share { position: relative; width: 480px; height: 252px; border-radius: var(--radius-m); overflow: hidden; background: var(--space); color: var(--chalk); flex: none; }
+  .share__logo { position: absolute; left: 24px; top: 20px; }
+  .share__big { position: absolute; left: 24px; bottom: 58px; font: 800 64px/60px var(--font-display); }
+  .share__ask { position: absolute; left: 26px; bottom: 22px; font: 700 20px/24px var(--font-hand); color: var(--marigold); }
+  .share__w1 { position: absolute; right: -36px; top: 40px; }
+  .share__w2 { position: absolute; right: 150px; bottom: -30px; }
+  .share__loop { position: absolute; left: 6px; bottom: 44px; width: 190px; height: 92px; }
+  .share__loop svg { width: 100%; height: 100%; }
+  .dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--chalk); opacity: .8; }
+  /* phone: 390×844 at 0.5 */
+  .phone { width: 195px; height: 422px; border-radius: 30px; background: var(--space); color: var(--chalk); position: relative; overflow: hidden; flex: none; box-shadow: 0 0 0 6px #050616; }
+  .phone__twin { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); animation: spin 6s linear infinite; }
+  .phone__msg { position: absolute; left: 0; right: 0; top: 60%; text-align: center; font: 400 13px/18px var(--font-text); color: var(--ink-muted); }
+  .phone__logo { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); }
+  @keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .phone__twin { animation: none; } }
+  .home { display: grid; grid-template-columns: repeat(2, 64px); gap: 18px 16px; padding: 18px; border-radius: var(--radius-l); background: var(--surface-raised); flex: none; }
+  .app { display: grid; justify-items: center; gap: 6px; font: 500 11px/14px var(--font-text); color: var(--ink); }
+  .app__icon { width: 64px; height: 64px; border-radius: 15px; display: grid; place-items: center; }
+  .app__icon--bh { background: var(--space); position: relative; }
+  .app__icon--x { background: var(--line); }
+  .spark { position: absolute; right: 9px; top: 9px; }
+</style></head>
+<body>
+<div class="wrap">
+  <div class="share bh-ground-space" aria-label="Share card">
+    <span class="dot" style="left: 300px; top: 30px"></span><span class="dot" style="left: 420px; top: 210px"></span><span class="dot" style="left: 230px; top: 120px"></span>
+    <span class="share__w1" data-bh-world="east" data-bh-size="170" data-bh-shade></span>
+    <span class="share__w2" data-bh-world="west" data-bh-size="90" data-bh-shade></span>
+    <span class="share__logo" data-bh-logo="wordmark" data-bh-size="30"></span>
+    <span class="share__loop" data-bh-mark="circle" data-bh-stretch></span>
+    <div class="share__big">9 of 10</div>
+    <div class="share__ask">can you beat me?</div>
+  </div>
+  <div class="phone bh-ground-space" aria-label="Loading screen">
+    <span class="phone__twin" data-bh-twin data-bh-size="120"></span>
+    <div class="phone__msg">Spinning up the world…</div>
+    <span class="phone__logo" data-bh-logo="wordmark" data-bh-size="20"></span>
+  </div>
+  <div class="home" aria-label="Home screen">
+    <div class="app"><div class="app__icon app__icon--bh"><span data-bh-twin data-bh-size="56"></span><span class="spark" data-bh-mark="sparkle" data-bh-size="12"></span></div>Bhoogol</div>
+    <div class="app"><div class="app__icon app__icon--x"></div>Notes</div>
+    <div class="app"><div class="app__icon app__icon--x"></div>Maps</div>
+    <div class="app"><div class="app__icon app__icon--x"></div>Camera</div>
+  </div>
+</div>
+<script>
+  Bhoogol.hydrate();
+  document.querySelectorAll('.share__logo svg, .phone__logo svg').forEach(function (s) { s.style.color = 'var(--chalk)'; });
+</script>
+</body>
+</html>

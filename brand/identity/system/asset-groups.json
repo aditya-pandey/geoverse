@@ -1,0 +1,52 @@
+{
+ "Logos": [
+  "bhoogol-wordmark-day.svg",
+  "bhoogol-wordmark-night.svg",
+  "bhoogol-wordmark-black.svg",
+  "bhoogol-wordmark-white.svg",
+  "bhoogol-devanagari-day.svg",
+  "bhoogol-devanagari-night.svg",
+  "bhoogol-bilingual-day.svg",
+  "bhoogol-bilingual-night.svg",
+  "bhoogol-symbol.svg",
+  "bhoogol-symbol-black.svg",
+  "bhoogol-symbol-white.svg",
+  "bhoogol-world.svg",
+  "bhoogol-app-icon.svg"
+ ],
+ "Marks": [
+  "marker-circle.svg",
+  "marker-underline.svg",
+  "marker-arrow.svg",
+  "marker-tick.svg",
+  "marker-sparkle.svg"
+ ],
+ "Worlds": [
+  "world-west.svg",
+  "world-east.svg",
+  "moon.svg",
+  "kancha-blue.svg",
+  "kancha-mint.svg",
+  "kancha-marigold.svg",
+  "pattern-confetti.svg"
+ ],
+ "Icons": [
+  "globe.svg",
+  "quiz.svg",
+  "compare.svg",
+  "layers.svg",
+  "search.svg",
+  "wildlife.svg",
+  "tour.svg",
+  "play.svg",
+  "river.svg",
+  "mountain.svg",
+  "ocean.svg",
+  "capital.svg",
+  "mark.svg",
+  "star.svg",
+  "sound.svg",
+  "settings.svg",
+  "share.svg"
+ ]
+}

@@ -1,0 +1,29 @@
+<!-- @dsCard group="Brand" height=470 subtitle="The logo on its two grounds, plus every version" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Logo</title>
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-4); }
+  .tile { border-radius: var(--radius-l); display: grid; place-items: center; padding: var(--space-6) var(--space-4); min-height: 120px; }
+  .wide { grid-column: 1 / -1; }
+  .row { display: flex; gap: var(--space-5); align-items: center; justify-content: center; flex-wrap: wrap; }
+  .icon { width: 72px; height: 72px; border-radius: 18px; background: var(--space); display: grid; place-items: center; }
+  .cap { font: 500 12px/16px var(--font-mono); opacity: .7; margin-top: 6px; text-align: center; }
+</style></head>
+<body>
+<div class="grid">
+  <div class="tile bh-ground-space wide"><span data-bh-logo="wordmark" data-bh-size="84"></span></div>
+  <div class="tile bh-ground-chalk"><span data-bh-logo="wordmark" data-bh-size="52"></span></div>
+  <div class="tile bh-ground-chalk"><span data-bh-logo="devanagari" data-bh-size="64"></span></div>
+  <div class="tile bh-ground-chalk wide">
+    <div class="row">
+      <div><span data-bh-twin data-bh-size="72"></span><div class="cap">symbol</div></div>
+      <div><span data-bh-world="east" data-bh-size="56"></span><div class="cap">favicon</div></div>
+      <div><div class="icon"><span data-bh-twin data-bh-size="60"></span></div><div class="cap">app icon</div></div>
+      <div><span data-bh-logo="wordmark" data-bh-size="40" data-bh-mono></span><div class="cap">one colour</div></div>
+    </div>
+  </div>
+</div>
+<script>Bhoogol.hydrate();</script>
+</body>
+</html>

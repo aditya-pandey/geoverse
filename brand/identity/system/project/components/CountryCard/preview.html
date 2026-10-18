@@ -1,0 +1,34 @@
+<!-- @dsCard group="Globe" height=520 subtitle="The sheet that opens when you tap a country" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Country card</title></head>
+<body>
+<div class="bh-stage">
+  <article class="bh-card" aria-labelledby="cname">
+    <div class="bh-card__handle" aria-hidden="true"></div>
+    <div class="bh-card__head">
+      <span class="bh-card__flag" aria-hidden="true">🇧🇭</span>
+      <div>
+        <h2 class="bh-card__name" id="cname">Bahrain<span class="bh-card__underline" data-bh-mark="underline" data-bh-stretch></span></h2>
+        <div class="bh-card__alt">बहरीन · Middle East</div>
+      </div>
+    </div>
+    <p class="bh-card__fact">An island country in the Persian Gulf, joined to Saudi Arabia by a 25&nbsp;km causeway.</p>
+    <ul class="bh-stats">
+      <li class="bh-stat"><span class="bh-stat__label">Capital</span><span class="bh-stat__value">Manama</span></li>
+      <li class="bh-stat"><span class="bh-stat__label">People</span><span class="bh-stat__value">1.5 M</span></li>
+      <li class="bh-stat"><span class="bh-stat__label">Area</span><span class="bh-stat__value">786 km²</span></li>
+    </ul>
+    <div class="bh-card__chips">
+      <button class="bh-chip" type="button" aria-pressed="false"><span data-bh-icon="ocean" data-bh-size="20"></span>Persian Gulf</button>
+      <button class="bh-chip" type="button" aria-pressed="false"><span data-bh-icon="wildlife" data-bh-size="20"></span>Wildlife</button>
+    </div>
+    <div class="bh-card__actions">
+      <button class="bh-btn bh-btn--primary" type="button">Fly there</button>
+      <button class="bh-btn bh-btn--quiet" type="button">Compare</button>
+    </div>
+  </article>
+</div>
+<script>Bhoogol.hydrate();</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+{
+  "brand": "Bhoogol",
+  "tagline": "भूगोल · the round Earth",
+  "brief": "A free 3D globe for learning geography, on phones and desktops. Bhoo means Earth and gol means round; together they make the everyday Hindi word for geography. It should feel curious, calm and playful, like a well-made desk globe, and never childish.",
+  "adjectives": [
+    "curious",
+    "playful",
+    "calm",
+    "smooth",
+    "warm",
+    "clever"
+  ],
+  "criteria": "Success: unlike grid globes and map pins, recognisable at 16 px, works in one colour on navy and on white, and pairs with a Devanagari wordmark.",
+  "mockups": [
+    "app-icon",
+    "favicon-tab",
+    "website",
+    "social",
+    "sticker",
+    "tshirt"
+  ],
+  "nav": [
+    "Explore",
+    "Play",
+    "Tours"
+  ],
+  "brand_color": "#13223F",
+  "greyscale": false,
+  "designer": "Claude",
+  "round": 1,
+  "concepts": [
+    {
+      "name": "Pale Blue Dot",
+      "symbol": "master/bhoogol-symbol.svg",
+      "lockup": "master/bhoogol-bilingual-on-light.svg",
+      "avatar": "master/bhoogol-symbol-small.svg",
+      "idea": "One small blue dot caught in a beam of sunlight, the way Voyager saw the Earth.",
+      "rationale": [
+        "Carries the Carl Sagan story you were drawn to, with no globe cliché",
+        "The app can open the same way: a dot in a sunbeam that grows into the globe",
+        "A strong app icon; the favicon has its own drawing with a larger dot",
+        "The beam's 15° angle is repeated in the cut tops of the b, h and l, and a matching custom-drawn भूगोल completes the bilingual lockup"
+      ]
+    },
+    {
+      "name": "Patchwork",
+      "symbol": "concepts/a-patchwork-colour.svg",
+      "idea": "The globe as four pastel countries, borders meeting like a political map.",
+      "rationale": [
+        "Closest to the app itself: the same pastel political palette",
+        "Warm and toy-like, true to the desk-globe feel",
+        "Weaker on white backgrounds, and a globe is the category's expected sign"
+      ]
+    },
+    {
+      "name": "Tilt",
+      "symbol": "concepts/c-tilt-colour.svg",
+      "idea": "A plain disc on the Earth's real 23.5° axis, showing only at the poles.",
+      "rationale": [
+        "The simplest mark, built on a true geography fact",
+        "Very clear at 16 px",
+        "Risk: can read as a balloon or a cartoon bomb"
+      ]
+    }
+  ],
+  "recommendation": "Pale Blue Dot. It is the most ownable of the three, it tells the Sagan story in one image, it makes the strongest app icon, and it gives the app a ready-made opening animation.",
+  "next_steps": [
+    "Pick a direction, or tell me what you like in each",
+    "Have a fluent reader check the custom भूगोल letterforms",
+    "Wire the icons and logo into the app, and run a trademark search"
+  ]
+}

@@ -1,0 +1,19 @@
+<!-- @dsCard group="Games" height=330 subtitle="Quiz answers: idle, selected, correct, wrong, dimmed" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Answer option</title></head>
+<body>
+<div class="bh-stack">
+  <div style="font: 700 20px/26px var(--font-display); margin-bottom: 4px;">Which country is this?</div>
+  <button class="bh-answer" type="button" role="radio" aria-checked="false" data-state="dim"><span class="bh-answer__key">A</span><span class="bh-answer__text">Paraguay</span></button>
+  <button class="bh-answer" type="button" role="radio" aria-checked="false" data-state="correct"><span class="bh-answer__key">B</span><span class="bh-answer__text">Bolivia</span><span class="bh-answer__state" data-bh-mark="tick" data-bh-size="24"></span></button>
+  <button class="bh-answer" type="button" role="radio" aria-checked="true" data-state="wrong"><span class="bh-answer__key">C</span><span class="bh-answer__text">Peru</span><span class="bh-answer__state" aria-label="wrong">✕</span></button>
+  <button class="bh-answer" type="button" role="radio" aria-checked="false"><span class="bh-answer__key">D</span><span class="bh-answer__text">Ecuador</span></button>
+</div>
+<script>
+  Bhoogol.hydrate();
+  var t = document.querySelector('[data-state="correct"] .bh-answer__state');
+  t.innerHTML = Bhoogol.mark('tick', { size: 24, color: 'currentColor' });
+</script>
+</body>
+</html>

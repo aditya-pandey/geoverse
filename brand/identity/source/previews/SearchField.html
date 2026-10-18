@@ -1,0 +1,20 @@
+<!-- @dsCard group="Globe" height=330 subtitle="⌘K search for countries, rivers, ranges and seas" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Search</title></head>
+<body>
+<div class="bh-stage">
+  <div class="bh-search" role="search">
+    <label class="bh-search__field"><span data-bh-icon="search"></span>
+      <input class="bh-search__input" id="q" value="bah" aria-label="Search places" autocomplete="off">
+      <span class="bh-kbd">⌘K</span></label>
+    <ul class="bh-search__list" role="listbox" aria-label="Results">
+      <li class="bh-search__row" role="option" aria-selected="true"><span class="bh-search__flag" aria-hidden="true">🇧🇭</span><span><b>Bah</b>rain</span><span class="bh-search__kind">Country</span></li>
+      <li class="bh-search__row" role="option" aria-selected="false"><span class="bh-search__flag" aria-hidden="true">🇧🇸</span><span>The <b>Bah</b>amas</span><span class="bh-search__kind">Country</span></li>
+      <li class="bh-search__row" role="option" aria-selected="false"><span class="bh-search__flag" data-bh-icon="ocean" data-bh-size="22"></span><span><b>Bah</b>ía Blanca estuary</span><span class="bh-search__kind">Sea &amp; coast</span></li>
+    </ul>
+  </div>
+</div>
+<script>Bhoogol.hydrate();</script>
+</body>
+</html>
