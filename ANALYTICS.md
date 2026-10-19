@@ -26,25 +26,30 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 |---|---|---|
 | `page_view` | Each visit (automatic) | Standard |
 | `app_ready` | The globe is ready to use | `load_ms`, `layout` (phone/desktop), `returning` |
-| `mode_change` | Explore / Tours / Atlas / Earth / Arcade | `mode` |
+| `mode_change` | Explore / Maps (Data = atlas, Nature = earth) / Play (quiz); the trail list reports `tours` | `mode` |
 | `view_country` | A country is opened (once per country in a row) | `country_code`, `country_name`, `region`, `mode` |
 | `view_states` | "Show states" for a country | `country_code`, `country_name` |
 | `panel_tab` | A tab in the country card | `tab`, `country_code` |
 | `atlas_metric` | A data map is chosen | `metric` |
 | `compare` | Two countries compared | `country_a`, `country_b` |
-| `wildlife_3d` | A 3D animal or plant placed on the globe | `species`, `country_code` |
 | **`search`** | A search result is picked | `search_term` |
 | **`select_content`** | …and what was picked | `content_type` (search_country, search_river, …), `item_id` |
-| `tour_begin` / `tour_complete` | Story tours | `tour_id` |
+| `tour_begin` / `tour_complete` | Story trails (the original tours and the trails built from country stories) | `tour_id` |
+| `trail_from_country` | "Part of a story trail" tapped on a country card | `tour_id`, `country_code` |
+| `story_of_day` | Today's story opened from the home sheet | `country_code` |
+| `bubble_tap` | A curiosity bubble on the globe is tapped | `country_code` |
+| `next_offer` / `next_tap` / `next_dismiss` | The "Next" suggestion after closing a country: shown, taken, dismissed | `kind` (neighbour / trail / compare) |
+| `today_tap` | An item in "Today" (progress pop-up) is tapped | `item` (puzzle / story / trail) |
 | **`level_start`** | An arcade game starts | `level_name`, `game`, `quiz_type`, `region`, `difficulty`, `challenge` |
 | **`level_end`** | An arcade game finishes | `level_name`, `success`, `score`, `correct`, `rounds`, `best_streak`, `region`, `difficulty` |
 | **`post_score`** | Its score | `score`, `level` |
 | `level_quit` | Quit mid-game | `level_name`, `round` |
-| **`share`** | App link, challenge link or scorecard shared | `method` (native/copy), `content_type` (app/challenge/scorecard/daily), `item_id` |
+| **`share`** | App link, challenge link or scorecard shared | `method` (native/copy), `content_type` (app/challenge/scorecard/daily/story), `item_id` |
 | `daily_start` | Today's Bhoogol is opened for the first time that day | `puzzle` (puzzle number) |
 | `daily_round` | A Line-up is locked in | `puzzle`, `round` (1–3), `measure`, `points` |
 | `daily_end` | All three Line-ups done (also sends `post_score` with `level` = daily) | `puzzle`, `score` (0–300) |
-| `welcome_shown` / `welcome_choice` | First-visit welcome card | `choice` (tour/daily/explore) |
+| `home_shown` | The home sheet opens (first visit, or the logo) | `from` (first_visit / logo) |
+| `home_choice` | Something is picked on the home sheet, or it's closed | `choice` (daily / sotd / story / maps / spin / all_trails / walkthrough / close / tab_…), `recommended` |
 | **`tutorial_begin`** / **`tutorial_complete`** / `tutorial_skip` | The walkthrough | `tutorial`, `play_now`, `step` |
 | `intro_skip` / `intro_replay` | The opening animation | (none) |
 | `go_home` | The logo is tapped to go home | `from` (the mode it left) |
@@ -65,7 +70,7 @@ These steps are for you to do in the GA admin, since they can't be done from cod
 4. **Register custom dimensions** so the parameters appear in reports. Go to **Admin → Custom definitions → Create custom dimension**, scope **Event**, and add:
    - `country_code`, `country_name`, `region`, `mode`, `tab`, `metric`, `tour_id`
    - `game`, `quiz_type`, `difficulty`, `level_name`, `challenge`
-   - `puzzle`, `measure`, `choice`, `setting`, `setting_value`, `layout`, `species`, `country_a`, `country_b`
+   - `puzzle`, `measure`, `choice`, `setting`, `setting_value`, `layout`, `country_a`, `country_b`
    - Name the `region` dimension something like "Country region", so it isn't confused with GA's built-in Region (the visitor's location).
    - The **Event parameter** dropdown only lists parameters GA has already received. On a new property, type the name in directly.
 
@@ -79,7 +84,8 @@ These steps are for you to do in the GA admin, since they can't be done from cod
 
 - **Countries people open:** free form, `country_name` × event count of `view_country`.
 - **Which games are played and finished:** `level_name` × `level_start` vs `level_end` counts, plus average `score`.
-- **First-visit funnel:** `welcome_shown` → `welcome_choice` → `tutorial_begin` → `tutorial_complete` → `level_start`.
+- **First-visit funnel:** `home_shown` (from first_visit) → `home_choice` → `daily_end` / `tour_complete` / `view_country`.
+- **Does the home sheet help?** `home_choice` by `choice`, and how often the recommended card is picked.
 - **Health:** `exception` by `description`, and average `load_ms` split by `layout`.
 - **Daily habit:** `daily_end` count per day, and users with `daily_end` on 2+ days (Explore → Cohort).
 

@@ -19,13 +19,13 @@ test("today (and yesterday in the far west) are live; tomorrow isn't", () => {
 test("a score is counted once per device", async () => {
   let j = await (await post({ n: 11, score: 230, device: "abcdef123456" })).json();
   assert.equal(j.count, 1);
-  assert.equal(j.hist[23], 1);
+  assert.equal(j.hist[46], 1); // 230 / 5
   j = await (await post({ n: 11, score: 300, device: "abcdef123456" })).json();
   assert.equal(j.count, 1);
-  assert.equal(j.hist[30], 0);
+  assert.equal(j.hist[60], 0);
 });
 test("impossible input is refused", async () => {
-  for (const body of [{ n: 11, score: 235, device: "zzzzzz999999" }, { n: 11, score: 310, device: "zzzzzz999999" }, { n: 40, score: 100, device: "zzzzzz999999" }, { n: 11, score: 100, device: "x" }]) {
+  for (const body of [{ n: 11, score: 237, device: "zzzzzz999999" }, { n: 11, score: 310, device: "zzzzzz999999" }, { n: 40, score: 100, device: "zzzzzz999999" }, { n: 11, score: 100, device: "x" }]) {
     assert.equal((await post(body)).status, 400, JSON.stringify(body));
   }
 });
@@ -37,6 +37,6 @@ test("one network can post at most 6 scores a day", async () => {
 test("GET returns the tally; no raw address is stored", async () => {
   const j = await (await handle(new Request("https://x/api/daily?n=11"), store, "", now + 20000)).json();
   assert.equal(j.count, 7); // 1 + 5 from one network + 1 from another
-  assert.equal(j.hist[10], 5);
+  assert.equal(j.hist[20], 5); // 100 / 5
   assert.ok(![...mem.keys()].some((k) => k.includes("1.2.3.4")));
 });

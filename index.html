@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019l" />
+<link rel="stylesheet" href="style.css?v=20261019s" />
 </head>
 <body>
 
@@ -91,21 +91,13 @@
       <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.5 3.8 5.5 3.8 9s-1.2 6.5-3.8 9c-2.6-2.5-3.8-5.5-3.8-9S9.4 5.5 12 3z"/></svg>
       <span>Explore</span>
     </button>
-    <button class="mode-tab" data-mode="tours" id="toursTabBtn">
-      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4.5h12l-2.5 4 2.5 4H5"/></svg>
-      <span>Tours</span>
-    </button>
     <button class="mode-tab" data-mode="atlas">
       <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 8.5l-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
-      <span>Atlas</span>
-    </button>
-    <button class="mode-tab" data-mode="earth">
-      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5 19 6.5-11 4 6.5 2.5-3.5 6 8z"/></svg>
-      <span>Earth</span>
+      <span>Maps</span>
     </button>
     <button class="mode-tab" data-mode="quiz">
       <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M8 10.5v4M6 12.5h4"/><path d="M15.5 11.5h.01M18 13.5h.01"/></svg>
-      <span>Arcade</span>
+      <span>Play</span>
       <span class="tab-dot hidden" id="dailyDot" title="Today's Bhoogol is waiting"></span>
     </button>
   </nav>
@@ -144,6 +136,7 @@
   <span class="chip-label">
     <svg class="chip-globe-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
     <span id="visitedCount">0</span><span class="chip-of"> / <span id="totalCount">0</span></span><span class="chip-word"> countries explored</span>
+    <span class="chip-today" id="chipToday">Today 0/3</span>
   </span>
   <span class="chip-bar"><span id="chipFill"></span></span>
 </button>
@@ -163,11 +156,18 @@
   <button class="tex-btn about-btn" id="aboutBtn" title="About Bhoogol" aria-label="About Bhoogol, credits and settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
   </button>
+  <button class="tex-btn tools-more" id="toolsMore" title="More" aria-label="Show map tools and About" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+  </button>
 </div>
 
 <!-- ══════════ ATLAS CONTROLS ══════════ -->
 <div id="atlasDock" class="hidden" aria-label="Data layer controls">
   <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="maps-switch" role="group" aria-label="Kind of map">
+    <button type="button" data-maps="atlas" aria-pressed="false">Data</button>
+    <button type="button" data-maps="earth" aria-pressed="false">Nature</button>
+  </div>
   <label>Paint the world by</label>
   <div class="atlas-metrics">
     <button class="metric-btn active" data-metric="population">👥 Population</button>
@@ -186,6 +186,10 @@
 <!-- ══════════ EARTH (NERD) CONTROLS ══════════ -->
 <div id="earthDock" class="hidden" aria-label="Physical geography layers">
   <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="maps-switch" role="group" aria-label="Kind of map">
+    <button type="button" data-maps="atlas" aria-pressed="false">Data</button>
+    <button type="button" data-maps="earth" aria-pressed="false">Nature</button>
+  </div>
   <label>Physical layers</label>
   <div class="atlas-metrics">
     <button class="metric-btn layer-btn on" data-layer="oceans">🌊 Oceans &amp; Seas</button>
@@ -231,10 +235,10 @@
 <!-- ══════════ STORY TOURS MODAL ══════════ -->
 <div id="toursModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="toursModalTitle">
   <div class="tours-card">
-    <button class="quiz-close" id="toursClose" title="Close tours (Esc)" aria-label="Close story tours">✕</button>
-    <div class="tour-pill-badge">Story tours</div>
-    <h2 id="toursModalTitle">5-Minute Globe Expeditions</h2>
-    <p class="tours-sub">Cinematic camera journeys across Earth. Real photos, zero jargon, pure wonder.</p>
+    <button class="quiz-close" id="toursClose" title="Close (Esc)" aria-label="Close story trails">✕</button>
+    <div class="tour-pill-badge">Story trails</div>
+    <h2 id="toursModalTitle">Story trails</h2>
+    <p class="tours-sub">Short journeys across the globe, one story at a time.</p>
     <div class="tours-grid" id="toursGrid"></div>
   </div>
 </div>
@@ -264,11 +268,11 @@
         <img id="thPhoto" class="th-photo" alt="" />
       </div>
       <p id="thSparkText" class="th-lead"></p>
-      <h4 class="th-h">Why it's here</h4>
+      <h4 class="th-h" id="thH1">Why it's here</h4>
       <p id="thExplainText" class="th-text"></p>
       <button id="thMore" class="th-more" type="button">Read more</button>
       <div id="thScaleBox">
-        <h4 class="th-h">To give you a sense of scale</h4>
+        <h4 class="th-h" id="thH2">To give you a sense of scale</h4>
         <p id="thScaleText" class="th-text"></p>
       </div>
       <p class="th-details"><span id="thCoordsBadge" class="mono-num">0.00° N, 0.00° E</span> · <span id="thChapterTag">Chapter 1</span> · <span id="thTypeTag">Geology</span></p>
@@ -301,7 +305,7 @@
     <button class="daily-hero hidden" id="dailyHero" type="button">
       <span class="dh-eyebrow"><span class="dh-badge">Daily</span> Today's Bhoogol <span id="dhNum" class="mono-num">#1</span></span>
       <span class="dh-title">Line-up</span>
-      <span class="dh-status" id="dhStatus">Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.</span>
+      <span class="dh-status" id="dhStatus">Put four countries in order. One minute, the same puzzle for everyone, and a new one every midnight.</span>
       <span class="dh-cta" id="dhCta">Play today's</span>
     </button>
     <label class="section-label">Or pick a game</label>
@@ -538,7 +542,6 @@
       <li>Population, GDP &amp; life expectancy — <a href="https://data.worldbank.org/" target="_blank" rel="noopener">World Bank Open Data</a> (CC BY 4.0)</li>
       <li>Stories &amp; photos — <a href="https://www.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA); each summary links to its article</li>
       <li>Flags — <a href="https://flagcdn.com/" target="_blank" rel="noopener">flagcdn.com</a></li>
-      <li>3D animal &amp; plant models — artists on <a href="https://sketchfab.com/" target="_blank" rel="noopener">Sketchfab</a>; each model shows its title, author and licence</li>
     </ul>
 
     <h3>Software</h3>
@@ -548,6 +551,7 @@
     </ul>
     <p class="credits-note">Map borders show how the source data draws them; India is shown with its official Survey of India boundary.</p>
     <p class="credits-note">Bhoogol counts visits with Google Analytics to learn which features help people. No ads, and no data sold. Your daily Bhoogol score goes, without your name, into that day's "better than X% of players" count. <button id="trackToggle" class="coach-link" type="button">Don't count my visits</button></p>
+    <p class="credits-note">While the globe rests, a story from a country you can see floats up now and then. <button id="hintsToggle" class="coach-link" type="button">Turn off hints on the globe</button></p>
     <div class="credits-replays">
       <button id="creditsShare" class="bh-primary credits-replay" type="button">Share Bhoogol</button>
       <button id="creditsIntro" class="bh-raised credits-replay" type="button">Replay the opening</button>
@@ -557,16 +561,20 @@
 </div>
 
 <!-- ══════════ WELCOME (first visit) ══════════ -->
-<div id="welcome" class="hidden" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
-  <div class="welcome-card">
-    <img class="welcome-worlds" src="assets/brand/bhoogol-symbol.svg" alt="" width="120" height="120" />
-    <h2 id="welcomeTitle">Welcome to Bhoogol</h2>
-    <p class="welcome-hi" lang="hi">भूगोल</p>
-    <p class="welcome-lede">In Hindi, <i>bhoo</i> means Earth and <i>gol</i> means round. Spin the world, tap any country, and play your way around it.</p>
-    <div class="welcome-actions">
-      <button id="welcomeTour" class="bh-primary" type="button">Show me around</button>
-      <button id="welcomePlay" class="bh-raised" type="button">Play today's Bhoogol</button>
-      <button id="welcomeSkip" class="welcome-skip" type="button">I'll explore on my own</button>
+<div id="homeSheet" class="hidden" role="dialog" aria-labelledby="homeTitle">
+  <div class="home-card">
+    <div class="home-head">
+      <div>
+        <p class="home-eyebrow">Bhoogol · <span lang="hi">भूगोल</span></p>
+        <h2 id="homeTitle">What do you feel like?</h2>
+      </div>
+      <button class="home-close" id="homeClose" type="button" aria-label="Close" title="Close (Esc)">✕</button>
+    </div>
+    <div class="home-list" id="homeList"></div>
+    <div class="home-foot">
+      <button id="homeSpin" class="home-link" type="button">Just spin the globe</button>
+      <button id="homeTrails" class="home-link" type="button">All story trails</button>
+      <button id="homeCoach" class="home-link" type="button">Show me around</button>
     </div>
   </div>
 </div>
@@ -588,6 +596,11 @@
 </div>
 
 <!-- ══════════ TOAST ══════════ -->
+<div id="nextChip" class="hidden" role="status" aria-live="polite">
+  <span class="nc-k">Next</span>
+  <button id="nextGo" class="nc-go" type="button"></button>
+  <button id="nextX" class="nc-x" type="button" aria-label="Dismiss the suggestion">✕</button>
+</div>
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
 <!-- Globe engine: three.js (ES modules) + our lean engine; app.js waits on GV_LIBS before drawing -->
@@ -609,14 +622,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019l"),
-    load("engine.js?v=20261019l", true),
+    load("engine-core.js?v=20261019s"),
+    load("engine.js?v=20261019s", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019l"></script>
+<script src="app.js?v=20261019s"></script>
 </body>
 </html>

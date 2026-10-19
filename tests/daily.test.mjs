@@ -22,12 +22,16 @@ test("marks and points: right spot 20, one off 10", () => {
   assert.equal(D.dailyMarks(["B", "A", "C", "E", "D"], truth), "yygyy");
   assert.equal(D.dailyMarks([...truth].reverse(), truth), "rrgrr");
   assert.equal(D.dailyPoints("rrgrr"), 20);
+  // the lighter Line-up: four countries, 25 for the right spot
+  assert.equal(D.dailyPoints("gggg"), 100);
+  assert.equal(D.dailyPoints("gyry"), 45);
+  assert.equal(D.dailyMarks(["B", "A", "C", "D"], ["A", "B", "C", "D"]), "yygg");
   assert.deepEqual(D.dailyTruth({ c: [["X", 3], ["Y", 9], ["Z", 1]] }), ["Y", "X", "Z"]);
 });
 test("ranking: quiet with few players, ties aren't beaten, best of the day", () => {
-  const few = new Array(31).fill(0); few[20] = 5;
+  const few = new Array(61).fill(0); few[40] = 5;
   assert.equal(D.dailyRankLine(200, few, true).pct, null);
-  const h = new Array(31).fill(0); h[10] = 60; h[20] = 39; h[25] = 1;
+  const h = new Array(61).fill(0); h[20] = 60; h[40] = 39; h[50] = 1; // scores 100, 200, 250
   assert.equal(D.dailyRankLine(200, h, true).pct, 61);
   assert.equal(D.dailyRankLine(250, h, true).pct, 100);
   assert.equal(D.dailyRankLine(250, h, false).pct, 100);

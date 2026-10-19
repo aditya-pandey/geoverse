@@ -1,6 +1,6 @@
 // Daily Bhoogol scoreboard: the request logic, with the store passed in, so tests can run it without Netlify.
 export const EPOCH_UTC = Date.UTC(2026, 9, 18); // Bhoogol #1
-const MAX = 300, STEP = 10, BUCKETS = MAX / STEP + 1;
+const MAX = 300, STEP = 5, BUCKETS = MAX / STEP + 1; // 4-country days score in fives (25 + 10)
 const PER_NETWORK = 6; // a family or classroom shares one address; more than this a day is a script
 
 const cache = new Map(); // n → { at, body } — a warm function answers GETs from memory for a few seconds

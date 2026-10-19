@@ -157,6 +157,27 @@ function fameOrder(src) {
 // Mon … Sun: how deep into the fame list a day may reach
 const DEPTH = [100, 50, 65, 80, 100, 130, 999]; // Sunday (0) sits mid-week
 
+// From #3 on, the Daily is lighter: ONE Line-up of FOUR well-known countries, on a measure anyone can reason about,
+// with clear gaps between them. (#1 and #2 were three Line-ups of five and stay as they were.)
+const LIGHT_FROM = "2026-10-20";
+const LIGHT = {
+  size: 4,
+  measures: ["pop", "area", "delhi", "equator", "rain", "neighbours", "forest", "life"],
+  depth: [50, 35, 40, 45, 50, 60, 70], // Sun … Sat
+  themes: { "03-21": ["forest", "International Day of Forests"], "04-07": ["life", "World Health Day"], "07-11": ["pop", "World Population Day"] },
+};
+function lightSpread(id, sortedVals) {
+  const m = MEASURES[id];
+  for (let i = 0; i + 1 < sortedVals.length; i++) {
+    const a = sortedVals[i], b = sortedVals[i + 1];
+    if (m.int) { if (a - b < (id === "equator" ? 6 : 2)) return false; }
+    else if (id === "life") { if (a - b < 5) return false; } // lives span ~55-85 years: a 5-year gap is clear
+    else if (b <= 0 ? a <= 0 : a / b < 1.25) return false;
+    if (m.pct && a - b < 6) return false;
+  }
+  return true;
+}
+
 function fairSpread(id, sortedVals) {
   const m = MEASURES[id];
   for (let i = 0; i + 1 < sortedVals.length; i++) {
@@ -195,6 +216,46 @@ function main() {
         const e = book[date];
         e.rounds.forEach((r) => usedSets.add(r.c.map((x) => x[0]).sort().join()));
         history.push({ countries: new Set(e.rounds.flatMap((r) => r.c.map((x) => x[0]))), measures: new Set(e.rounds.map((r) => r.m)) });
+        continue;
+      }
+
+      if (date >= LIGHT_FROM) {
+        const rng = mulberry32(0xd417 + n * 7919);
+        const theme = LIGHT.themes[date.slice(5)];
+        const pool = fame.slice(0, LIGHT.depth[d.getUTCDay()]);
+        const recentC6 = new Set(history.slice(-6).flatMap((h) => [...h.countries]));
+        const recentM3 = new Set(history.slice(-3).flatMap((h) => [...h.measures]));
+        const ids = theme ? [theme[0]] : shuffle(rng, LIGHT.measures.filter((id) => !recentM3.has(id))).concat(shuffle(rng, LIGHT.measures.filter((id) => recentM3.has(id))));
+        let pick = null;
+        for (const strict of [true, false]) {
+          for (const id of ids) {
+            const vals = T[id].vals;
+            const cands = pool.filter((k) => vals[k] != null && (!strict || !recentC6.has(k)));
+            if (cands.length < 10) continue;
+            for (let tries = 0; tries < 400 && !pick; tries++) {
+              const four = [];
+              for (const k of shuffle(rng, cands)) {
+                if (four.length === LIGHT.size) break;
+                if (lightSpread(id, [...four, k].map((x) => vals[x]).sort((a, b) => b - a))) four.push(k);
+              }
+              if (four.length < LIGHT.size || new Set(four.map((k) => region[k])).size < 2) continue;
+              const key = four.slice().sort().join();
+              if (usedSets.has(key)) continue;
+              const sorted = four.slice().sort((a, b) => vals[b] - vals[a]);
+              if (id !== "pop" && sorted.join() === four.slice().sort((a, b) => popOf(b) - popOf(a)).join()) continue;
+              let shown;
+              for (let t = 0; t < 20; t++) { shown = shuffle(rng, four); if (shown.join() !== sorted.join() && shown.join() !== sorted.slice().reverse().join()) break; }
+              pick = { m: id, ...(T[id].year ? { y: T[id].year } : {}), c: shown.map((k) => [k, vals[k]]) };
+              usedSets.add(key);
+            }
+            if (pick) break;
+          }
+          if (pick) break;
+        }
+        if (!pick) throw new Error(`no fair Line-up for ${date}`);
+        book[date] = { n, v: 2, ...(theme ? { theme: theme[1] } : {}), rounds: [pick] };
+        history.push({ countries: new Set(pick.c.map(([k]) => k)), measures: new Set([pick.m]) });
+        made++;
         continue;
       }
 

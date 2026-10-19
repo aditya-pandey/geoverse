@@ -11,20 +11,35 @@ const PCT = new Set(["urban", "kids", "grandparents", "farmland", "forest", "ren
 const fmt = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }), fmtFull = new Intl.NumberFormat("en");
 const { DAILY_MEASURES } = load(["one", "kmText", "DAILY_MEASURES"], { fmt, fmtFull });
 
-test("numbered day by day from #1, three Line-ups of five each", () => {
-  days.forEach(([, e], i) => {
+test("numbered day by day from #1: three Line-ups of five at first, then one Line-up of four", () => {
+  days.forEach(([d, e], i) => {
     assert.equal(e.n, i + 1);
-    assert.equal(e.rounds.length, 3);
-    e.rounds.forEach((r) => assert.equal(r.c.length, 5));
+    if (d < "2026-10-20") { assert.equal(e.rounds.length, 3); e.rounds.forEach((r) => assert.equal(r.c.length, 5)); }
+    else { assert.equal(e.v, 2, d); assert.equal(e.rounds.length, 1, d); assert.equal(e.rounds[0].c.length, 4, d); }
   });
   assert.ok(days.length >= 365);
+});
+test("the light days only use measures anyone can reason about, with clear gaps", () => {
+  const OK = new Set(["pop", "area", "delhi", "equator", "rain", "neighbours", "forest", "life"]);
+  for (const [d, e] of days) {
+    if (e.v !== 2) continue;
+    const r = e.rounds[0];
+    assert.ok(OK.has(r.m), `${d}: ${r.m}`);
+    const v = r.c.map((x) => x[1]).sort((a, b) => b - a);
+    for (let j = 0; j < 3; j++) {
+      if (r.m === "life") assert.ok(v[j] - v[j + 1] >= 4.99, `${d} life gap`);
+      else if (r.m === "equator") assert.ok(v[j] - v[j + 1] >= 6, `${d} equator gap`);
+      else if (r.m === "neighbours") assert.ok(v[j] - v[j + 1] >= 2, `${d} neighbours gap`);
+      else assert.ok(v[j + 1] <= 0 ? v[j] > 0 : v[j] / v[j + 1] >= 1.249, `${d} ${r.m} ${v[j]} vs ${v[j + 1]}`);
+    }
+  }
 });
 test("no ties, and neighbours are clearly apart", () => {
   for (const [d, e] of days) for (const r of e.rounds) {
     const v = r.c.map((x) => x[1]).sort((a, b) => b - a);
-    for (let j = 0; j < 4; j++) {
+    for (let j = 0; j < v.length - 1; j++) {
       assert.notEqual(v[j], v[j + 1], `${d} ${r.m}`);
-      if (!Number.isInteger(v[j])) assert.ok(v[j] / v[j + 1] >= 1.079, `${d} ${r.m} ${v[j]} vs ${v[j + 1]}`);
+      if (!Number.isInteger(v[j]) && e.v !== 2) assert.ok(v[j] / v[j + 1] >= 1.079, `${d} ${r.m} ${v[j]} vs ${v[j + 1]}`);
       if (PCT.has(r.m)) assert.ok(v[j] - v[j + 1] >= 2.99, `${d} ${r.m}`);
     }
   }
@@ -33,7 +48,7 @@ test("the same five never meet twice; no country twice in a day; never shown alr
   const seen = new Set();
   for (const [d, e] of days) {
     const all = e.rounds.flatMap((r) => r.c.map((x) => x[0]));
-    assert.equal(new Set(all).size, 15, d);
+    assert.equal(new Set(all).size, e.v === 2 ? 4 : 15, d);
     for (const r of e.rounds) {
       const key = r.c.map((x) => x[0]).sort().join();
       assert.ok(!seen.has(key), `${d} repeats a set`);

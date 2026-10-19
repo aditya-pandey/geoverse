@@ -76,12 +76,13 @@ const S = {
   stateView: null,         // { country: feature, adm1: [features] }
   adm1Cache: new Map(),
   visited: new Set(store.get("gv-visited", [])),
+  readStories: new Set(store.get("gv-stories-read", [])), // country stories opened, for "next door has a story"
   wondersSeen: new Set(store.get("gv-wonders", [])),
   bests: store.get("gv-bests", {}), // "type|region|difficulty" → best score
   arcadeBests: store.get("gv-arcade-bests", {}),
   arcadeMode: "mystery",   // "mystery" | "chain" | "pinpoint" | "blitz"
   activeTour: null,        // { tour, stopIndex }
-  toursCompleted: new Set(store.get("gv-tours", [])),
+  toursCompleted: new Set(store.get("gv-tours-completed", store.get("gv-tours", []))),
   idleTimer: null,
   dwellTimer: null,
   quiz: null,
@@ -95,7 +96,6 @@ const S = {
   earthNoZoom: false,
   earthLayers: { oceans: true, regions: true, rivers: true, lakes: false, wonders: true },
   wikiCache: new Map(),
-  lifePin: null,           // { __kind: "life", lat, lng, sp, uid } — 3D wildlife card on the globe
   atlasPick: null,         // country inspected in Atlas mode (tap-to-inspect / rank badge)
   info: null,              // what a non-country panel shows: { type: "feature" | "ideas" | "state", … }
   compare: null,           // { a, b } countries in head-to-head mode
@@ -255,10 +255,56 @@ const wikiBlockHtml = (wiki, fallbackMsg = "No encyclopedia entry available.") =
 // data/stories.json: hook · land · people · surprise · scale, written and checked by hand.
 // Countries without one yet fall back to the generated story below.
 function loadStories() {
-  S.storiesP ??= fetch("data/stories.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})).then((j) => (S.stories = j));
+  S.storiesP ??= fetch("data/stories.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})).then((j) => { S.stories = j; buildTrails(); return j; });
   return S.storiesP;
 }
 const storyOf = (d) => (d?.gv?.cca3 && S.stories?.[d.gv.cca3]?.hook ? S.stories[d.gv.cca3] : null);
+
+// Story trails: a theme, told through the country stories. Each stop's note says why it's on the trail.
+const STORY_TRAILS = [
+  { id: "silk-road", title: "The Silk Road", icon: "🐫", subtitle: "Six countries along the old trade road",
+    description: "Follow the caravans from where silk was made to where the road reached Europe.",
+    stops: [["CHN", "Where the silk came from"], ["KAZ", "Across the steppe"], ["UZB", "Samarkand, the road's great market"],
+      ["AFG", "Over the mountain passes"], ["IRN", "Through Persia's caravan towns"], ["TUR", "Where the road reached Europe"]] },
+  { id: "india-and-the-world", title: "India and the World", icon: "🧭", subtitle: "Eight countries with an India story",
+    description: "A voyage, a lost continent, sugar ships and a temple to Vishnu: places where India turns up far from home.",
+    stops: [["PRT", "Vasco da Gama sailed from here to Kozhikode"], ["MDG", "Once joined to India"], ["MUS", "Ancestors from Bihar"],
+      ["ARE", "More people from India than anywhere else"], ["MYS", "Roti canai for breakfast"], ["SGP", "Tamil is an official language"],
+      ["KHM", "Angkor Wat began as a temple to Vishnu"], ["FJI", "The sugar ships, from 1879"]] },
+  { id: "far-north", title: "The Far North", icon: "❄️", subtitle: "Six countries near the top of the world",
+    description: "Midnight sun, ice hotels, saunas and more lakes than anyone can count.",
+    stops: [["ISL", "Pulled apart by the plates"], ["NOR", "Fjords and midnight sun"], ["SWE", "Almost a lakh lakes"],
+      ["FIN", "Saunas and 1.9 lakh lakes"], ["RUS", "Siberia and Lake Baikal"], ["CAN", "More lakes than everyone else"]] },
+];
+function buildTrails() {
+  if (!S.stories || !S.byCca3?.size) return;
+  for (const t of STORY_TRAILS) {
+    if (STORY_TOURS.some((x) => x.id === t.id)) continue;
+    const stops = t.stops.map(([k, note]) => {
+      const d = S.byCca3.get(k), st = S.stories[k];
+      if (!d || !st?.hook) return null;
+      const [lat, lng] = d.gv.latlng?.length === 2 ? d.gv.latlng : [centroidOf(d).lat, centroidOf(d).lng];
+      return { name: nameOf(d), country: nameOf(d), type: note, story: true, cca3: k, lat, lng, alt: Math.max(1.05, viewAltitudeFor(d) * 1.25),
+        spark: st.hook, explain: `${st.land} ${st.people}`, scale: `${st.surprise} ${st.scale}`, h1: "The land and its people", h2: "The surprise",
+        wiki: WIKI_OVERRIDES[nameOf(d)] || nameOf(d) };
+    }).filter(Boolean);
+    if (stops.length >= 3) STORY_TOURS.push({ id: t.id, title: t.title, subtitle: t.subtitle, icon: t.icon, description: t.description, duration: `${stops.length} stops`, stops, trail: true });
+  }
+  S.searchIndex = null; // trails become searchable
+}
+// Which trails a country is on, and where
+const trailsOf = (cca3) => STORY_TOURS.filter((t) => t.trail).map((t) => ({ t, i: t.stops.findIndex((s) => s.cca3 === cca3) })).filter((x) => x.i >= 0);
+
+// Story of the day: every story in turn, in a fixed shuffled order, by the visitor's own calendar
+function storyOfDay() {
+  if (!S.stories || !S.byCca3?.size) return null;
+  const keys = Object.keys(S.stories).filter((k) => S.stories[k]?.hook && S.byCca3.has(k)).sort();
+  if (!keys.length) return null;
+  const order = shuffleWith(mulberry32(0x5707), keys);
+  const { n, iso } = dailyToday();
+  const k = order[(((n - 1) % order.length) + order.length) % order.length];
+  return { k, d: S.byCca3.get(k), st: S.stories[k], iso };
+}
 
 // For a Mystery clue: the country's name and its people's name give the game away
 function maskCountry(text, d) {
@@ -271,8 +317,9 @@ function maskCountry(text, d) {
   return t.replace(/([a-z,;:] )(This country|Its|Locals)/g, (m, pre, w) => pre + w.toLowerCase());
 }
 
-function countryStoryHtml(st) {
+function countryStoryHtml(st, cca3) {
   const beat = (label, text) => `<p class="cs-beat"><span class="cs-label">${label}</span>${esc(text)}</p>`;
+  const trails = cca3 ? trailsOf(cca3) : [];
   return `
     <article class="country-story">
       <h3 class="cs-hook">${esc(st.hook)}</h3>
@@ -280,7 +327,218 @@ function countryStoryHtml(st) {
       ${beat("The people", st.people)}
       ${beat("The surprise", st.surprise)}
       <p class="cs-scale"><span class="cs-label">For scale</span>${esc(st.scale)}</p>
+      <div class="cs-actions">
+        <button class="cs-share" type="button" data-share-story="${cca3}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+          Share this story</button>
+      </div>
+      ${trails.map(({ t, i }) => `<button class="cs-trail" type="button" data-trail="${t.id}" data-stop="${i}">
+        <span class="cs-trail-k">Part of a story trail</span>
+        <span class="cs-trail-t">${esc(t.title)} · stop ${i + 1} of ${t.stops.length}</span>
+        <span class="cs-trail-n">${i < t.stops.length - 1 ? `Follow it from here: next, ${esc(t.stops[i + 1].name)} →` : "Last stop. Take the whole trail from the start →"}</span>
+      </button>`).join("")}
     </article>`;
+}
+
+// A story as a picture people can forward: 1080 × 1350, Bhoogol's night sky, the hook in big type
+function loadImg(src) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+}
+async function storyCardBlob(d, st) {
+  const W = 1080, H = 1350, X = 96, MAXW = W - X * 2;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  try { await Promise.all(['700 80px "Baloo 2"', '400 40px "Mukta"', '600 36px "Mukta"'].map((f) => document.fonts.load(f))); } catch (e) { /* fallback fonts */ }
+  g.fillStyle = "#12133A"; g.fillRect(0, 0, W, H);
+  const glow = g.createRadialGradient(W * 0.82, H * 0.12, 40, W * 0.82, H * 0.12, 760);
+  glow.addColorStop(0, "rgba(46,107,255,0.38)"); glow.addColorStop(1, "rgba(46,107,255,0)");
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  const rnd = mulberry32(7);
+  for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(247,245,239,${0.15 + rnd() * 0.4})`; g.beginPath(); g.arc(rnd() * W, rnd() * H * 0.55, rnd() * 2 + 0.6, 0, 7); g.fill(); }
+  try { const logo = await loadImg("assets/brand/bhoogol-wordmark-night.svg"); g.drawImage(logo, X, 92, 300, 300 * 39 / 124); } catch (e) { /* no logo */ }
+  // wrap text into lines that fit, shrinking the type if it would run long
+  const lines = (text, font, maxLines) => {
+    g.font = font;
+    const out = [];
+    let line = "";
+    for (const w of text.split(/\s+/)) {
+      const t = line ? line + " " + w : w;
+      if (g.measureText(t).width > MAXW && line) { out.push(line); line = w; } else line = t;
+    }
+    if (line) out.push(line);
+    return out.length <= maxLines ? out : null;
+  };
+  let y = 330;
+  g.fillStyle = "#FFB020"; g.font = '600 38px "Mukta", system-ui, sans-serif';
+  g.fillText(`Did you know?  ·  ${nameOf(d)}`, X, y);
+  y += 40;
+  let size = 88, hook;
+  while (!(hook = lines(st.hook, `700 ${size}px "Baloo 2", system-ui, sans-serif`, 5)) && size > 54) size -= 6;
+  hook ||= lines(st.hook, `700 ${size}px "Baloo 2", system-ui, sans-serif`, 9);
+  g.fillStyle = "#F7F5EF";
+  for (const l of hook) { y += size * 1.12; g.fillText(l, X, y); }
+  y += 56;
+  g.fillStyle = "#FFB020"; g.fillRect(X, y, 72, 6);
+  y += 28;
+  let s2 = 44, body;
+  while (!(body = lines(st.surprise, `400 ${s2}px "Mukta", system-ui, sans-serif`, 7)) && s2 > 30) s2 -= 4;
+  body ||= [];
+  g.fillStyle = "#C9CBE6";
+  for (const l of body) { y += s2 * 1.45; g.fillText(l, X, y); }
+  // footer
+  g.fillStyle = "#272B62"; g.fillRect(0, H - 150, W, 150);
+  g.fillStyle = "#3DDC97"; g.font = '600 36px "Mukta", system-ui, sans-serif';
+  g.fillText("Every country tells its story", X, H - 86);
+  g.fillStyle = "#F7F5EF"; g.font = '600 36px "Mukta", system-ui, sans-serif';
+  const url = "bhoogol.netlify.app";
+  g.fillText(url, W - X - g.measureText(url).width, H - 86);
+  return new Promise((res) => c.toBlob(res, "image/png"));
+}
+async function shareStory(d) {
+  const st = storyOf(d);
+  if (!st) return;
+  const link = `https://bhoogol.netlify.app/?country=${d.gv.cca3}`;
+  const text = `${st.hook} (${nameOf(d)})\n\nEvery country tells its story on Bhoogol: ${link}`;
+  toast("Making the picture…", 1600);
+  let blob = null;
+  try { blob = await storyCardBlob(d, st); } catch (e) { /* fall back to text */ }
+  const file = blob && new File([blob], `bhoogol-${nameOf(d).toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`, { type: "image/png" });
+  if (isCoarse() && navigator.share) {
+    try {
+      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text });
+      else await navigator.share({ text, url: link });
+      track("share", { method: "native", content_type: "story", item_id: d.gv.cca3 });
+    } catch (e) { /* closed the sheet */ }
+    return;
+  }
+  if (file) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file); a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  const ok = await copyText(text);
+  track("share", { method: "download", content_type: "story", item_id: d.gv.cca3 });
+  toast(file ? (ok ? "Picture saved, and the words are copied. Paste them with it." : "Picture saved.") : ok ? "Story copied. Paste it anywhere." : "Couldn't make the picture here.", 3600);
+}
+
+/* ───────────────────── EXPLORE NUDGES ───────────────────── */
+// 1 · Curiosity bubbles: while the globe rests, one story hook floats over a country you can see.
+//     Never over anything you're doing; gone the moment you touch the globe. About → "Hints on the globe".
+const Bubble = { recent: [], quietUntil: 0 };
+const hintsOn = () => store.get("gv-hints", true);
+function bubbleOk() {
+  return hintsOn() && S.globe && S.stories && S.mode === "explore" && !panelVisible() && !S.quiz && !S.daily && !S.activeTour
+    && !S.compare && !S.comparePick && !S.stateView && !homeOpen() && $("#palette")?.classList.contains("hidden")
+    && $("#creditsModal")?.classList.contains("hidden") && Coach.i < 0 && Date.now() > Bubble.quietUntil && document.visibilityState !== "hidden";
+}
+function clearBubble() { if (S.bubble) { S.bubble = null; refreshHtmlLayer(); } }
+function bubbleTick() {
+  if (!bubbleOk()) return clearBubble();
+  const pov = S.globe.pointOfView();
+  const reach = clamp(pov.altitude * 24, 14, 52); // degrees from the middle of the view: near the centre, never the edge
+  const near = Object.keys(S.stories).filter((k) => S.stories[k]?.hook && S.byCca3.has(k) && !Bubble.recent.includes(k)).map((k) => {
+    const d = S.byCca3.get(k);
+    const [lat, lng] = d.gv.latlng?.length === 2 ? d.gv.latlng : [centroidOf(d).lat, centroidOf(d).lng];
+    return { k, d, lat, lng, deg: haversine({ lat, lng }, { lat: pov.lat, lng: pov.lng }) / 111 };
+  }).filter((c) => c.deg < reach).sort((a, b) => a.deg - b.deg);
+  if (!near.length) return clearBubble();
+  const pick = near[Math.floor(Math.random() * Math.min(4, near.length))];
+  Bubble.recent = [pick.k, ...Bubble.recent].slice(0, 15);
+  S.bubble = { __kind: "bubble", lat: pick.lat, lng: pick.lng, alt: 0.01, k: pick.k, name: nameOf(pick.d), text: S.stories[pick.k].hook };
+  refreshHtmlLayer();
+}
+function buildBubble(b) {
+  const anchor = document.createElement("div");
+  anchor.className = "bubble-anchor"; // the engine moves this zero-size anchor; the bubble sits just above it
+  anchor.innerHTML = `<button class="globe-bubble" type="button"><span class="gb-name">${esc(b.name)}</span><span class="gb-text">${esc(b.text)}</span><span class="gb-go">Tap to read</span></button>`;
+  const btn = anchor.firstElementChild;
+  btn.addEventListener("pointerdown", (e) => e.stopPropagation()); // a tap on the bubble isn't a spin
+  // stay inside the screen: slide sideways (the pointer stays on the country), flip below if it would hit the top bar
+  let dx = 0, seen = false;
+  const fit = () => {
+    if (!anchor.isConnected) { if (seen) clearInterval(timer); return; }
+    seen = true;
+    const r = btn.getBoundingClientRect();
+    if (!r.width) return;
+    const pad = 12, top = ($("#topbar")?.getBoundingClientRect().bottom || 60) + 8;
+    if (r.left < pad) dx += pad - r.left;
+    else if (r.right > innerWidth - pad) dx -= r.right - (innerWidth - pad);
+    else return void btn.classList.toggle("below", btn.classList.contains("below") || r.top < top);
+    const tail = clamp(r.width / 2 - dx, 18, r.width - 18);
+    btn.style.setProperty("--dx", dx + "px");
+    btn.style.setProperty("--tail", tail + "px");
+    if (r.top < top) btn.classList.add("below");
+  };
+  const timer = setInterval(fit, 250);
+  requestAnimationFrame(() => requestAnimationFrame(fit));
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    track("bubble_tap", { country_code: b.k });
+    S.bubble = null;
+    selectCountry(S.byCca3.get(b.k));
+  });
+  return anchor;
+}
+function initBubbles() {
+  setInterval(bubbleTick, 6000);
+  // touching the globe hushes the bubbles for a moment
+  $("#globeViz")?.addEventListener("pointerdown", () => { Bubble.quietUntil = Date.now() + 4000; clearBubble(); });
+  $("#globeViz")?.addEventListener("wheel", () => { Bubble.quietUntil = Date.now() + 4000; clearBubble(); }, { passive: true });
+}
+
+// 2 · "Next": when you close a country yourself, one suggestion for where to go from there
+function nextFor(d) {
+  const k = d.gv.cca3, opts = [];
+  const nb = (d.gv.borders || []).map((b) => S.byCca3.get(b)).filter((x) => x && storyOf(x) && !S.readStories.has(x.gv.cca3));
+  if (nb.length) opts.push({ kind: "neighbour", text: `Next door, ${nameOf(nb[0])} has a story too`, go: () => selectCountry(nb[0]) });
+  const tr = trailsOf(k).find((x) => x.i < x.t.stops.length - 1);
+  if (tr) opts.push({ kind: "trail", text: `Next on ${tr.t.title}: ${tr.t.stops[tr.i + 1].name}`, go: () => startStoryTour(tr.t.id, tr.i + 1) });
+  const rival = S.byCca3.get(k === "IND" ? "CHN" : "IND");
+  if (rival) opts.push({ kind: "compare", text: `Compare ${nameOf(d)} with ${nameOf(rival)}`, go: () => { selectCountry(d); setCompare(d, rival); } });
+  S.nextTurn = (S.nextTurn || 0) + 1;
+  return opts.length ? opts[S.nextTurn % opts.length] : null;
+}
+function offerNext(d) {
+  const nx = d?.gv && S.mode === "explore" ? nextFor(d) : null;
+  if (!nx) return;
+  S.nextOffer = nx;
+  $("#nextGo").textContent = nx.text + " →";
+  $("#nextChip").classList.remove("hidden");
+  track("next_offer", { kind: nx.kind });
+  clearTimeout(S.nextTimer);
+  S.nextTimer = setTimeout(hideNext, 12000);
+}
+function closeTools() {
+  const dock = $("#textureDock");
+  if (!dock?.classList.contains("open")) return;
+  dock.classList.remove("open");
+  $("#toolsMore")?.setAttribute("aria-expanded", "false");
+}
+function hideNext() { clearTimeout(S.nextTimer); $("#nextChip")?.classList.add("hidden"); }
+// the closes a person makes: ✕, a swipe down, Esc, a tap on the ocean (not the app tidying up)
+function closePanelByUser() {
+  const was = S.selected?.gv && !S.info && !S.compare && !S.comparePick ? S.selected : null;
+  closePanel();
+  if (was) offerNext(was);
+}
+
+// 3 · Today's three: the puzzle, today's story, a story trail
+function todayDone() {
+  const { n, iso } = dailyToday();
+  return {
+    puzzle: !!dailyMemory().days[n]?.done,
+    story: store.get("gv-sotd", "") === iso,
+    trail: store.get("gv-trail-day", "") === iso,
+  };
+}
+function updateToday() {
+  const t = todayDone(), n = [t.puzzle, t.story, t.trail].filter(Boolean).length;
+  const el = $("#chipToday");
+  if (el) { el.textContent = `Today ${n}/3`; el.classList.toggle("all", n === 3); }
+  const iso = dailyToday().iso;
+  if (n === 3 && store.get("gv-today-cheer", "") !== iso) { store.set("gv-today-cheer", iso); toast("All three done today. See you tomorrow!", 3600); }
 }
 
 /* ───────────────────── 3-BEAT MICRO-STORY ENGINE ───────────────────── */
@@ -518,7 +776,7 @@ const STORY_TOURS = [
     title: "The Ring of Fire",
     subtitle: "Tectonic fury, deep trenches, and volcanic islands",
     icon: "🌋",
-    duration: "5 MINS",
+    duration: "5 stops",
     description: "Follow colliding tectonic plates releasing trapped ocean water into molten magma across 450+ roaring volcanoes.",
     stops: [
       {
@@ -578,7 +836,7 @@ const STORY_TOURS = [
     title: "Life at the Extremes",
     subtitle: "The hottest, coldest, highest, and driest inhabited places on Earth",
     icon: "❄️",
-    duration: "5 MINS",
+    duration: "5 stops",
     description: "From sub-zero Siberian permafrost to boiling Ethiopian acid cauldrons, discover evolutionary marvels of extreme adaptation.",
     stops: [
       {
@@ -638,7 +896,7 @@ const STORY_TOURS = [
     title: "Evolution's Isolated Realms",
     subtitle: "Galápagos, Madagascar, Socotra, Amazon, and Antarctica",
     icon: "🦎",
-    duration: "5 MINS",
+    duration: "5 stops",
     description: "Journey to deep-sea islands and primordial sanctuaries where life evolved undisturbed in wondrous, alien isolation.",
     stops: [
       {
@@ -698,7 +956,7 @@ const STORY_TOURS = [
     title: "Great Rivers & Civilizations",
     subtitle: "How the Nile, Amazon, Ganges, Yangtze, and Danube shaped human history",
     icon: "💧",
-    duration: "5 MINS",
+    duration: "5 stops",
     description: "Discover how freshwater arteries carved through continents and laid the geographic foundation for human civilizations.",
     stops: [
       {
@@ -808,13 +1066,18 @@ function closeStoryToursModal() {
   $("#toursModal")?.classList.add("hidden");
 }
 
-function startStoryTour(tourId) {
+function startStoryTour(tourId, stopIndex = 0) {
   const tour = STORY_TOURS.find((t) => t.id === tourId);
   if (!tour) return;
+  closeHome();
+  hideNext();
+  clearBubble();
+  store.set("gv-trail-day", dailyToday().iso);
+  updateToday();
   closePanel();
   clearCompare();
   endQuiz(true);
-  S.activeTour = { tour, stopIndex: 0 };
+  S.activeTour = { tour, stopIndex: clamp(stopIndex, 0, tour.stops.length - 1) };
   S.pausedTour = null; // a new tour replaces one that was paused
   track("tour_begin", { tour_id: tour.id });
   $("#tourActiveHud .tour-hud-card")?.classList.remove("collapsed");
@@ -831,7 +1094,7 @@ function pauseTour() {
   $("#tourActiveHud")?.classList.add("hidden");
   refreshArcs();
   syncImmersive();
-  toast(`${S.pausedTour.tour.title} is paused. Resume it from Tours.`, 3200);
+  toast(`${S.pausedTour.tour.title} is paused. Tap the logo to carry on.`, 3200);
 }
 function resumeTour() {
   const t = S.pausedTour;
@@ -875,7 +1138,9 @@ async function renderActiveTourStop() {
   if ($("#thTypeTag")) $("#thTypeTag").textContent = sentenceCase(s.type || "Geography");
 
   $("#thLocationName").textContent = s.name;
-  $("#thLocationSub").textContent = `${s.country} · ${sentenceCase(s.type || "")}`;
+  $("#thLocationSub").textContent = s.story ? s.type : `${s.country} · ${sentenceCase(s.type || "")}`;
+  if ($("#thH1")) $("#thH1").textContent = s.h1 || "Why it's here";
+  if ($("#thH2")) $("#thH2").textContent = s.h2 || "To give you a sense of scale";
   $(".th-story-body")?.scrollTo?.(0, 0);
   requestAnimationFrame(syncTourScroll);
   $("#thSparkText").textContent = s.spark;
@@ -1215,14 +1480,14 @@ function initGlobe() {
     // html layer — only the rich cards: 3D wildlife card, compare distance badge
     .htmlLat((w) => w.lat)
     .htmlLng((w) => w.lng)
-    .htmlAltitude((w) => (w.__kind === "life" ? 0.03 : w.alt || 0.012))
-    .htmlElement((w) => (w.__kind === "life" ? buildLifeHolo(w) : w.__kind === "daily" ? buildDailyPin(w) : buildArcBadge(w)))
+    .htmlAltitude((w) => w.alt || 0.012)
+    .htmlElement((w) => (w.__kind === "daily" ? buildDailyPin(w) : w.__kind === "bubble" ? buildBubble(w) : buildArcBadge(w)))
     .onGlobeClick((coords, ev) => {
       if (S.quiz?.arcadeMode === "pinpoint") return quizPinpointClick(coords);
       if (S.quiz?.type === "wonder") return quizWonderClick(coords);
       if (S.comparePick) return;
       if (S.stateView) return exitStateView();
-      if (S.mode === "explore") closePanel();
+      if (S.mode === "explore") { if (panelVisible()) closePanelByUser(); else closePanel(); }
     });
 
   {
@@ -1570,6 +1835,7 @@ function setMode(mode) {
     openStoryToursModal();
     return;
   }
+  hideNext();
   if (mode === S.mode) {
     if (mode === "quiz" && !S.quiz) { closeDaily(true); openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
     return;
@@ -1578,7 +1844,6 @@ function setMode(mode) {
   if (S.mode === "quiz") { endQuiz(true); closeDaily(true); }
   if (S.mode === "earth") clearEarthLayers();
   track("mode_change", { mode });
-  clearLifePin();
   clearCompare();
   exitStateView(false);
   closePanel();
@@ -1587,7 +1852,8 @@ function setMode(mode) {
 
   S.mode = mode;
   document.body.dataset.mode = mode;
-  $$(".mode-tab").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $$(".mode-tab").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode || (b.dataset.mode === "atlas" && mode === "earth")));
+  $$(".maps-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.maps === mode)));
   $("#atlasDock").classList.toggle("hidden", mode !== "atlas");
   $("#earthDock").classList.toggle("hidden", mode !== "earth");
   $("#quizSetup").classList.toggle("hidden", mode !== "quiz");
@@ -1636,6 +1902,9 @@ function handleCountryClick(d, ev) {
 
 function selectCountry(d) {
   if (!d) return;
+  closeHome();
+  hideNext();
+  clearBubble();
   const code = d.gv?.cca3 || "";
   if (code && (code !== S.lastTracked || Date.now() - (S.lastTrackedAt || 0) > 5000)) {
     S.lastTracked = code; S.lastTrackedAt = Date.now();
@@ -1677,6 +1946,7 @@ function scheduleExplored(d) {
 const visitedCount = () => uniqueCountries().filter((f) => S.visited.has(f.gv.cca3)).length;
 
 function updateProgress() {
+  updateToday();
   const total = uniqueCountries().length;
   const n = visitedCount();
   $("#visitedCount").textContent = n;
@@ -1707,6 +1977,7 @@ function renderProgressPop() {
       <b>🌐 Explorer progress</b>
       <button class="pp-close" aria-label="Close progress">✕</button>
     </div>
+    ${todayHtml()}
     <div class="pp-big"><span>${n}</span> / ${total} countries · ${Math.round((n / Math.max(1, total)) * 100)}%</div>
     <div class="pp-regions">
       ${Object.entries(regions).sort().map(([r, v]) => `
@@ -1725,8 +1996,27 @@ function renderProgressPop() {
     <button class="pp-fly">🎲 Fly to an unexplored country</button>
     <button class="pp-credits">About &amp; credits</button>`;
   $("#progressPop .pp-close").addEventListener("click", closeProgressPop);
+  $$("#progressPop [data-today]").forEach((b) => b.addEventListener("click", () => {
+    closeProgressPop();
+    const what = b.dataset.today, sotd = storyOfDay();
+    track("today_tap", { item: what });
+    if (what === "puzzle") openDaily();
+    else if (what === "story" && sotd) selectCountry(sotd.d);
+    else if (what === "trail") { const t = S.pausedTour; if (t) resumeTour(); else startStoryTour((STORY_TOURS.find((x) => !S.toursCompleted.has(x.id)) || STORY_TOURS[0]).id); }
+  }));
   $("#progressPop .pp-fly").addEventListener("click", flyToUnexplored);
   $("#progressPop .pp-credits").addEventListener("click", () => { closeProgressPop(); openCredits(); });
+}
+
+function todayHtml() {
+  const t = todayDone(), sotd = storyOfDay();
+  const row = (key, done, label, cta) => `<div class="pp-today-row${done ? " done" : ""}">
+      <span class="ppt-tick" aria-hidden="true">${done ? "✓" : ""}</span><span class="ppt-label">${esc(label)}</span>
+      ${done ? `<span class="ppt-done">Done</span>` : `<button class="ppt-go" type="button" data-today="${key}">${cta}</button>`}</div>`;
+  return `<div class="pp-today"><div class="pp-today-h">Today</div>
+    ${row("puzzle", t.puzzle, "Today's puzzle", "Play")}
+    ${sotd ? row("story", t.story, `Today's story: ${nameOf(sotd.d)}`, "Read") : ""}
+    ${row("trail", t.trail, "A story trail", S.pausedTour ? "Carry on" : "Start")}</div>`;
 }
 
 function toggleProgressPop() {
@@ -1748,12 +2038,11 @@ function goHome() {
   closeCredits();
   closeStoryToursModal();
   if (!$("#palette").classList.contains("hidden")) closePalette();
-  if (!$("#welcome")?.classList.contains("hidden")) closeWelcome();
+  closeHome();
   if (S.mode !== "explore") setMode("explore");
   else {
     if (S.activeTour) pauseTour();
-    clearLifePin();
-    if (S.compare || S.comparePick) endCompare();
+      if (S.compare || S.comparePick) endCompare();
     exitStateView(false);
     closePanel();
     closeProgressPop();
@@ -1763,6 +2052,7 @@ function goHome() {
   S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 1400);
   pauseRotate();
   scheduleUrl();
+  openHome("logo");
 }
 
 function closeCredits() { $("#creditsModal").classList.add("hidden"); }
@@ -2078,6 +2368,11 @@ async function renderPanelTab(d) {
   if (tab === "overview") {
     if (!S.stories) { await loadStories(); if (token !== S.panelToken) return; }
     const told = storyOf(d);
+    if (told) {
+      if (!S.readStories.has(c.cca3)) { S.readStories.add(c.cca3); store.set("gv-stories-read", [...S.readStories]); }
+      const sotd = storyOfDay();
+      if (sotd?.k === c.cca3 && store.get("gv-sotd", "") !== sotd.iso) { store.set("gv-sotd", sotd.iso); updateToday(); }
+    }
     const density = c?.area && c.population != null ? (c.population / c.area).toFixed(0) : null;
     const langs = c?.languages ? Object.values(c.languages) : [];
     const curr = c?.currencies ? Object.values(c.currencies).map((x) => `${x.name}${x.symbol ? " (" + x.symbol + ")" : ""}`) : [];
@@ -2092,7 +2387,7 @@ async function renderPanelTab(d) {
         <div class="story-photo-credit">Wikimedia Commons</div>
       </div>
 
-      ${told ? countryStoryHtml(told) : `<div class="geo-identity-card">
+      ${told ? countryStoryHtml(told, c.cca3) : `<div class="geo-identity-card">
         <div class="gic-eyebrow">Geographic identity · ${c?.region ? esc(c.region) : "Global"}</div>
         <h3 class="gic-spark">${story.spark}</h3>
         <p class="gic-explain">${story.howItWorks}</p>
@@ -2144,6 +2439,12 @@ async function renderPanelTab(d) {
       <div class="wiki-block" id="ovWiki"><div class="loading-dots">Reading the encyclopedia</div></div>`;
 
     $("#overviewCompareBtn")?.addEventListener("click", () => startComparePick());
+    $("#panelBody [data-share-story]")?.addEventListener("click", () => shareStory(d));
+    $$("#panelBody .cs-trail").forEach((b) => b.addEventListener("click", () => {
+      const i = +b.dataset.stop, t = STORY_TOURS.find((x) => x.id === b.dataset.trail);
+      track("trail_from_country", { tour_id: b.dataset.trail, country_code: c.cca3 });
+      startStoryTour(b.dataset.trail, t && i >= t.stops.length - 1 ? 0 : i);
+    }));
     $$("#panelBody .pill.click").forEach((p) =>
       p.addEventListener("click", () => selectCountry(S.byCca3.get(p.dataset.cca3))));
     wireRankBadges(d);
@@ -2721,16 +3022,6 @@ function wildlifeFor(d) {
   return WILDLIFE_BY_SUBREGION[c.subregion] || WILDLIFE_BY_REGION[c.region] || WILDLIFE_BY_REGION.Asia;
 }
 
-/* ── On-globe 3D wildlife: a holographic model card pinned to the planet ── */
-// globe.gl rewrites each html element's inline transform every frame to centre it on its point.
-// A zero-size anchor takes that transform, so the child can sit *above* the point and animate freely.
-function anchorWrap(inner) {
-  const a = document.createElement("div");
-  a.className = "html-anchor";
-  a.appendChild(inner);
-  return a;
-}
-
 /* ── Tiny nations: pins + forgiving hit-testing so every country is tappable ── */
 const MICRO_SR = 3.2e-4; // ≈ 13,000 km² of sphere — Bahrain, Malta, Singapore, Maldives, Caribbean & Pacific states…
 
@@ -2769,25 +3060,6 @@ function buildArcBadge(a) {
   return div;
 }
 
-function buildLifeHolo(w) {
-  const div = document.createElement("div");
-  div.className = "life-holo";
-  const src = `https://sketchfab.com/models/${w.model.uid}/embed?autospin=0.35&autostart=1&preload=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&ui_controls=0&ui_stop=0&transparent=1`;
-  div.innerHTML = `
-    <div class="holo-head">
-      <span class="holo-title">${w.sp.e} ${w.sp.n}</span>
-      <button class="holo-close" title="Dismiss">✕</button>
-    </div>
-    <iframe class="holo-frame" title="${w.sp.n} 3D" src="${src}"
-      allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
-    ${modelCredit(w.model)}
-    <div class="holo-beam"></div>`;
-  div.querySelector(".holo-close").setAttribute("aria-label", `Dismiss the ${w.sp.n} 3D model`);
-  div.querySelector(".holo-close").onclick = (e) => { e.stopPropagation(); clearLifePin(); };
-  div.addEventListener("pointerdown", (e) => e.stopPropagation()); // don't spin the globe from the card
-  return anchorWrap(div);
-}
-
 // Painted pins (wonders, tiny nations), the few rich HTML cards, and the name labels
 function refreshHtmlLayer() {
   if (!S.globe) return;
@@ -2795,7 +3067,7 @@ function refreshHtmlLayer() {
   if (S.mode === "earth" && S.earthLayers.wonders) pins.push(...WONDERS);
   if (microActive()) pins.push(...S.micro);
   S.globe.markersData(pins);
-  S.globe.htmlElementsData([S.compare?.badge, S.lifePin, ...(S.daily ? dailyPins() : [])].filter(Boolean));
+  S.globe.htmlElementsData([S.compare?.badge, ...(S.daily ? dailyPins() : []), S.bubble].filter(Boolean));
   refreshLabels();
 }
 
@@ -2892,89 +3164,6 @@ function setNames(on) {
   refreshLabels();
 }
 
-function clearLifePin() {
-  if (!S.lifePin) return;
-  S.lifePin = null;
-  refreshHtmlLayer();
-}
-
-// Drop the species' interactive 3D model onto the globe at the country's location and dive to it.
-async function placeLifeOnGlobe(sp, countryD, btn) {
-  track("wildlife_3d", { species: String(sp?.name || sp?.title || sp?.label || "").slice(0, 80), country_code: countryD?.gv?.cca3 || "" });
-  const label = btn?.textContent;
-  if (btn) { btn.disabled = true; btn.textContent = "⏳ Summoning…"; }
-  try {
-    const model = await sketchfabBest(sp);
-    if (!model) throw new Error("no model");
-
-    const { lat, lng } = centroidOf(countryD);
-    S.lifePin = { __kind: "life", lat, lng, sp, model };
-    refreshHtmlLayer();
-    ringPulse(lat, lng, 3, "126,224,255");
-
-    const panelSheet = sheets.get($("#panel"));
-    if (isMobile() && panelVisible() && panelSheet?.state !== "peek") {
-      setSheet($("#panel"), "peek"); // frees most of the screen; the snap re-frames the country
-    } else {
-      const alt = Math.min(1.6, Math.max(0.85, viewAltitudeFor(countryD)));
-      S.globe.pointOfView(viewFor(lat, lng, alt * stageZoom()), 1300);
-      pauseRotate();
-    }
-    toast(`${sp.e} ${sp.n} is standing on ${nameOf(countryD)} — drag inside the card to inspect it`);
-  } catch (e) {
-    toast(`⚠️ No 3D model found for ${sp.n}`);
-  }
-  if (btn) { btn.disabled = false; btn.textContent = label; }
-}
-
-// Sketchfab categories keep the search on-species (relevance alone can pick a "Tiger" tank).
-const SF_CATEGORY = { plant: "nature-plants" }; // fauna → animals-pets (default below)
-
-// Skeletons, skulls, fossils & museum specimens — reject these; we want the living creature.
-const SF_REJECT = /skeleton|skull|\bbones?\b|fossil|specimen|cranium|dentary|\bjaw\b|\btooth\b|\bteeth\b|vertebra|anatom|ecorch|écorch|taxiderm|\bdead\b|carcass|\bmount(ed)?\b|dissect|[A-Z]{2,}:\s?[A-Z]{2,}|:\d{4,}/i;
-
-// One category-scoped search, returning relevant candidates only.
-async function sketchfabSearch(query, category) {
-  const url = `https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(query)}` +
-    (category ? `&categories=${category}` : "") + `&count=18`;
-  const j = await fetch(url).then((r) => r.json());
-  return j?.results || [];
-}
-
-// Best 3D model for a species: in-category & relevant, drop skeletons/specimens, then prefer most-liked.
-// → { uid, name, author, authorUrl, license, url } — credits travel with the model (many are CC BY)
-const modelCache = new Map();
-async function sketchfabBest(sp) {
-  if (modelCache.has(sp.n)) return modelCache.get(sp.n);
-  const category = SF_CATEGORY[sp.t] || "animals-pets";
-  const lastWord = sp.n.split(" ").slice(-1)[0];
-  const pickBest = (results) => {
-    const live = results.filter((m) => !SF_REJECT.test(m.name || ""));
-    const pool = live.length ? live : results; // if everything looks anatomical, take what we have
-    pool.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
-    const m = pool[0];
-    return m?.uid ? {
-      uid: m.uid, name: m.name || sp.n,
-      author: m.user?.displayName || m.user?.username || "a Sketchfab artist",
-      authorUrl: m.user?.profileUrl || "https://sketchfab.com",
-      license: m.license?.label || "",
-      url: m.viewerUrl || `https://sketchfab.com/3d-models/${m.uid}`,
-    } : null;
-  };
-  // 1) full name in-category  2) key word in-category  3) full name, any category
-  for (const [q, cat] of [[sp.n, category], [lastWord, category], [sp.n, ""]]) {
-    const model = pickBest(await sketchfabSearch(q, cat));
-    if (model) { modelCache.set(sp.n, model); return model; }
-  }
-  return null;
-}
-
-// "Tiger" by Jungle Jim · CC Attribution · Sketchfab — shown under every embedded model
-function modelCredit(m) {
-  return `<div class="model-credit">“<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a>” by
-    <a href="${esc(m.authorUrl)}" target="_blank" rel="noopener">${esc(m.author)}</a>${m.license ? ` · ${esc(m.license)}` : ""} · Sketchfab</div>`;
-}
-
 function renderWildlife(d, body, token) {
   const country = nameOf(d);
   const species = wildlifeFor(d);
@@ -2983,7 +3172,7 @@ function renderWildlife(d, body, token) {
     : (d.gv?.subregion || d.gv?.region || "this region");
   body.innerHTML = `
     <p style="font-size:13px;color:var(--text-dim);line-height:1.55;margin-bottom:14px">
-      Iconic wildlife &amp; flora of <b style="color:var(--gold)">${scope}</b>. Tap a species to read about it — then spin its <b>interactive 3D model</b>.</p>
+      Iconic wildlife &amp; flora of <b style="color:var(--gold)">${scope}</b>. Tap a species to read about it.</p>
     <div class="life-grid">
       ${species.map((s, i) => `
         <div class="life-card" data-i="${i}">
@@ -3016,15 +3205,6 @@ async function loadLifeDetail(card, sp, country) {
   const remainingText = wiki?.extract && firstSentence ? wiki.extract.slice(firstSentence.length).trim() : (wiki?.extract || "Native species of this biogeographic realm.");
 
   const taxon = TYPE_LABEL[sp.t] || sp.t || "Fauna";
-  const conservationStatus = (sp.n.includes("Tiger") || sp.n.includes("Panda") || sp.n.includes("Rhino") || sp.n.includes("Gorilla") || sp.n.includes("Leopard"))
-    ? "IUCN: Endangered"
-    : (sp.n.includes("Bear") || sp.n.includes("Elephant") || sp.n.includes("Lion") || sp.n.includes("Cheetah") ? "IUCN: Vulnerable" : "IUCN: Protected");
-
-  const biomeType = (sp.t === "marine" || sp.n.includes("Whale") || sp.n.includes("Shark") || sp.n.includes("Seal"))
-    ? "Marine & Coastal"
-    : (sp.n.includes("Camel") ? "Arid Deserts & Steppe"
-    : (sp.n.includes("Penguin") || sp.n.includes("Bear") ? "Polar & Glacial Ice"
-    : (sp.n.includes("Jaguar") || sp.n.includes("Monkey") ? "Equatorial Rainforest" : "Temperate & Montane")));
 
   box.innerHTML = `
     <div class="field-badge emerald">Wildlife field notes · ${esc(sentenceCase(taxon))}</div>
@@ -3039,14 +3219,7 @@ async function loadLifeDetail(card, sp, country) {
         <span class="ti-label">Classification</span>
         <span class="ti-val emerald">${esc(taxon)}</span>
       </div>
-      <div class="telemetry-item">
-        <span class="ti-label">Conservation</span>
-        <span class="ti-val amber">${conservationStatus}</span>
-      </div>
-      <div class="telemetry-item">
-        <span class="ti-label">Native Biome</span>
-        <span class="ti-val accent">${biomeType}</span>
-      </div>
+
     </div>
 
     ${firstSentence ? `
@@ -3058,46 +3231,7 @@ async function loadLifeDetail(card, sp, country) {
       <div class="seb-label">Adaptation to Terrain & Climate</div>
       <p class="seb-text">${remainingText}</p>
     </div>
-    <div class="life-actions">
-      <button class="life-globe-btn">🌍 See on 3D Globe</button>
-      <button class="life-3d-btn">🧊 Interactive 3D Model</button>
-      ${wiki?.url ? `<a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Encyclopedia Archive →</a>` : ""}
-    </div>
-    <div class="life-viewer"></div>`;
-  card.querySelector(".life-globe-btn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (S.selected) placeLifeOnGlobe(sp, S.selected, e.currentTarget);
-  });
-  card.querySelector(".life-3d-btn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    loadLife3D(card, sp);
-  });
-}
-
-async function loadLife3D(card, sp) {
-  const mount = card.querySelector(".life-viewer");
-  const btn = card.querySelector(".life-3d-btn");
-  if (card.dataset.model3d) { // toggle off
-    mount.innerHTML = ""; card.dataset.model3d = "";
-    btn.textContent = "🧊 View in 3D"; return;
-  }
-  btn.textContent = "⏳ Loading model…"; btn.disabled = true;
-  mount.innerHTML = `<div class="loading-dots" style="padding:10px 0">Sculpting a 3D ${sp.n}</div>`;
-  try {
-    const model = await sketchfabBest(sp);
-    if (!model) throw new Error("no model");
-    const src = `https://sketchfab.com/models/${model.uid}/embed?autospin=0.4&autostart=1&ui_theme=dark&ui_infos=0&ui_hint=0&ui_watermark=0&transparent=1`;
-    mount.innerHTML = `<iframe class="life-iframe" title="${sp.n} 3D model" src="${src}"
-        allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-      <div class="life-3d-hint">Drag to rotate · scroll/pinch to zoom</div>
-      ${modelCredit(model)}`;
-    card.dataset.model3d = "1";
-    btn.textContent = "✕ Hide 3D model";
-  } catch (e) {
-    mount.innerHTML = `<p class="life-text" style="color:var(--text-dim)">No 3D model found for ${sp.n} — try another species.</p>`;
-    btn.textContent = "🧊 View in 3D";
-  }
-  btn.disabled = false;
+    ${wiki?.url ? `<div class="life-actions"><a class="wiki-source" href="${wiki.url}" target="_blank" rel="noopener">Read more on Wikipedia →</a></div>` : ""}`;
 }
 
 /* ───────────────────────── COMPARE ───────────────────────── */
@@ -3328,8 +3462,8 @@ function buildSearchIndex() {
   if (typeof STORY_TOURS !== "undefined") {
     for (const t of STORY_TOURS) {
       items.push({
-        kind: "tour", label: t.title, sub: `5-stop tour · ${t.subtitle}`, icon: t.icon, weight: 3.5,
-        keys: [t.title, t.subtitle, "story", "tour", "expedition"],
+        kind: "tour", label: t.title, sub: `${t.stops.length}-stop story trail · ${t.subtitle}`, icon: t.icon, weight: 3.5,
+        keys: [t.title, t.subtitle, "story", "trail", "tour", "expedition"],
         tourId: t.id
       });
     }
@@ -3355,6 +3489,7 @@ const KIND_TAG = { country: "Country", capital: "Capital", wonder: "Wonder", fea
 function openPalette() {
   const pal = $("#palette");
   if (!pal.classList.contains("hidden")) return $("#searchInput").focus();
+  closeHome();
   closeProgressPop();
   pal.classList.remove("hidden");
   $("#searchInput").value = "";
@@ -4542,12 +4677,16 @@ const dailyTruth = (round) => round.c.slice().sort((a, b) => b[1] - a[1]).map(([
 function dailyMarks(order, truth) {
   return order.map((k, i) => { const off = Math.abs(truth.indexOf(k) - i); return off === 0 ? "g" : off === 1 ? "y" : "r"; }).join("");
 }
-const dailyPoints = (marks) => [...marks].reduce((s, m) => s + (m === "g" ? 20 : m === "y" ? 10 : 0), 0);
+// right spot = an equal share of 100 (20 for five countries, 25 for four); one place off = 10
+const dailyPoints = (marks) => [...marks].reduce((s, m) => s + (m === "g" ? 100 / marks.length : m === "y" ? 10 : 0), 0);
+// how many rounds a day has (3 for the first two puzzles, 1 since), and its best possible score
+const dailyLast = (D) => D.entry.rounds.length - 1;
+const dailyMax = (rec, entry) => rec?.max || (entry ? entry.rounds.length * 100 : 300);
 
 async function openDaily() {
   const { n, iso } = dailyToday();
   const entry = await loadDaily(iso);
-  if (!entry) { toast("Today's Bhoogol isn't ready yet. Try an Arcade game meanwhile.", 3200); if (S.mode !== "quiz") setMode("quiz"); return; }
+  if (!entry) { toast("Today's Bhoogol isn't ready yet. Try another game meanwhile.", 3200); if (S.mode !== "quiz") setMode("quiz"); return; }
   if (S.quiz) endQuiz(true);
   if (S.mode !== "quiz") setMode("quiz");
   $("#quizSetup").classList.add("hidden");
@@ -4556,7 +4695,7 @@ async function openDaily() {
   // Order all three freely, then one Lock in. Nothing is revealed before it, so a saved draft is safe to restore.
   if (!rec.done) rec.rounds = [];
   const fresh = entry.rounds.map((r) => r.c.map(([k]) => k));
-  const draftOk = Array.isArray(rec.draft) && rec.draft.length === 3 && rec.draft.every((o, i) => o?.length === 5 && o.slice().sort().join() === fresh[i].slice().sort().join());
+  const draftOk = Array.isArray(rec.draft) && rec.draft.length === fresh.length && rec.draft.every((o, i) => o?.length === fresh[i].length && o.slice().sort().join() === fresh[i].slice().sort().join());
   S.daily = { n, iso, entry, rec, round: 0, order: [], orders: draftOk ? rec.draft.map((o) => o.slice()) : fresh, phase: "order" };
   if (rec.done) S.daily.phase = "done";
   else {
@@ -4646,10 +4785,12 @@ function lockDaily() {
   });
   D.rec.done = true;
   D.rec.score = D.rec.rounds.reduce((s, r) => s + r.pts, 0);
+  D.rec.max = D.entry.rounds.length * 100;
   delete D.rec.draft;
   saveDailyRecord();
   D.rec.rounds.forEach((r, i) => track("daily_round", { puzzle: D.n, round: i + 1, measure: D.entry.rounds[i].m, points: r.pts }));
   track("daily_end", { puzzle: D.n, score: D.rec.score });
+  updateToday();
   track("post_score", { score: D.rec.score, level: "daily" });
   renderDailyHero();
   revealDaily(0);
@@ -4671,15 +4812,15 @@ function revealDaily(i, animate = true) {
 function nextDaily() {
   const D = S.daily;
   if (!D) return;
-  if (D.phase === "order") { if (D.round < 2) { dailyRound(D.round + 1); renderDaily(); } return; }
+  if (D.phase === "order") { if (D.round < dailyLast(D)) { dailyRound(D.round + 1); renderDaily(); } return; }
   if (D.phase !== "reveal") return;
-  if (D.round < 2) { revealDaily(D.round + 1); return; }
+  if (D.round < dailyLast(D)) { revealDaily(D.round + 1); return; }
   D.phase = "done";
   refreshPolys();
   refreshHtmlLayer();
   renderDaily();
   dailyRank();
-  if (D.rec.score >= 240 && !D.rec.cheered) { D.rec.cheered = true; saveDailyRecord(); confetti({ particleCount: 110, spread: 85, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] }); }
+  if (D.rec.score >= 0.8 * dailyMax(D.rec, D.entry) && !D.rec.cheered) { D.rec.cheered = true; saveDailyRecord(); confetti({ particleCount: 110, spread: 85, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] }); }
 }
 // ← : back to the previous Line-up (still editable before Lock in), or back through the answers after it
 function backDaily() {
@@ -4687,7 +4828,7 @@ function backDaily() {
   if (!D) return;
   if (D.phase === "order") { if (D.round > 0) { dailyRound(D.round - 1); renderDaily(); } return; }
   if (D.phase === "reveal") { if (D.round > 0) revealDaily(D.round - 1, false); return; }
-  revealDaily(2, false); // from the score: the last answers
+  revealDaily(dailyLast(D), false); // from the score: the last answers
 }
 
 function dailyGapLine(round) {
@@ -4701,21 +4842,24 @@ function dailyGapLine(round) {
 }
 const dailySource = (round) => (DAILY_FROM_DATA.has(round.m) ? "Worked out from the map" : `World Bank${round.y ? `, ${round.y}` : ""}`);
 const ORDINAL = ["1st", "2nd", "3rd", "4th", "5th"];
-const dailyVerdict = (s) => (s === 300 ? "A perfect day!" : s >= 240 ? "Sharp eyes." : s >= 180 ? "Solid." : s >= 120 ? "Not bad at all." : "A tricky one today.");
+const dailyVerdict = (s, max = 300) => { const f = s / max; return f >= 1 ? "A perfect day!" : f >= 0.8 ? "Sharp eyes." : f >= 0.6 ? "Solid." : f >= 0.4 ? "Not bad at all." : "A tricky one today."; };
 
 function renderDaily(flip = false) {
   const D = S.daily, card = $("#dailyHud .daily-card");
   if (!D || !card) return;
   $("#dlEyebrow").textContent = `Bhoogol #${D.n}${D.entry.theme ? ` · ${D.entry.theme}` : ""}`;
-  $("#dlDots").innerHTML = [0, 1, 2].map((i) => `<i class="${D.phase === "done" ? "done" : i === D.round ? "on" : D.phase === "reveal" && i < D.round ? "done" : ""}"></i>`).join("");
+  $("#dlDots").innerHTML = D.entry.rounds.length < 2 ? "" : D.entry.rounds.map((_, i) => i).map((i) => `<i class="${D.phase === "done" ? "done" : i === D.round ? "on" : D.phase === "reveal" && i < D.round ? "done" : ""}"></i>`).join("");
   card.dataset.phase = D.phase;
   const back = $("#dlBack");
-  if (back) back.disabled = D.phase !== "done" && D.round === 0;
+  if (back) {
+    back.disabled = D.phase !== "done" && D.round === 0;
+    back.hidden = dailyLast(D) === 0 && D.phase !== "done"; // one Line-up: nothing to go back to until the score
+  }
   if (D.phase === "done") return renderDailyDone();
 
   const round = D.entry.rounds[D.round], M = DAILY_MEASURES[round.m];
   const val = Object.fromEntries(round.c);
-  $("#dlKind").textContent = `${DAILY_KIND[kindOf(round.m)]} · ${D.round + 1} of 3`;
+  $("#dlKind").textContent = dailyLast(D) ? `${DAILY_KIND[kindOf(round.m)]} · ${D.round + 1} of ${dailyLast(D) + 1}` : "Today's Line-up";
   $("#dlQ").textContent = M.q;
   $("#dlTop").textContent = M.top;
   $("#dlBottom").textContent = M.bottom;
@@ -4757,9 +4901,10 @@ function renderDaily(flip = false) {
       <p class="dl-gap">${dailyGapLine(round)}</p>
       <p class="dl-src">${M.note ? esc(M.note) + " " : ""}Source: ${dailySource(round)}</p>` : `<p class="dl-howto">${isCoarse() ? "Drag to reorder. Tap one to find it on the globe." : "Drag to reorder, or use the arrow keys. Click one to find it on the globe."}</p>`;
   const act = $("#dlAct");
-  act.textContent = reveal ? (D.round < 2 ? "Next answers" : "See today's score") : D.round < 2 ? "Next Line-up" : "Lock in all 3";
-  act.classList.toggle("go", reveal || D.round < 2);
-  act.classList.toggle("final", !reveal && D.round === 2);
+  const last = dailyLast(D);
+  act.textContent = reveal ? (D.round < last ? "Next answers" : "See today's score") : D.round < last ? "Next Line-up" : last ? `Lock in all ${last + 1}` : "Lock in";
+  act.classList.toggle("go", reveal || D.round < last);
+  act.classList.toggle("final", !reveal && D.round === last);
   act.disabled = reveal && !D.settled;
   if (!flip) $("#dlScroll").scrollTop = 0; // each Line-up starts at the top
   requestAnimationFrame(syncDailyFade);
@@ -4771,8 +4916,8 @@ function renderDailyDone() {
   const D = S.daily, rec = D.rec, st = dailyStats(D.n);
   const sq = { g: "g", y: "y", r: "r" };
   $("#dlDone").innerHTML = `
-    <div class="dl-total"><b class="mono-num">${rec.score}</b><span>/ 300</span></div>
-    <p class="dl-verdict">${dailyVerdict(rec.score)}</p>
+    <div class="dl-total"><b class="mono-num">${rec.score}</b><span>/ ${dailyMax(rec, D.entry)}</span></div>
+    <p class="dl-verdict">${dailyVerdict(rec.score, dailyMax(rec, D.entry))}</p>
     <div class="dl-grid">${rec.rounds.map((r, i) => `<div class="dl-grid-row"><span class="dl-sq">${[...r.marks].map((m) => `<i class="m-${sq[m]}"></i>`).join("")}</span><span>${DAILY_MEASURES[D.entry.rounds[i].m].label}</span><b class="mono-num">${r.pts}</b></div>`).join("")}</div>
     <p class="dl-rank" id="dlRank" aria-live="polite">${rec.pct != null ? `Better than <b>${rec.pct}%</b> of players today` : "Counting today's players…"}</p>
     <div class="dl-hist" id="dlHist" aria-hidden="true"></div>
@@ -4839,7 +4984,7 @@ async function dailyRank() {
 }
 // hist[i] = players who scored i × 10. Ties don't count as beaten.
 function dailyRankLine(score, hist, mine) {
-  const b = score / 10;
+  const b = Math.round(score / 5); // hist[i] = players who scored i × 5
   const count = hist.reduce((s, x) => s + x, 0), others = count - (mine ? 1 : 0);
   const below = hist.slice(0, b).reduce((s, x) => s + x, 0);
   if (others < 29) return { pct: null, html: others <= 0 ? "You're today's first player. Check back later to see where you rank." : `You're one of today's first ${others + 1} players. Check back later to see where you rank.` };
@@ -4851,15 +4996,17 @@ function dailyRankLine(score, hist, mine) {
 function renderDailyHist(hist, score) {
   const el = $("#dlHist");
   if (!el) return;
-  const bins = Array.from({ length: 10 }, (_, i) => hist.slice(i * 3, i * 3 + 3).reduce((s, x) => s + x, 0) + (i === 9 ? hist[30] || 0 : 0));
-  const top = Math.max(1, ...bins), mineBin = Math.min(9, Math.floor(score / 30));
+  // ten bars across 0 … the day's best possible score
+  const max = dailyMax(S.daily?.rec, S.daily?.entry), bins = new Array(10).fill(0);
+  hist.forEach((c, i) => { if (c && i * 5 <= max) bins[Math.min(9, Math.floor((i * 5 * 10) / (max + 1)))] += c; });
+  const top = Math.max(1, ...bins), mineBin = Math.min(9, Math.floor((score * 10) / (max + 1)));
   el.innerHTML = bins.map((c, i) => `<i class="${i === mineBin ? "me" : ""}" style="--h:${Math.max(4, Math.round((c / top) * 100))}%"></i>`).join("") + `<span>0</span><span>300</span>`;
 }
 
 function dailyShareText() {
   const D = S.daily, rec = D.rec, sq = { g: "🟩", y: "🟨", r: "🟥" };
   return [
-    `Bhoogol #${D.n} · ${rec.score}/300`,
+    `Bhoogol #${D.n} · ${rec.score}/${dailyMax(rec, D.entry)}`,
     ...rec.rounds.map((r, i) => `${[...r.marks].map((m) => sq[m]).join("")} ${DAILY_MEASURES[D.entry.rounds[i].m].label}`),
     ...(rec.pct != null ? [rec.pct === 100 ? "Top score today" : `Better than ${rec.pct}% of players`] : []),
     DAILY_LINK,
@@ -4882,7 +5029,7 @@ async function shareDaily() {
 function onDailyAction() {
   const D = S.daily;
   if (!D) return;
-  if (D.phase === "order") { if (D.round < 2) nextDaily(); else lockDaily(); }
+  if (D.phase === "order") { if (D.round < dailyLast(D)) nextDaily(); else lockDaily(); }
   else if (D.phase === "reveal") { if (D.settled) nextDaily(); }
   else shareDaily();
 }
@@ -4977,8 +5124,8 @@ function renderDailyHero() {
   hero.classList.toggle("played", !!rec?.done);
   $("#dhNum").textContent = `#${n}`;
   $("#dhStatus").innerHTML = rec?.done
-    ? `Done today · <b class="mono-num">${rec.score}</b>/300${rec.pct != null ? ` · better than ${rec.pct}%` : ""}. Next one in ${dailyCountdown()}.`
-    : rec?.draft ? "You've started today's. Pick up where you left off." : "Put five countries in order, three times. Same puzzle for everyone; a new one every midnight.";
+    ? `Done today · <b class="mono-num">${rec.score}</b>/${dailyMax(rec)}${rec.pct != null ? ` · better than ${rec.pct}%` : ""}. Next one in ${dailyCountdown()}.`
+    : rec?.draft ? "You've started today's. Pick up where you left off." : "Put four countries in order. One minute, the same puzzle for everyone, and a new one every midnight.";
   $("#dhCta").textContent = rec?.done ? "See my score" : rec?.draft ? "Continue" : "Play today's";
 }
 
@@ -5171,7 +5318,7 @@ function initSheets() {
   initSheet($("#panel"), {
     def: "half",
     body: $("#panelBody"),
-    dismiss: () => closePanel(),
+    dismiss: () => closePanelByUser(),
     onSnap: () => { // keep the subject centred in whatever globe is left visible
       if (S.compare) frameCompare(700);
       else if (S.selected) frameCountry(S.selected, 700);
@@ -5418,6 +5565,7 @@ function initRenderGuards() {
 
 /* ───────────────────────── KEYBOARD ───────────────────────── */
 function handleEscape() {
+  if (homeOpen()) return closeHome("close");
   if (!$("#creditsModal").classList.contains("hidden")) return closeCredits();
   if (!$("#toursModal")?.classList.contains("hidden")) return closeStoryToursModal();
   if (S.activeTour) return exitStoryTour();
@@ -5425,10 +5573,9 @@ function handleEscape() {
   if (S.daily) return closeDaily();
   if (!$("#quizSetup").classList.contains("hidden") || !$("#quizResult").classList.contains("hidden")) return setMode("explore");
   if (S.quiz) return endQuiz();
-  if (S.lifePin) return clearLifePin();
   if (S.comparePick) { const a = S.selected; clearCompare(); if (a) openPanel(a); return; }
   if (S.compare) return endCompare();
-  if (panelVisible()) return closePanel();
+  if (panelVisible()) return closePanelByUser();
   if (S.stateView) return exitStateView();
 }
 
@@ -5472,14 +5619,27 @@ function onKey(e) {
 
 /* ───────────────────────── WIRE UP ───────────────────────── */
 function initUI() {
-  $$(".mode-tab").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  $$(".mode-tab").forEach((b) => b.addEventListener("click", () => {
+    closeHome(`tab_${b.dataset.mode}`);
+    if (b.dataset.mode === "atlas" && S.mode === "earth") return; // already on Maps (Nature)
+    setMode(b.dataset.mode);
+  }));
+  $$(".maps-switch button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.maps)));
   $("#styleToggle")?.addEventListener("click", () => {
     setMapStyle(S.mapStyle === "terrain" ? "political" : "terrain");
     track("setting_change", { setting: "map_style", setting_value: S.mapStyle });
     toast(S.mapStyle === "terrain" ? "⛰️ Terrain view — forests, deserts, ice and mountains" : "🗺️ Political map");
   });
   $("#soundToggle")?.addEventListener("click", () => { setSound(!S.sound); track("setting_change", { setting: "sound", setting_value: S.sound ? "on" : "off" }); });
-  $("#aboutBtn")?.addEventListener("click", openCredits);
+  $("#aboutBtn")?.addEventListener("click", () => { closeTools(); openCredits(); });
+  // phones: the round tools fold into one "⋯" button that opens a labelled list
+  $("#toolsMore")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dock = $("#textureDock"), open = !dock.classList.contains("open");
+    dock.classList.toggle("open", open);
+    $("#toolsMore").setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.("#textureDock")) closeTools(); });
   // The logo goes home, like any website: without reloading (which would replay the opening)
   $(".brand")?.addEventListener("click", (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return; // new tab / window: let the link do it
@@ -5659,7 +5819,9 @@ function initUI() {
   $("#bigIdeasBtn").addEventListener("click", openBigIdeas);
 
   // drawer
-  $("#panelClose").addEventListener("click", closePanel);
+  $("#panelClose").addEventListener("click", closePanelByUser);
+  $("#nextGo")?.addEventListener("click", () => { const nx = S.nextOffer; hideNext(); if (nx) { track("next_tap", { kind: nx.kind }); nx.go(); } });
+  $("#nextX")?.addEventListener("click", () => { hideNext(); track("next_dismiss", { kind: S.nextOffer?.kind || "" }); });
   $("#panelCompare").addEventListener("click", startComparePick);
   $$(".ptab").forEach((b) => b.addEventListener("click", () => {
     if (!S.selected) return;
@@ -5842,16 +6004,71 @@ async function shareApp() {
 }
 
 /* Welcome card (first visit) and the walkthrough */
-function openWelcome() {
-  if (S.quiz || S.selected || S.mode !== "explore" || !$("#welcome")) return; // never interrupt someone already busy
-  $("#welcome").classList.remove("hidden");
-  track("welcome_shown");
-  $("#welcomeTour")?.focus();
+/* Home sheet: "What do you feel like?" — four ways in, one of them recommended.
+   Opens on a first visit and whenever the logo takes you home; tapping the globe, Esc or any choice closes it. */
+const HOME_ICON = {
+  daily: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/></svg>',
+  sotd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
+  story: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4.5h12l-2.5 4 2.5 4H5"/></svg>',
+  country: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  maps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 8.5l-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+};
+function homeItems() {
+  const { n } = dailyToday();
+  const daily = dailyMemory().days[n];
+  const paused = S.pausedTour;
+  const nextTour = STORY_TOURS.find((t) => !S.toursCompleted.has(t.id)) || STORY_TOURS[0];
+  const sotd = storyOfDay();
+  const readToday = sotd && store.get("gv-sotd", "") === sotd.iso;
+  const items = [
+    { id: "daily", title: daily?.done ? "See today's puzzle score" : "Play today's puzzle", time: "1 min",
+      sub: daily?.done ? `You scored ${daily.score} of ${daily.max || 300}. A new one comes at midnight.` : "Put four countries in order. Same puzzle for everyone today.",
+      go: () => openDaily() },
+    ...(sotd ? [{ id: "sotd", title: `Today's story: ${nameOf(sotd.d)}`, time: "30 sec", sub: sotd.st.hook,
+      go: () => { store.set("gv-sotd", sotd.iso); track("story_of_day", { country_code: sotd.k }); selectCountry(sotd.d); } }] : []),
+    { id: "story", title: paused ? "Carry on your story trail" : "Take a story trail", time: "5 min",
+      sub: paused ? `${paused.tour.title} · stop ${paused.stopIndex + 1} of ${paused.tour.stops.length}` : `Start with ${nextTour.title} · ${nextTour.stops.length} stops`,
+      go: () => (paused ? resumeTour() : startStoryTour(nextTour.id)) },
+    { id: "maps", title: "See the world in numbers", time: "",
+      sub: "Population, money and long lives, painted on the globe.", go: () => setMode("atlas") },
+  ];
+  // one clear first step: today's puzzle until it's played, then today's story, then a trail
+  const rec = !(daily?.done || dailyToday().n < 1) ? "daily" : sotd && !readToday ? "sotd" : "story";
+  items.forEach((it) => { it.rec = it.id === rec; });
+  return items.sort((a, b) => b.rec - a.rec);
 }
-function closeWelcome() {
-  $("#welcome")?.classList.add("hidden");
+function renderHome() {
+  const list = $("#homeList");
+  if (!list) return;
+  S.homeItems = homeItems();
+  list.innerHTML = S.homeItems.map((it) => `
+    <button class="home-item${it.rec ? " rec" : ""}" type="button" data-home="${it.id}">
+      <span class="hi-icon" aria-hidden="true">${HOME_ICON[it.id]}</span>
+      <span class="hi-text">
+        ${it.rec ? `<span class="hi-badge">Start here</span>` : ""}
+        <span class="hi-title">${esc(it.title)}</span>
+        <span class="hi-sub">${esc(it.sub)}</span>
+      </span>
+      ${it.time ? `<span class="hi-time">${it.time}</span>` : ""}
+    </button>`).join("");
+}
+function openHome(from = "logo") {
+  const el = $("#homeSheet");
+  if (!el || S.quiz || S.daily || S.activeTour) return; // never over someone already busy
+  if (!S.stories) loadStories().then(() => { if (homeOpen()) renderHome(); }); // today's story joins when it arrives
+  if (from === "first_visit" && (S.selected || S.mode !== "explore" || panelVisible())) return; // they've already started
+  renderHome();
+  el.classList.remove("hidden");
+  track("home_shown", { from });
+}
+function closeHome(choice = "") {
+  const el = $("#homeSheet");
+  if (!el || el.classList.contains("hidden")) return;
+  el.classList.add("hidden");
   store.set("gv-welcomed", true);
+  if (choice) track("home_choice", { choice, recommended: !!S.homeItems?.find((it) => it.id === choice)?.rec });
 }
+const homeOpen = () => !$("#homeSheet")?.classList.contains("hidden");
 
 const Coach = { i: -1, poll: 0, after: 0 };
 const COACH_STEPS = [
@@ -5883,13 +6100,13 @@ const COACH_STEPS = [
     target: () => elRect("#searchTrigger"),
   },
   {
-    title: "Five ways to see it",
-    text: () => "Explore the map, take a story tour, paint live data in Atlas, see the land itself in Earth, or play in Arcade.",
+    title: "Three ways in",
+    text: () => "Explore the globe and its stories, open Maps for data and nature, or Play a quick game.",
     target: () => elRect("#modeTabs"),
   },
   {
     title: "Ready for a game?",
-    text: () => "Arcade has four quick games, each about a minute long.",
+    text: () => "Play has today's puzzle and quick games, each about a minute long.",
     target: () => elRect('.mode-tab[data-mode="quiz"]'),
     next: "Play now",
     onNext: () => setMode("quiz"),
@@ -5903,7 +6120,7 @@ function elRect(sel) {
 
 function startCoach() {
   track("tutorial_begin", { tutorial: "welcome" });
-  closeWelcome();
+  closeHome();
   if (S.mode !== "explore") setMode("explore");
   $("#coach")?.classList.remove("hidden");
   showCoachStep(0);
@@ -5972,14 +6189,23 @@ function endCoach(say = true) {
 }
 
 function initWelcome() {
-  $("#welcomeTour")?.addEventListener("click", () => { track("welcome_choice", { choice: "tour" }); startCoach(); });
-  $("#welcomePlay")?.addEventListener("click", () => { track("welcome_choice", { choice: "daily" }); closeWelcome(); openDaily(); });
-  $("#welcomeSkip")?.addEventListener("click", () => {
-    track("welcome_choice", { choice: "explore" });
-    closeWelcome();
-    if (isCoarse()) toast("Drag to spin · pinch to zoom · tap any country", 5200);
+  $("#homeList")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-home]");
+    const it = b && S.homeItems?.find((x) => x.id === b.dataset.home);
+    if (!it) return;
+    closeHome(it.id);
+    it.go();
   });
-  $("#welcome")?.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeWelcome(); } });
+  const spin = () => {
+    closeHome("spin");
+    if (isCoarse() && !store.get("gv-coached", false)) { store.set("gv-coached", true); toast("Drag to spin · pinch to zoom · tap any country", 5200); }
+  };
+  $("#homeSpin")?.addEventListener("click", spin);
+  $("#homeClose")?.addEventListener("click", () => closeHome("close"));
+  $("#homeCoach")?.addEventListener("click", () => { closeHome("walkthrough"); startCoach(); });
+  $("#homeTrails")?.addEventListener("click", () => { closeHome("all_trails"); openStoryToursModal(); });
+  // touching the globe means "let me just spin it"
+  $("#globeViz")?.addEventListener("pointerdown", () => { if (homeOpen()) closeHome("spin"); });
   $("#coachNext")?.addEventListener("click", () => {
     const step = COACH_STEPS[Coach.i];
     if (Coach.i >= COACH_STEPS.length - 1) { track("tutorial_complete", { tutorial: "welcome", play_now: !!step.onNext }); endCoach(!step.onNext); step.onNext?.(); }
@@ -5991,6 +6217,15 @@ function initWelcome() {
   $("#creditsIntro")?.addEventListener("click", () => { track("intro_replay"); closeCredits(); replayIntro(); });
   $("#shareApp")?.addEventListener("click", shareApp);
   // About → "Don't count my visits": remembered on this device; takes effect at once
+  const hintsBtn = $("#hintsToggle");
+  const syncHints = () => { if (hintsBtn) hintsBtn.textContent = hintsOn() ? "Turn off hints on the globe" : "Turn on hints on the globe"; };
+  syncHints();
+  hintsBtn?.addEventListener("click", () => {
+    store.set("gv-hints", !hintsOn());
+    track("setting_change", { setting: "globe_hints", setting_value: hintsOn() ? "on" : "off" });
+    syncHints();
+    clearBubble();
+  });
   const trackBtn = $("#trackToggle");
   const syncTrack = () => { if (trackBtn) trackBtn.textContent = store.get("gv-notrack", false) ? "Count my visits again" : "Don't count my visits"; };
   syncTrack();
@@ -6020,6 +6255,7 @@ function initWelcome() {
     initSheets();
     initWelcome();
     loadStories();
+    initBubbles();
     initRenderGuards();
     setPins(S.pins);
     setNames(S.names);
@@ -6052,7 +6288,7 @@ function initWelcome() {
         S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400);
         // first visit: say hello once the globe has landed; touch users who've been welcomed before
         // but never taught the gestures get the one-line hint instead
-        if (!store.get("gv-welcomed", false)) setTimeout(openWelcome, 2500);
+        if (!store.get("gv-welcomed", false)) setTimeout(() => openHome("first_visit"), 2200);
         else if (isCoarse() && !store.get("gv-coached", false)) {
           store.set("gv-coached", true);
           setTimeout(() => toast("Drag to spin · pinch to zoom · tap any country", 5200), 1600);

@@ -3,7 +3,7 @@
 //   GET  /api/daily?n=142                         → { n, count, hist }
 //   POST /api/daily  { n, score, device }         → { n, count, hist }
 //
-// hist[i] = how many players scored i × 10 (0 … 300 → 31 buckets).
+// hist[i] = how many players scored i × 5 (0 … 300 → 61 buckets).
 // Nothing personal is kept: the device id is a random string the browser made up,
 // and the network address is only ever stored as a salted hash, per day, for rate limiting.
 import { getStore } from "@netlify/blobs";

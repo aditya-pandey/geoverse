@@ -748,12 +748,6 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 }
 .life-3d-btn:hover { transform: translateY(-1px); box-shadow: 0 7px 22px rgba(127, 164, 255,.45); }
 .life-3d-btn:disabled { opacity: .6; cursor: default; transform: none; }
-.life-viewer:not(:empty) { margin-top: 12px; }
-.life-iframe {
-  width: 100%; height: 300px; border: none; border-radius: 14px;
-  background: #0a0f1e; box-shadow: 0 10px 30px rgba(0,0,0,.45);
-}
-.life-3d-hint { font-size: 12.5px; color: var(--text-dim); text-align: center; margin-top: 6px; }
 .life-globe-btn {
   padding: 9px 16px; border-radius: 999px; font-size: 15px; font-weight: 700; letter-spacing: .3px;
   color: #12133A; background: var(--marigold);
@@ -763,45 +757,8 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 .life-globe-btn:disabled { opacity: .6; cursor: default; transform: none; }
 
 /* ═══════════ ON-GLOBE HTML (anchored above their point) ═══════════ */
-.html-anchor { position: relative; width: 0; height: 0; }
 
-/* ═══════════ ON-GLOBE 3D HOLO CARD ═══════════ */
-.life-holo {
-  position: absolute; left: 0; bottom: 0;
-  width: 290px;
-  transform: translateX(-50%);
-  transform-origin: 50% 100%;
-  pointer-events: auto;
-  animation: holoIn .5s cubic-bezier(.2,.9,.3,1.2);
-  filter: drop-shadow(0 0 22px rgba(127, 164, 255,.35));
-}
-@keyframes holoIn { from { transform: translateX(-50%) scale(.4); opacity: 0; } }
-.holo-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 12px;
-  background: rgba(18, 19, 58, 0.9);
-  border: 1px solid rgba(127, 164, 255,.45); border-bottom: none;
-  border-radius: 14px 14px 0 0;
-}
-.holo-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #cfeeff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.holo-close {
-  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; font-size: 12.5px;
-  background: rgba(255,255,255,.1); color: var(--text-dim); transition: all var(--t-fast);
-}
-.holo-close:hover { background: rgba(255, 138, 112,.35); color: #fff; }
-.holo-frame {
-  display: block; width: 100%; height: 210px; border: 1px solid rgba(127, 164, 255,.45); border-top: none;
-  border-radius: 0 0 14px 14px; background: rgba(6,12,26,.85);
-}
-.holo-beam {
-  width: 2px; height: 26px; margin: 0 auto;
-  background: linear-gradient(180deg, rgba(127, 164, 255,.9), rgba(127, 164, 255,0));
-  box-shadow: 0 0 8px rgba(127, 164, 255,.8);
-}
-@media (max-width: 768px) {
-  .life-holo { width: min(74vw, 280px); }
-  .holo-frame { height: 180px; }
-}
+
 
 .loading-dots { color: var(--text-dim); font-size: 15px; padding: 14px 0; }
 .loading-dots::after { content: "…"; animation: dots 1.2s steps(4) infinite; }
@@ -1412,8 +1369,7 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
   }
   #panelTabs::-webkit-scrollbar { display: none; }
   .ptab { padding: 11px 10px; font-size: 14px; white-space: nowrap; flex-shrink: 0; }
-  .life-iframe { height: 240px; }
-  .life-photo { width: 90px; }
+    .life-photo { width: 90px; }
   #panelBody { padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); overscroll-behavior: contain; }
   .stat-grid { gap: 8px; }
   .stat-card .sc-value { font-size: 16px; }
@@ -1552,10 +1508,6 @@ button, input, .state-chip, .pill.click { touch-action: manipulation; } /* kill 
 #hudHint.faded { opacity: 0; pointer-events: none; }
 .style-toggle.active, .sound-toggle.active { color: var(--accent, #7FA4FF); }
 .style-toggle svg, .sound-toggle svg { width: 18px; height: 18px; }
-.model-credit { font-size: 12.5px; line-height: 1.4; color: var(--text-dim); margin-top: 6px; text-align: center; }
-.model-credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.life-holo .model-credit { background: rgba(18, 19, 58, 0.9); padding: 4px 8px; margin: 0; border-radius: 0 0 10px 10px; }
-
 /* ═══════════ ABOUT & CREDITS ═══════════ */
 #creditsModal {
   position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center;
@@ -2243,3 +2195,154 @@ html.pointer-input :focus-visible { outline: none; }
 .cs-scale .cs-label { color: var(--mint); }
 #panelBody .country-story p { font-size: 17px; }
 @media (max-width: 768px) { .country-story { padding: 16px 14px 14px; } .cs-hook { font-size: 21px; } }
+
+/* ═══════════ HOME SHEET: "What do you feel like?" — four ways in, one recommended ═══════════ */
+#homeSheet { position: fixed; top: 84px; left: 24px; z-index: 24; width: 400px; max-width: calc(100vw - 48px); animation: slideInLeft .35s cubic-bezier(.2,.9,.3,1); }
+.home-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--lift); padding: 16px 16px 10px;
+  max-height: calc(100dvh - 120px); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 12px; }
+.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 2px 2px 0 4px; }
+.home-eyebrow { margin: 0 0 2px; font: 600 14px/1.3 var(--font-sans); color: var(--marigold); }
+.home-head h2 { margin: 0; font: 700 25px/1.15 var(--font-display); color: var(--ink); text-wrap: balance; }
+.home-close { flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--surface-raised); color: var(--ink); font-size: 16px; cursor: pointer; }
+.home-close:hover { background: var(--line-strong); }
+.home-list { display: grid; gap: 8px; }
+.home-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px 12px 12px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--surface-raised); border: 1.5px solid transparent; border-radius: var(--radius); transition: transform var(--t-fast) var(--ease-settle), border-color .2s, background .2s; }
+.home-item:hover { border-color: var(--line-strong); }
+.home-item:active { transform: translateY(2px); }
+.home-item:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+.home-item.rec { background: linear-gradient(135deg, rgba(255, 176, 32, .18), rgba(61, 220, 151, .06)); border-color: rgba(255, 176, 32, .7); }
+.hi-icon { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--surface); color: var(--ink-muted); }
+.hi-icon svg { width: 22px; height: 22px; }
+.home-item.rec .hi-icon { background: var(--marigold); color: var(--on-marigold); }
+.hi-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.hi-badge { justify-self: start; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--marigold); color: var(--on-marigold); font: 700 12px/1.6 var(--font-display); }
+.hi-title { font: 700 18px/1.25 var(--font-display); color: var(--ink); }
+.hi-sub { font-size: 14px; line-height: 1.4; color: var(--ink-muted); }
+.hi-time { flex: none; align-self: flex-start; margin-top: 2px; padding: 2px 8px; border-radius: var(--radius-pill); font: 500 12px/1.6 var(--font-mono); color: var(--ink-muted); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.home-foot { display: flex; justify-content: space-between; gap: 8px; padding: 0 4px; }
+.home-link { padding: 10px 2px; border: 0; background: none; cursor: pointer; font: 600 15px/1.2 var(--font-sans); color: var(--link); }
+.home-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 768px) {
+  #homeSheet { top: auto; bottom: calc(var(--nav-h, 0px) + 8px); left: 8px; right: 8px; width: auto; max-width: none; animation: slideUp .35s ease; }
+  .home-card { max-height: 66dvh; padding: 14px 12px 6px; gap: 10px; }
+  .home-head h2 { font-size: 22px; }
+  .home-item { padding: 10px 12px 10px 10px; gap: 10px; }
+  .hi-icon { width: 38px; height: 38px; }
+  .hi-title { font-size: 17px; }
+  /* the floating tools step aside while the home sheet is up */
+  body:has(#homeSheet:not(.hidden)) #textureDock, body:has(#homeSheet:not(.hidden)) #progressChip { opacity: 0; pointer-events: none; }
+}
+@media (max-width: 768px) and (max-height: 700px) { .hi-sub { display: none; } }
+
+/* ═══════════ MAPS: one tab, two kinds of map (Data · Nature) ═══════════ */
+.maps-switch { display: flex; gap: 4px; padding: 4px; margin: 0 0 12px; border-radius: var(--radius-pill); background: var(--space); }
+.maps-switch button { flex: 1; padding: 8px 10px; border: 0; border-radius: var(--radius-pill); background: transparent; cursor: pointer;
+  font: 700 15px/1 var(--font-display); color: var(--ink-muted); }
+.maps-switch button[aria-pressed="true"] { background: var(--ink); color: var(--space); }
+.maps-switch button:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+@media (max-width: 767px) {
+  #atlasDock .maps-switch, #earthDock .maps-switch { order: -50; flex-shrink: 0; margin: 0 0 8px; }
+}
+
+/* ═══════════ STORY: share it, follow its trail ═══════════ */
+.cs-actions { display: flex; gap: 8px; margin-top: 14px; }
+.cs-share { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: var(--radius-pill); border: 0; cursor: pointer;
+  font: 600 15px/1 var(--font-sans); color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.cs-share svg { width: 18px; height: 18px; }
+.cs-share:hover { box-shadow: inset 0 0 0 1.5px var(--ink-muted); }
+.cs-trail { display: grid; gap: 2px; width: 100%; margin-top: 12px; padding: 12px 14px; text-align: left; cursor: pointer; font: inherit;
+  border-radius: var(--radius); border: 1.5px solid rgba(255, 176, 32, .6); background: rgba(255, 176, 32, .08); color: var(--ink); }
+.cs-trail:hover { background: rgba(255, 176, 32, .14); }
+.cs-trail-k { font: 600 13px/1.3 var(--font-sans); color: var(--marigold); }
+.cs-trail-t { font: 700 18px/1.25 var(--font-display); }
+.cs-trail-n { font-size: 15px; color: var(--link); }
+.home-foot { flex-wrap: wrap; }
+
+/* ═══════════ EXPLORE NUDGES ═══════════ */
+/* curiosity bubble: a story hook floating just above its country */
+.bubble-anchor { position: relative; width: 0; height: 0; }
+.globe-bubble { position: absolute; left: 0; bottom: 12px; transform: translateX(-50%); width: max-content; max-width: 230px;
+  display: grid; gap: 2px; padding: 9px 13px 10px; text-align: left; cursor: pointer; pointer-events: auto; font: inherit;
+  color: var(--ink); background: rgba(27, 29, 74, .95); border: 1.5px solid rgba(255, 176, 32, .75); border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(4, 5, 20, .5); animation: bubbleIn .5s cubic-bezier(.2,.9,.3,1.15) both; }
+.globe-bubble::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; transform: translateX(-50%) rotate(45deg);
+  background: rgba(27, 29, 74, .95); border-right: 1.5px solid rgba(255, 176, 32, .75); border-bottom: 1.5px solid rgba(255, 176, 32, .75); }
+.gb-name { font: 600 13px/1.2 var(--font-sans); color: var(--marigold); }
+.gb-text { font: 700 16px/1.25 var(--font-display); color: var(--ink); }
+.gb-go { font: 500 13px/1.2 var(--font-sans); color: var(--link); }
+.globe-bubble:hover { border-color: var(--marigold); }
+.globe-bubble:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+@keyframes bubbleIn { from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.92); } }
+@media (prefers-reduced-motion: reduce) { .globe-bubble { animation: none; } }
+
+/* "Next": one suggestion after you close a country */
+#nextChip { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 45; display: flex; align-items: center; gap: 4px;
+  max-width: calc(100vw - 24px); padding: 6px 6px 6px 14px; border-radius: var(--radius-pill); background: var(--surface);
+  border: 1.5px solid rgba(255, 176, 32, .7); box-shadow: var(--lift); animation: popIn .3s ease; }
+.nc-k { flex: none; font: 600 13px/1 var(--font-sans); color: var(--marigold); margin-right: 4px; }
+.nc-go { min-width: 0; padding: 8px 6px; border: 0; background: none; cursor: pointer; text-align: left;
+  font: 700 16px/1.25 var(--font-display); color: var(--ink); }
+.nc-go:hover { color: var(--marigold); }
+.nc-x { flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-raised); color: var(--ink-muted); cursor: pointer; }
+@media (max-width: 768px) {
+  #nextChip { bottom: calc(var(--nav-h, 0px) + 74px); left: 12px; right: 12px; transform: none; }
+  .nc-go { font-size: 15px; }
+}
+
+/* Today 1/3 on the progress chip, and today's three in its pop-up */
+.chip-label .chip-today { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: var(--radius-pill);
+  font: 600 13px/1.5 var(--font-sans); color: var(--ink); background: var(--surface-raised); }
+.chip-label .chip-today.all { background: var(--mint); color: var(--space); }
+.pp-today { display: grid; gap: 6px; margin: 2px 0 14px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-raised); }
+.pp-today-h { font: 600 13px/1.3 var(--font-sans); color: var(--marigold); }
+.pp-today-row { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 15px; color: var(--ink); }
+.ppt-tick { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.pp-today-row.done .ppt-tick { background: var(--mint); color: var(--space); box-shadow: none; }
+.pp-today-row.done .ppt-label { color: var(--ink-muted); }
+.ppt-label { flex: 1; min-width: 0; }
+.ppt-done { font-size: 13px; color: var(--mint); }
+.ppt-go { flex: none; padding: 6px 14px; border: 0; border-radius: var(--radius-pill); cursor: pointer; background: var(--marigold); color: var(--on-marigold);
+  font: 700 14px/1 var(--font-display); }
+
+/* bubbles stay on screen: slid sideways by --dx, pointer kept on the country */
+.globe-bubble { transform: translateX(calc(-50% + var(--dx, 0px))); }
+.globe-bubble::after { left: var(--tail, 50%); }
+.globe-bubble.below { bottom: auto; top: 12px; }
+.globe-bubble.below::after { bottom: auto; top: -7px; transform: translateX(-50%) rotate(225deg); }
+@keyframes bubbleIn { from { opacity: 0; transform: translateX(calc(-50% + var(--dx, 0px))) translateY(8px) scale(.92); } }
+
+/* the round tools: every icon the same size */
+.tex-btn svg { width: 19px; height: 19px; flex: none; }
+.tools-more { display: none; }
+@media (max-width: 768px) {
+  /* phones: one "⋯" button; tap it for a labelled list */
+  #textureDock { flex-direction: column; align-items: stretch; gap: 2px; padding: 4px; border-radius: 24px; }
+  #textureDock .tex-btn { display: none; }
+  #textureDock .tools-more { display: flex; opacity: 1; width: 44px; height: 44px; align-self: flex-end; }
+  #textureDock.open { padding: 6px; background: var(--surface); box-shadow: var(--lift); }
+  #textureDock.open .tex-btn:not(.tools-more) { display: flex; justify-content: flex-start; gap: 12px; width: auto; height: 44px; padding: 0 16px 0 12px;
+    border-radius: 14px; opacity: 1; color: var(--ink); }
+  #textureDock.open .tex-btn:not(.tools-more)::after { content: attr(title); font: 500 15px/1 var(--font-sans); white-space: nowrap; }
+  #textureDock.open .tex-btn.active { background: rgba(127, 164, 255, .18); box-shadow: none; }
+  #textureDock.open .pin-toggle { margin-left: 0; }
+  #textureDock.open .pin-toggle::before { display: none; }
+  #textureDock.open .tools-more { background: var(--surface-raised); }
+}
+
+/* ═══════════ TABS: three, centred ═══════════ */
+/* desktop: the tabs sit in the true centre of the screen; logo left, search and share right */
+@media (min-width: 769px) {
+  #modeTabs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; }
+  #topbar #searchWrap { margin-left: auto; }
+}
+@media (min-width: 1101px) and (max-width: 1279px) {
+  #searchTrigger { width: 240px; } /* leaves the centred tabs room */
+}
+/* phones: three equal tabs across the whole bar */
+@media (max-width: 768px) {
+  #modeTabs { grid-template-columns: repeat(3, 1fr); }
+  .mode-tab .tab-dot { top: 7px; right: auto; left: calc(50% + 7px); }
+}
