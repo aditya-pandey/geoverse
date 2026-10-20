@@ -2390,3 +2390,28 @@ html.pointer-input :focus-visible { outline: none; }
   color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .hj-chip:hover { box-shadow: inset 0 0 0 1.5px var(--marigold); }
 .hj-chip:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+
+/* ═══════════ MAPS ON PHONES: the maps you can pick come first ═══════════
+   A small Data / Nature switch, then the row of maps, then the colour scale.
+   The country readout steps in only once you've tapped a country. */
+@media (max-width: 767px) {
+  #atlasDock .maps-switch, #earthDock .maps-switch { order: -50; align-self: flex-start; display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 8px; }
+  #atlasDock .maps-switch button, #earthDock .maps-switch button { flex: 0 0 auto; padding: 7px 16px; font-size: 14px; }
+  #atlasDock .atlas-metrics { order: -45; margin: 0 0 8px; }
+  #atlasReadout { order: -48; margin: 0 0 8px; }
+  #atlasReadout:has(.ro-hint) { order: 30; min-height: 0; margin: 4px 0 0; padding: 0; border: 0; background: none; font-size: 13px; color: var(--ink-muted); }
+  #legend { order: -40; }
+  #earthDock .atlas-metrics { order: -45; }
+}
+
+/* ═══════════ MAP PANELS TUCK AWAY: drag down to a one-line bar ═══════════ */
+.dock-mini { display: none; }
+@media (max-width: 767px) {
+  #atlasDock[data-sheet="mini"], #earthDock[data-sheet="mini"] { overflow: hidden; }
+  #atlasDock[data-sheet="mini"] > :not(.sheet-grip):not(.dock-mini),
+  #earthDock[data-sheet="mini"] > :not(.sheet-grip):not(.dock-mini) { display: none !important; }
+  #atlasDock[data-sheet="mini"] .dock-mini, #earthDock[data-sheet="mini"] .dock-mini {
+    order: -60; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 4px 4px 8px; border: 0; background: none;
+    cursor: pointer; font: 700 16px/1.2 var(--font-display); color: var(--ink); }
+  .dock-mini-up { font-size: 18px; color: var(--marigold); }
+}

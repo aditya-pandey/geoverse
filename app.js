@@ -1782,9 +1782,17 @@ function ensureIndicator(key) {
   return wbPending[key];
 }
 
+// the one-line label a tucked-away map panel shows
+function syncDockMini() {
+  const label = $(`.metric-btn[data-metric="${S.atlasMetric}"]`)?.textContent.replace(/^\W+/, "").trim() || "Data";
+  const a = $("#atlasDock .dock-mini-t"), e = $("#earthDock .dock-mini-t");
+  if (a) a.textContent = `${label} map`;
+  if (e) e.textContent = "Nature map";
+}
 async function setAtlasMetric(metric) {
   if (S.urlReady && metric !== S.atlasMetric) track("atlas_metric", { metric });
   S.atlasMetric = metric;
+  setTimeout(syncDockMini);
   $$(".metric-btn[data-metric]").forEach((x) => x.classList.toggle("active", x.dataset.metric === metric));
   scheduleUrl();
   if (WB_EXTRA[metric] && !S.wb[metric]) {
@@ -5333,6 +5341,8 @@ function renderDailyHero() {
 // half and expanded. Drag the grip/header, flick, or tap the grip to cycle.
 const SNAP = { peek: 0.28, half: 0.55, full: 0.88 };
 const SNAP_ORDER = ["peek", "half", "full"];
+const MINI_PX = 58; // a sheet that can tuck away entirely: just its grip and a one-line label
+const snapOrder = (sh) => (sh.mini ? ["mini", ...SNAP_ORDER] : SNAP_ORDER);
 const sheets = new Map(); // element → { state, def, dismiss, onSnap, snap, onTap }
 
 // One gesture, one meaning (like Maps): on a sheet's text, a swipe moves the SHEET until it's full,
@@ -5361,6 +5371,7 @@ function fitGameCard(sel) {
 function sheetPx(state, el) {
   const max = innerHeight - navHeight() - 8;
   const sh = el && sheets.get(el);
+  if (state === "mini") return MINI_PX;
   let px = sh?.snap?.(state) ?? innerHeight * SNAP[state];
   if (state !== "peek" && sh?.natural) px = Math.max(sheetPx("peek", el), Math.min(px, sh.natural()));
   return Math.round(Math.min(max, px));
@@ -5409,12 +5420,12 @@ function updateHudLift() {
   root.setProperty("--nav-h", document.body.classList.contains("immersive") && isMobile() ? "env(safe-area-inset-bottom, 0px)" : navHeight() + "px");
   root.setProperty("--sheet-h", tallestSheet() + "px");
   let tall = false;
-  if (isMobile()) for (const [el, sh] of sheets) if (sheetShown(el) && sh.state !== "peek") tall = true;
+  if (isMobile()) for (const [el, sh] of sheets) if (sheetShown(el) && sh.state !== "peek" && sh.state !== "mini") tall = true;
   document.body.classList.toggle("sheet-tall", tall);
 }
 
-function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null, ignore = null, fit = false } = {}) {
-  const sh = { state: def, def, dismiss, onSnap, snap, onTap, natural: fit ? () => naturalHeight(el) : null };
+function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = null, onTap = null, handles: extra = [], body = null, ignore = null, fit = false, mini = false } = {}) {
+  const sh = { state: def, def, dismiss, onSnap, snap, onTap, mini, natural: fit ? () => naturalHeight(el) : null };
   sheets.set(el, sh);
 
   // every time the sheet appears it opens at its default snap
@@ -5443,7 +5454,7 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
       setTimeout(() => { el.style.transform = ""; el.style.transition = ""; sh.dismiss(); }, 210);
       return;
     }
-    setSheet(el, sheetTarget(SNAP_ORDER.map((s) => [s, sheetPx(s, el)]), h, v)[0]);
+    setSheet(el, sheetTarget(snapOrder(sh).map((s) => [s, sheetPx(s, el)]), h, v)[0]);
   };
 
   const onDown = (e) => {
@@ -5467,7 +5478,7 @@ function initSheet(el, { def = "half", dismiss = null, onSnap = null, snap = nul
     drag = null;
     if (!d.moved) { // a tap: the sheet's own action, or the grip cycles peek → half → full
       if (sh.onTap && (d.tap || !e.target.closest?.(".sheet-grip"))) sh.onTap(sh.state);
-      else if (d.tap) setSheet(el, SNAP_ORDER[(SNAP_ORDER.indexOf(sh.state) + 1) % SNAP_ORDER.length]);
+      else if (d.tap) setSheet(el, sh.state === "mini" ? "peek" : SNAP_ORDER[(SNAP_ORDER.indexOf(sh.state) + 1) % SNAP_ORDER.length]);
       return;
     }
     release(d.samples);
@@ -5523,7 +5534,9 @@ function initSheets() {
       else if (S.selected) frameCountry(S.selected, 700);
     },
   });
-  initSheet($("#atlasDock"), { def: "peek", body: $("#atlasDock"), fit: true });
+  // the map panels can tuck away to a one-line bar, leaving the globe free; tap the bar to bring them back
+  const tuck = (dock) => ({ def: "peek", body: dock, fit: true, mini: true });
+  initSheet($("#atlasDock"), tuck($("#atlasDock")));
   // Story tours: peek = title + Next · half (default) = the hook and a taste of why · full = everything
   const tour = $("#tourActiveHud");
   if (tour) {
@@ -5545,7 +5558,9 @@ function initSheets() {
       },
     });
   }
-  initSheet($("#earthDock"), { def: "peek", body: $("#earthDock"), fit: true });
+  initSheet($("#earthDock"), tuck($("#earthDock")));
+  $$(".dock-mini").forEach((b) => b.addEventListener("click", () => setSheet(b.closest("#atlasDock, #earthDock"), "peek")));
+  syncDockMini();
   // Game cards (Arcade, Daily): peek = just the header, so the globe is yours to play on ·
   // half = exactly as tall as this round needs (re-fitted as it changes) · full = for long results
   const gameSheet = (wrap, scroller, head, cap, peekSel, ignore = null) => {
