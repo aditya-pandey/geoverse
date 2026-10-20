@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261019s" />
+<link rel="stylesheet" href="style.css?v=20261020b" />
 </head>
 <body>
 
@@ -308,7 +308,26 @@
       <span class="dh-status" id="dhStatus">Put four countries in order. One minute, the same puzzle for everyone, and a new one every midnight.</span>
       <span class="dh-cta" id="dhCta">Play today's</span>
     </button>
-    <label class="section-label">Or pick a game</label>
+    <label class="section-label">Quick games · 5 rounds, about a minute</label>
+    <div class="quick-grid" id="quickGrid">
+      <button class="quick-card" type="button" data-quick="thisorthat">
+        <span class="qc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4.5"/><circle cx="16.5" cy="12" r="4.5"/></svg></span>
+        <span class="qc-title">This or That</span><span class="qc-desc">Two countries, one question. Tap one.</span>
+      </button>
+      <button class="quick-card" type="button" data-quick="oddone">
+        <span class="qc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><circle cx="12" cy="7" r="2.5"/><circle cx="18" cy="7" r="2.5"/><rect x="9.5" y="14.5" width="5" height="5" rx="1"/></svg></span>
+        <span class="qc-title">Odd one out</span><span class="qc-desc">Four countries. Which one doesn't belong?</span>
+      </button>
+      <button class="quick-card" type="button" data-quick="truefalse">
+        <span class="qc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 4 4 6-8"/><path d="m15 15 5 5M20 15l-5 5"/></svg></span>
+        <span class="qc-title">True or false</span><span class="qc-desc">A fun fact and a country. Do they match?</span>
+      </button>
+      <button class="quick-card" type="button" data-quick="pickglobe">
+        <span class="qc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.5 3.8 5.5 3.8 9s-1.2 6.5-3.8 9c-2.6-2.5-3.8-5.5-3.8-9S9.4 5.5 12 3z"/></svg></span>
+        <span class="qc-title">Pick it on the globe</span><span class="qc-desc">Four countries glow. Tap the right one.</span>
+      </button>
+    </div>
+    <label class="section-label">Expert challenges · 10 rounds, choose where and how hard</label>
     <div class="arcade-mode-grid" id="arcadeModeGrid">
       <button class="arcade-card active" data-arcade="mystery">
         <div class="ac-icon">
@@ -571,6 +590,10 @@
       <button class="home-close" id="homeClose" type="button" aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="home-list" id="homeList"></div>
+    <div class="home-jump-wrap">
+      <p class="hj-k">Or jump straight to</p>
+      <div class="home-jump" id="homeJump"></div>
+    </div>
     <div class="home-foot">
       <button id="homeSpin" class="home-link" type="button">Just spin the globe</button>
       <button id="homeTrails" class="home-link" type="button">All story trails</button>
@@ -596,6 +619,10 @@
 </div>
 
 <!-- ══════════ TOAST ══════════ -->
+<div id="homePill" class="hidden">
+  <button id="homePillGo" class="hp-go" type="button"><span class="hp-dot" aria-hidden="true"></span>What do you feel like?<span class="hp-arrow" aria-hidden="true">›</span></button>
+  <button id="homePillX" class="hp-x" type="button" aria-label="Dismiss">✕</button>
+</div>
 <div id="nextChip" class="hidden" role="status" aria-live="polite">
   <span class="nc-k">Next</span>
   <button id="nextGo" class="nc-go" type="button"></button>
@@ -622,14 +649,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261019s"),
-    load("engine.js?v=20261019s", true),
+    load("engine-core.js?v=20261020b"),
+    load("engine.js?v=20261020b", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261019s"></script>
+<script src="app.js?v=20261020b"></script>
 </body>
 </html>

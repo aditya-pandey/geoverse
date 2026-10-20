@@ -2346,3 +2346,47 @@ html.pointer-input :focus-visible { outline: none; }
   #modeTabs { grid-template-columns: repeat(3, 1fr); }
   .mode-tab .tab-dot { top: 7px; right: auto; left: calc(50% + 7px); }
 }
+
+/* ═══════════ QUICK GAMES ═══════════ */
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 20px; }
+.quick-card { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px; align-items: center;
+  padding: 14px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--surface-raised); border: 1.5px solid transparent; border-radius: var(--radius);
+  transition: transform var(--t-fast) var(--ease-settle), border-color .2s; }
+.quick-card:hover { border-color: var(--marigold); }
+.quick-card:active { transform: translateY(2px); }
+.quick-card:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+.qc-icon { grid-row: span 2; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--marigold); color: var(--on-marigold); }
+.qc-icon svg { width: 22px; height: 22px; }
+.qc-title { font: 700 18px/1.2 var(--font-display); color: var(--ink); }
+.qc-desc { font-size: 14px; line-height: 1.35; color: var(--ink-muted); }
+.tf-hook { display: inline-block; margin-top: 6px; font-style: italic; }
+@media (max-width: 560px) {
+  .quick-grid { grid-template-columns: 1fr; gap: 8px; }
+  .quick-card { padding: 12px; }
+}
+
+/* ═══════════ THE QUIET INVITATION: "What do you feel like?" pill ═══════════ */
+#homePill { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 44; display: flex; align-items: center; gap: 2px;
+  padding: 4px 4px 4px 4px; border-radius: var(--radius-pill); background: var(--surface); border: 1.5px solid var(--line-strong);
+  box-shadow: 0 8px 24px rgba(4, 5, 20, .45); animation: pillIn .45s cubic-bezier(.2,.9,.3,1.1) both; }
+.hp-go { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border: 0; background: none; cursor: pointer;
+  font: 700 16px/1 var(--font-display); color: var(--ink); white-space: nowrap; }
+.hp-go:hover { color: var(--marigold); }
+.hp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--marigold); box-shadow: 0 0 0 4px rgba(255, 176, 32, .2); }
+.hp-arrow { font-size: 20px; line-height: 1; color: var(--marigold); margin-left: 2px; }
+.hp-x { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--surface-raised); color: var(--ink-muted); cursor: pointer; font-size: 13px; }
+@keyframes pillIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
+@media (prefers-reduced-motion: reduce) { #homePill { animation: none; } }
+@media (max-width: 768px) {
+  #homePill { bottom: calc(var(--nav-h, 0px) + 74px); }
+}
+
+/* the home sheet's quiet row of direct jumps */
+.home-jump-wrap { display: grid; gap: 6px; padding: 2px 4px 0; }
+.hj-k { margin: 0; font: 600 13px/1.3 var(--font-sans); color: var(--ink-muted); }
+.home-jump { display: flex; flex-wrap: wrap; gap: 6px; }
+.hj-chip { padding: 7px 12px; border-radius: var(--radius-pill); border: 0; cursor: pointer; font: 600 14px/1.1 var(--font-sans);
+  color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.hj-chip:hover { box-shadow: inset 0 0 0 1.5px var(--marigold); }
+.hj-chip:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }

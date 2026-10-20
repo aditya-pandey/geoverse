@@ -33,7 +33,7 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | `atlas_metric` | A data map is chosen | `metric` |
 | `compare` | Two countries compared | `country_a`, `country_b` |
 | **`search`** | A search result is picked | `search_term` |
-| **`select_content`** | …and what was picked | `content_type` (search_country, search_river, …), `item_id` |
+| **`select_content`** | …and what was picked | `content_type` (search_country, search_river, search_action for a feature like Compare, …), `item_id` |
 | `tour_begin` / `tour_complete` | Story trails (the original tours and the trails built from country stories) | `tour_id` |
 | `trail_from_country` | "Part of a story trail" tapped on a country card | `tour_id`, `country_code` |
 | `story_of_day` | Today's story opened from the home sheet | `country_code` |
@@ -48,8 +48,10 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | `daily_start` | Today's Bhoogol is opened for the first time that day | `puzzle` (puzzle number) |
 | `daily_round` | A Line-up is locked in | `puzzle`, `round` (1–3), `measure`, `points` |
 | `daily_end` | All three Line-ups done (also sends `post_score` with `level` = daily) | `puzzle`, `score` (0–300) |
-| `home_shown` | The home sheet opens (first visit, or the logo) | `from` (first_visit / logo) |
-| `home_choice` | Something is picked on the home sheet, or it's closed | `choice` (daily / sotd / story / maps / spin / all_trails / walkthrough / close / tab_…), `recommended` |
+| `home_pill_shown` / `home_pill_tap` | The small "What do you feel like?" pill appears (once a visit) / is tapped | `from` (first_visit / return) |
+| `home_shown` | The home sheet opens (from the pill, or the logo) | `from` (pill / logo) |
+| `compare_start` | "Compare two countries" chosen from the home sheet or search | `from` |
+| `home_choice` | Something is picked on the home sheet, or it's closed | `choice` (daily / sotd / story / maps / spin / all_trails / walkthrough / close / tab_… / jump_compare / jump_trails / jump_games / jump_nature / jump_search), `recommended` |
 | **`tutorial_begin`** / **`tutorial_complete`** / `tutorial_skip` | The walkthrough | `tutorial`, `play_now`, `step` |
 | `intro_skip` / `intro_replay` | The opening animation | (none) |
 | `go_home` | The logo is tapped to go home | `from` (the mode it left) |

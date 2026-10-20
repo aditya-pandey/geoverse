@@ -503,6 +503,7 @@ function nextFor(d) {
 function offerNext(d) {
   const nx = d?.gv && S.mode === "explore" ? nextFor(d) : null;
   if (!nx) return;
+  hideHomePill();
   S.nextOffer = nx;
   $("#nextGo").textContent = nx.text + " →";
   $("#nextChip").classList.remove("hidden");
@@ -1360,6 +1361,12 @@ function polyBaseColor(d) {
   }
 
   if (S.mode === "quiz" && S.daily) return dailyPolyColor(d);
+  if (S.mode === "quiz" && S.quiz?.arcadeMode === "pickglobe" && S.quiz.cur?.cands) {
+    const i = S.quiz.cur.cands.indexOf(d);
+    if (i < 0) return "rgba(127,164,255,0.08)";
+    if (S.quiz.cur.wrong?.has(d)) return "rgba(184,58,31,0.75)";
+    return hexA(PICK_COLOURS[i], d === S.hoverD ? 0.98 : 0.82);
+  }
   if (S.mode === "quiz" && S.quiz) {
     if (d === S.hoverD) return "rgba(255,255,255,0.35)";
     return "rgba(127,164,255,0.10)";
@@ -1836,6 +1843,7 @@ function setMode(mode) {
     return;
   }
   hideNext();
+  hideHomePill();
   if (mode === S.mode) {
     if (mode === "quiz" && !S.quiz) { closeDaily(true); openQuizSetup(); updateQuizBestLabels(); scheduleUrl(); }
     return;
@@ -1887,6 +1895,7 @@ function setMode(mode) {
 function handleCountryClick(d, ev) {
   if (!d) return;
   if (S.daily) { if (S.daily.phase !== "done" && S.daily.colour?.[d.gv?.cca3]) dailyPeek(d.gv.cca3); return; }
+  if (S.compareFirst && d.gv) return compareFirstPick(d);
   if (d.__adm1) return openStatePanel(d);
   if (S.comparePick) return pickCompare(d);
   if (S.stateView) { exitStateView(false); selectCountry(d); return; }
@@ -1894,6 +1903,8 @@ function handleCountryClick(d, ev) {
   if (S.mode === "quiz" && S.quiz) {
     if (S.quiz.arcadeMode === "mystery") return quizMysteryClick(d, ev);
     if (S.quiz.arcadeMode === "pinpoint") return;
+    if (S.quiz.arcadeMode === "pickglobe") return quizPickClick(d);
+    if (QUICK.has(S.quiz.arcadeMode)) return; // answered with the buttons
     return quizMapClick(d, ev);
   }
   if (S.mode === "atlas" && isCoarse() && d.gv && S.atlasPick !== d) return atlasInspect(d);
@@ -1903,6 +1914,7 @@ function handleCountryClick(d, ev) {
 function selectCountry(d) {
   if (!d) return;
   closeHome();
+  hideHomePill();
   hideNext();
   clearBubble();
   const code = d.gv?.cca3 || "";
@@ -1957,7 +1969,8 @@ function updateProgress() {
 
 const QUIZ_TYPE_LABEL = {
   find: "Find the country", capital: "Capitals", flag: "Flags", city: "City → country", borders: "Neighbours", duel: "Bigger or smaller", wonder: "Wonders",
-  mystery: "Mystery country", chain: "Higher or lower", pinpoint: "Pinpoint", blitz: "Trivia blitz"
+  mystery: "Mystery country", chain: "Higher or lower", pinpoint: "Pinpoint", blitz: "Trivia blitz",
+  thisorthat: "This or That", oddone: "Odd one out", truefalse: "True or false", pickglobe: "Pick it on the globe",
 };
 const DIFF_LABEL = { E: "Easy", N: "Normal", H: "Hard" };
 
@@ -2106,6 +2119,7 @@ function syncTabs() {
 }
 
 function closePanel() {
+  S.compareFirst = false;
   $("#panel").classList.add("hidden");
   clearTimeout(S.dwellTimer);
   clearCompare();
@@ -3468,6 +3482,7 @@ function buildSearchIndex() {
       });
     }
   }
+  for (const f of FEATURES) items.push({ kind: "action", label: f.label, sub: f.sub, icon: f.icon, weight: 3.8, keys: [f.label, ...f.keys], go: f.go });
   for (const it of items) it.norm = it.keys.filter(Boolean).map(normalize);
   return items;
 }
@@ -3556,6 +3571,7 @@ async function pickSearch(it) {
   track("select_content", { content_type: "search_" + (it.kind || "result"), item_id: String(it.label || "").slice(0, 100) });
   closePalette();
   exitStateView(false);
+  if (it.kind === "action") return it.go();
   if (it.kind === "tour") {
     startStoryTour(it.tourId);
     return;
@@ -3640,6 +3656,10 @@ const QUIZ_HINTS = {
   chain: "Guess whether the next country has more or less.",
   pinpoint: "Click/tap the target location on the 3D globe!",
   blitz: "Choose the correct answer!",
+  thisorthat: "Two countries, one question. Tap one.",
+  oddone: "Which one doesn't belong?",
+  truefalse: "Does the fact match the country?",
+  pickglobe: "Tap the right one of the four glowing countries.",
 };
 
 const PINPOINT_TARGETS = [
@@ -3844,6 +3864,156 @@ function makeRound(type, t, pool, rng, diff) {
   };
 }
 
+/* ───────────── QUICK GAMES: easy, one tap, five rounds ───────────── */
+const QUICK = new Set(["thisorthat", "oddone", "truefalse", "pickglobe"]);
+const QUICK_ROUNDS = 5;
+const DELHI_LL = { lat: 28.61, lng: 77.21 };
+const llOf = (f) => (f.gv.latlng?.length === 2 ? { lat: f.gv.latlng[0], lng: f.gv.latlng[1] } : centroidOf(f));
+const flagName = (f) => `${flagEmoji(f.gv.cca2)} ${nameOf(f)}`;
+const REGION_IN = { Africa: "Africa", Americas: "the Americas", Asia: "Asia", Europe: "Europe", Oceania: "Oceania" };
+const TWO_CONTINENTS = new Set(["RUS", "TUR", "EGY", "KAZ", "AZE", "GEO", "IDN", "PAN"]); // sit across two regions: never an "odd one out" by region
+
+// This or That: two countries, one clear question
+const THIS_OR_THAT = [
+  { q: "Which has more people?", v: (f) => f.gv.population, ok: (a, b) => a / b >= 1.5, say: (v) => `${fmt.format(v)} people` },
+  { q: "Which is bigger?", v: (f) => f.gv.area, ok: (a, b) => a / b >= 1.5, say: (v) => `${fmt.format(v)} km²` },
+  { q: "Which is closer to India?", v: (f) => -haversine(llOf(f), DELHI_LL), ok: (a, b) => -b / -a >= 1.4, say: (v) => `${fmtFull.format(Math.round(-v / 10) * 10)} km from Delhi`, skip: ["IND"] },
+  { q: "Which is further north?", v: (f) => llOf(f).lat, ok: (a, b) => a - b >= 10, say: (v) => `${Math.abs(Math.round(v))}° ${v >= 0 ? "north" : "south"}` },
+  { q: "Which has more neighbours?", v: (f) => (f.gv.borders || []).length, ok: (a, b) => a - b >= 2, say: (v) => `${v} neighbour${v === 1 ? "" : "s"}` },
+];
+// Odd one out: three share something, one doesn't
+const ODD_ONE = [
+  { id: "region", make(pool, rng) {
+      const ok = pool.filter((f) => REGION_IN[f.gv.region] && !TWO_CONTINENTS.has(f.gv.cca3));
+      const region = shuffleWith(rng, Object.keys(REGION_IN)).find((r) => ok.filter((f) => f.gv.region === r).length >= 3);
+      if (!region) return null;
+      const three = shuffleWith(rng, ok.filter((f) => f.gv.region === region)).slice(0, 3);
+      const odd = shuffleWith(rng, ok.filter((f) => f.gv.region !== region))[0];
+      return odd && { three, odd, q: `Which one is not in ${REGION_IN[region]}?`, why: `${nameOf(odd)} is in ${REGION_IN[odd.gv.region]}; the others are in ${REGION_IN[region]}.` };
+    } },
+  { id: "coast", make(pool, rng) {
+      const three = shuffleWith(rng, pool.filter((f) => !f.gv.landlocked)).slice(0, 3);
+      const odd = shuffleWith(rng, pool.filter((f) => f.gv.landlocked))[0];
+      return odd && three.length === 3 && { three, odd, q: "Which one has no coastline?", why: `${nameOf(odd)} is landlocked; the others all touch the sea.` };
+    } },
+  { id: "india", make(pool, rng) {
+      const nb = ["PAK", "CHN", "NPL", "BGD", "MMR", "BTN"].map((k) => S.byCca3.get(k)).filter(Boolean);
+      const three = shuffleWith(rng, nb).slice(0, 3);
+      const odd = shuffleWith(rng, pool.filter((f) => f.gv.region === "Asia" && f.gv.cca3 !== "IND" && !nb.includes(f)))[0];
+      return odd && { three, odd, q: "Which one doesn't border India?", why: `${nameOf(odd)} doesn't touch India; the other three do.` };
+    } },
+  { id: "south", make(pool, rng) {
+      const three = shuffleWith(rng, pool.filter((f) => llOf(f).lat > 10)).slice(0, 3);
+      const odd = shuffleWith(rng, pool.filter((f) => llOf(f).lat < -10))[0];
+      return odd && three.length === 3 && { three, odd, q: "Which one is south of the equator?", why: `${nameOf(odd)} is in the southern half of the world; the others are north of the equator.` };
+    } },
+  { id: "island", make(pool, rng) {
+      const three = shuffleWith(rng, pool.filter((f) => (f.gv.borders || []).length >= 2)).slice(0, 3);
+      const odd = shuffleWith(rng, pool.filter((f) => !(f.gv.borders || []).length))[0];
+      return odd && three.length === 3 && { three, odd, q: "Which one has no land neighbours at all?", why: `${nameOf(odd)} is surrounded by sea; the others share land borders.` };
+    } },
+];
+
+function makeQuickRounds(mode, pool, rng) {
+  const rounds = [];
+  const used = new Set();
+  const fresh = (list) => list.filter((f) => !used.has(f.gv.cca3));
+  // each kind of question once before any repeats
+  const totOrder = shuffleWith(rng, THIS_OR_THAT), oddOrder = shuffleWith(rng, ODD_ONE);
+  for (let i = 0, guard = 0; rounds.length < QUICK_ROUNDS && guard < 400; guard++) {
+    let r = null;
+    if (mode === "thisorthat") {
+      const m = totOrder[(rounds.length + Math.floor(guard / 40)) % totOrder.length];
+      const [a, b] = shuffleWith(rng, fresh(pool).filter((f) => !m.skip?.includes(f.gv.cca3)));
+      if (!a || !b) break;
+      const [w, l] = m.v(a) >= m.v(b) ? [a, b] : [b, a];
+      if (!m.ok(m.v(w), m.v(l))) continue;
+      r = { target: w, frame: [a, b], correct: flagName(w), options: [flagName(a), flagName(b)], html: m.q, text: `${m.q} ${nameOf(a)} or ${nameOf(b)}`,
+        answer: nameOf(w), explain: `${nameOf(w)}: ${m.say(m.v(w))} · ${nameOf(l)}: ${m.say(m.v(l))}.`, fact: storyOf(w)?.hook };
+    } else if (mode === "oddone") {
+      const kind = oddOrder[(rounds.length + Math.floor(guard / 40)) % oddOrder.length];
+      const o = kind.make(fresh(pool), rng);
+      if (!o) continue;
+      const four = shuffleWith(rng, [...o.three, o.odd]);
+      r = { target: o.odd, frame: four, correct: flagName(o.odd), options: four.map(flagName), html: o.q, text: o.q, answer: nameOf(o.odd), explain: o.why, secondChance: true };
+    } else if (mode === "truefalse") {
+      const told = fresh(pool).filter((f) => storyOf(f));
+      const all = uniqueCountries().filter((f) => storyOf(f));
+      const x = shuffleWith(rng, told.length ? told : all)[0];
+      if (!x) break;
+      const truth = rng() < 0.5;
+      const y = truth ? x : shuffleWith(rng, all.filter((f) => f !== x))[0];
+      const st = storyOf(x);
+      r = { target: x, frame: [y], correct: truth ? "True" : "False", options: ["True", "False"],
+        html: `This is about <b>${esc(flagName(y))}</b>:<br><span class="tf-hook">“${esc(st.hook)}”</span>`,
+        text: `True or false: ${nameOf(y)}, “${st.hook}”`, answer: truth ? "True" : `False: it's ${nameOf(x)}`,
+        explain: truth ? `Yes, that's ${nameOf(x)}.` : `That's ${nameOf(x)}, not ${nameOf(y)}.`, fact: st.surprise };
+    } else if (mode === "pickglobe") {
+      const big = (f) => (f.gv.area || 0) >= 20000;
+      const t = shuffleWith(rng, fresh(pool).filter(big))[0];
+      if (!t) break;
+      const near = uniqueCountries().filter((f) => f !== t && big(f)).map((f) => [f, haversine(llOf(f), llOf(t))]).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([f]) => f);
+      r = { target: t, cands: shuffleWith(rng, [t, ...near]), frame: [t, ...near], html: `Find <b>${esc(flagName(t))}</b>`, text: `Find ${nameOf(t)}`, answer: nameOf(t) };
+    }
+    if (!r) continue;
+    used.add(r.target.gv.cca3);
+    rounds.push(r);
+  }
+  return rounds;
+}
+
+// Turn the globe to show a few countries at once
+function frameCountries(list, ms = 1200) {
+  const pts = list.filter(Boolean).map(llOf);
+  if (!pts.length || !S.globe) return;
+  const r = Math.PI / 180, v = [0, 0, 0];
+  pts.forEach(({ lat, lng }) => { v[0] += Math.cos(lat * r) * Math.cos(lng * r); v[1] += Math.cos(lat * r) * Math.sin(lng * r); v[2] += Math.sin(lat * r); });
+  const len = Math.hypot(...v) || 1;
+  const lat = Math.asin(v[2] / len) / r, lng = Math.atan2(v[1], v[0]) / r;
+  const spread = Math.max(...pts.map((p) => haversine(p, { lat, lng }))) / 111;
+  pauseRotate();
+  S.globe.pointOfView(viewFor(lat, lng, clamp(1.1 + spread / 40, 1.3, 3.2) * stageZoom()), ms);
+}
+
+// Pick it on the globe: the four glow; a wrong pick turns red and you get one more go
+const PICK_COLOURS = ["#F7D37E", "#9FE3C2", "#FFB49B", "#B5C4FF"];
+function quizPickClick(d) {
+  const q = S.quiz;
+  if (!q || q.locked || !d) return;
+  const cands = q.cur.cands;
+  if (!cands.includes(d)) { roundSay("try", "Pick one of the four glowing countries."); return; }
+  if (q.cur.wrong?.has(d)) return;
+  if (d === q.target) {
+    q.locked = true;
+    const pts = award(100);
+    roundSay("win", `<b>Correct!</b> That's ${esc(nameOf(d))} <span class="fb-pts">+${pts}</span>`);
+    logRound("correct");
+    flash(d, "rgba(61,220,151,0.9)", 1400);
+    confetti({ particleCount: 80, spread: 70, origin: { x: 0.5, y: 0.35 }, colors: ["#3DDC97", "#FFB020", "#2E6BFF"] });
+  } else {
+    q.attempts++;
+    (q.cur.wrong ||= new Set()).add(d);
+    if (q.attempts >= 2) {
+      q.locked = true;
+      q.streak = 0;
+      roundSay("miss", `That's ${esc(nameOf(d))}. ${esc(nameOf(q.target))} is the one glowing now.`);
+      logRound("wrong", nameOf(d));
+      flash(q.target, "rgba(255,176,32,0.95)", 2600);
+    } else {
+      roundSay("try", `That's ${esc(nameOf(d))}. One more try.`);
+      refreshPolys();
+      setStreak(q);
+      return;
+    }
+  }
+  refreshPolys();
+  const fact = storyOf(q.target)?.hook;
+  if (fact) showQuizStoryFact(esc(fact));
+  $("#quizScore").textContent = `${q.score} pts`;
+  setStreak(q);
+  roundOver();
+}
+
 function setQuizSelection(type, region, diff) {
   S.quizType = type; S.quizRegion = region; S.quizDiff = diff;
   $$("#quizTypeSeg .seg-btn").forEach((x) => x.classList.toggle("active", x.dataset.qtype === type));
@@ -3935,7 +4105,8 @@ function dropChallengeIfChanged() {
 
 function startQuiz() {
   const arcadeMode = S.arcadeMode || "mystery";
-  const type = S.quizType, region = S.quizRegion, diff = S.quizDiff;
+  const quick = QUICK.has(arcadeMode);
+  const type = quick ? "find" : S.quizType, region = quick ? "World" : S.quizRegion, diff = quick ? "E" : S.quizDiff;
   const pool = quizPool(type, region, diff);
   if (pool.length < 8 && arcadeMode !== "pinpoint") { toast("Not enough countries in that arena — try 🌍 World!"); return; }
   const ch = S.pendingChallenge;
@@ -3951,6 +4122,8 @@ function startQuiz() {
     rounds = makeChainRounds(pool, rng);
   } else if (arcadeMode === "pinpoint") {
     rounds = makePinpointRounds(rng);
+  } else if (quick) {
+    rounds = makeQuickRounds(arcadeMode, pool, rng);
   } else {
     rounds = makeRounds(type, pool, rng, diff);
   }
@@ -3958,7 +4131,7 @@ function startQuiz() {
   S.quiz = {
     arcadeMode, type, region, diff, seed,
     code: encodeChallenge({ type: arcadeMode, region, diff, seed }),
-    rounds,
+    rounds, total: rounds.length,
     maxAttempts: arcadeMode === "mystery" ? 3 : DIFF_RULES[diff].attempts,
     log: [],
     round: 0, score: 0, streak: 0, bestStreak: 0, correct: 0,
@@ -3987,12 +4160,12 @@ function nextRound() {
   q.pinpointArc = null;
   refreshArcs();
 
-  if (q.round > ROUNDS) return finishQuiz();
+  if (q.round > q.total) return finishQuiz();
 
   const r = q.rounds[q.round - 1];
   q.cur = r;
 
-  $("#quizRound").textContent = `${q.round}/${ROUNDS}`;
+  $("#quizRound").textContent = `${q.round}/${q.total}`;
   $("#quizScore").textContent = `${q.score} pts`;
   setStreak(q);
   q.waiting = false;
@@ -4014,7 +4187,7 @@ function nextRound() {
 
   if (q.arcadeMode === "mystery") {
     q.target = r.country;
-    $("#quizPrompt").innerHTML = promptHtml(`Mystery country · round ${q.round} of ${ROUNDS}`, "", isCoarse() ? "Read the clue, then tap the country on the globe." : "Read the clue, then click the country on the globe.");
+    $("#quizPrompt").innerHTML = promptHtml(`Mystery country · round ${q.round} of ${q.total}`, "", isCoarse() ? "Read the clue, then tap the country on the globe." : "Read the clue, then click the country on the globe.");
     const mBox = $("#mysteryCluesBox");
     mBox.classList.remove("hidden");
     $("#mysteryClueText1").textContent = r.clues[0];
@@ -4067,6 +4240,18 @@ function nextRound() {
     $("#pinpointMeter").classList.add("hidden");
     const pov = S.globe.pointOfView();
     S.globe.pointOfView({ lat: r.target.lat, lng: pov.lng, altitude: 2.4 }, 900);
+  } else if (q.arcadeMode === "pickglobe") {
+    q.target = r.target;
+    $("#quizPrompt").innerHTML = promptHtml(`Pick it on the globe · round ${q.round} of ${q.total}`, r.html, isCoarse() ? "Four countries glow. Tap the right one." : "Four countries glow. Click the right one.");
+    frameCountries(r.frame);
+    refreshPolys();
+  } else if (QUICK.has(q.arcadeMode)) {
+    q.target = r.target;
+    q.explain = r.explain || "";
+    $("#quizPrompt").innerHTML = promptHtml(`${QUIZ_TYPE_LABEL[q.arcadeMode]} · round ${q.round} of ${q.total}`, r.html);
+    buildOptions(r.options, r.correct);
+    if (r.frame) frameCountries(r.frame);
+    refreshPolys();
   } else {
     // Mode D: Classic Trivia Blitz
     q.target = r.wonder || r.target;
@@ -4099,7 +4284,7 @@ function roundOver() {
   $("#quizSkip")?.classList.add("hidden");
   const nb = $("#quizNext");
   if (nb) {
-    nb.textContent = q.round >= ROUNDS ? "See results" : "Next round";
+    nb.textContent = q.round >= q.total ? "See results" : "Next round";
     nb.classList.remove("hidden");
     nb.focus?.({ preventScroll: true });
   }
@@ -4413,9 +4598,17 @@ function quizMapClick(d, ev) {
 
 function choiceAnswer(btn) {
   const q = S.quiz;
-  if (!q || q.locked) return;
-  q.locked = true;
+  if (!q || q.locked || btn.disabled) return;
   const good = btn.dataset.c === "1";
+  if (!good && q.cur.secondChance && !q.attempts) { // narrow it down instead of ending the round
+    q.attempts = 1;
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    roundSay("try", `Not ${esc(btn.textContent.replace(/^[A-J]/, "").trim())}. One more try.`);
+    sfx("wrong");
+    return;
+  }
+  q.locked = true;
   $$(".q-opt").forEach((b) => { if (b.dataset.c === "1") b.classList.add("correct"); });
 
   if (good) {
@@ -4432,7 +4625,7 @@ function choiceAnswer(btn) {
   }
   if (!q.cur.fly && q.target) flyTo(q.target, 1100);
   const fact = q.cur.fact || (q.target?.gv ? generateCountryStory(q.target)?.spark : "");
-  if (fact) showQuizStoryFact(fact);
+  if (fact) showQuizStoryFact(QUICK.has(q.arcadeMode) ? esc(fact) : fact);
   $("#quizScore").textContent = `${q.score} pts`;
   setStreak(q);
   roundOver();
@@ -4462,6 +4655,12 @@ function skipRound() {
     roundSay("info", `Skipped. Here's <b>${esc(t.name)}</b>.`);
     if (q.cur.fact) showQuizStoryFact(q.cur.fact);
     roundOver();
+  } else if (QUICK.has(q.arcadeMode)) {
+    q.locked = true;
+    $$(".q-opt").forEach((b) => { if (b.dataset.c === "1") b.classList.add("correct"); });
+    if (q.arcadeMode === "pickglobe") flash(q.target, "rgba(255,176,32,0.95)", 2400);
+    roundSay("info", `Skipped. ${q.explain ? esc(q.explain) : `It was <b>${esc(nameOf(q.target))}</b>.`}`);
+    roundOver();
   } else if (q.type === "find") {
     q.locked = true;
     flash(q.target, "rgba(255,176,32,0.9)", 1800);
@@ -4490,7 +4689,7 @@ function finishQuiz() {
   if (newBest) { S.bests[key] = q.score; store.set("gv-bests", S.bests); }
   if (q.score > store.get("gv-best", 0)) store.set("gv-best", q.score);
 
-  const pct = q.correct / ROUNDS;
+  const pct = q.correct / q.total;
   const [emoji, title] =
     pct === 1 ? ["👑", "Flawless. Atlas himself would be proud."] :
     pct >= 0.8 ? ["🏆", "Outstanding geographer!"] :
@@ -4501,8 +4700,8 @@ function finishQuiz() {
   $("#resultTitle").textContent = title;
   const modeLabel = QUIZ_TYPE_LABEL[q.arcadeMode] || QUIZ_TYPE_LABEL[q.type] || "Arcade";
   $("#resultStats").innerHTML =
-    `<b>${q.score} pts</b> · ${q.correct}/${ROUNDS} correct · best streak ${q.bestStreak}` +
-    `<br/><span class="res-meta">${modeLabel} · ${q.region} · ${DIFF_LABEL[q.diff]} · seed: <code>${q.seed}</code></span>` +
+    `<b>${q.score} pts</b> · ${q.correct}/${q.total} correct · best streak ${q.bestStreak}` +
+    `<br/><span class="res-meta">${modeLabel}${QUICK.has(q.arcadeMode) ? "" : ` · ${q.region} · ${DIFF_LABEL[q.diff]}`} · seed: <code>${q.seed}</code></span>` +
     (newBest ? `<br/><span style="color:var(--gold)">✨ New personal best for this game!</span>` : ``);
 
   $("#resultReview").innerHTML = q.log.map((e, i) => `
@@ -4516,7 +4715,7 @@ function finishQuiz() {
 
   S.lastQuiz = q;
   const level = q.arcadeMode === "blitz" ? `blitz:${q.type}` : q.arcadeMode;
-  track("level_end", { level_name: level, success: q.correct >= ROUNDS / 2, score: q.score, correct: q.correct, rounds: ROUNDS, best_streak: q.bestStreak, region: q.region, difficulty: q.diff });
+  track("level_end", { level_name: level, success: q.correct >= q.total / 2, score: q.score, correct: q.correct, rounds: q.total, best_streak: q.bestStreak, region: q.region, difficulty: q.diff });
   track("post_score", { score: q.score, level: level });
   S.quiz = null;
   syncImmersive();
@@ -4550,7 +4749,7 @@ function scorecardText(q) {
   return [
     `Bhoogol 🌍 ${modeLabel} · ${q.region} · ${DIFF_LABEL[q.diff]}`,
     q.log.map((e) => RESULT_ICON[e.result]).join(""),
-    `🏆 ${q.score} pts · ${q.correct}/${ROUNDS} correct · 🔥 ${q.bestStreak} best streak`,
+    `🏆 ${q.score} pts · ${q.correct}/${q.total || ROUNDS} correct · 🔥 ${q.bestStreak} best streak`,
     `Can you beat my score? ${challengeUrl(q)}`,
   ].join("\n");
 }
@@ -5740,6 +5939,12 @@ function initUI() {
     });
   });
 
+  // Quick games: one tap and you're playing (World, Easy, five rounds)
+  $$("#quickGrid .quick-card").forEach((card) => card.addEventListener("click", () => {
+    S.arcadeMode = card.dataset.quick;
+    S.pendingChallenge = null;
+    startQuiz();
+  }));
   // 4-Mode Arcade Grid Cards
   $$("#arcadeModeGrid .arcade-card").forEach((card) => {
     card.addEventListener("click", () => { setArcadeMode(card.dataset.arcade); if (isMobile()) setSetupStep(2); });
@@ -5798,6 +6003,7 @@ function initUI() {
   $("#quizResult").addEventListener("click", (e) => { if (e.target.id === "quizResult") setMode("explore"); });
   $("#resultAgain").addEventListener("click", () => {
     $("#quizResult").classList.add("hidden");
+    if (QUICK.has(S.lastQuiz?.arcadeMode)) { S.arcadeMode = S.lastQuiz.arcadeMode; startQuiz(); return; } // quick games: straight into a new five
     openQuizSetup(2); // same game again: straight to where & how hard
     updateQuizBestLabels();
   });
@@ -6051,8 +6257,13 @@ function renderHome() {
       </span>
       ${it.time ? `<span class="hi-time">${it.time}</span>` : ""}
     </button>`).join("");
+  const jump = $("#homeJump");
+  if (jump) jump.innerHTML = HOME_JUMP.map((id) => FEATURES.find((f) => f.id === id)).map((f) =>
+    `<button class="hj-chip" type="button" data-jump="${f.id}">${esc(f.label.replace("Compare two countries", "Compare countries"))}</button>`).join("") +
+    `<button class="hj-chip" type="button" data-jump="search">Search</button>`;
 }
 function openHome(from = "logo") {
+  hideHomePill();
   const el = $("#homeSheet");
   if (!el || S.quiz || S.daily || S.activeTour) return; // never over someone already busy
   if (!S.stories) loadStories().then(() => { if (homeOpen()) renderHome(); }); // today's story joins when it arrives
@@ -6069,6 +6280,81 @@ function closeHome(choice = "") {
   if (choice) track("home_choice", { choice, recommended: !!S.homeItems?.find((it) => it.id === choice)?.rec });
 }
 const homeOpen = () => !$("#homeSheet")?.classList.contains("hidden");
+
+// Every feature, reachable on its own: from the home sheet's "Jump straight to" row and from search
+const FEATURES = [
+  { id: "compare", label: "Compare two countries", sub: "Side by side: people, size, money, long lives", icon: "⚖️", keys: ["compare", "comparison", "versus", "vs", "side by side"], go: () => openComparePicker("feature") },
+  { id: "daily", label: "Today's puzzle", sub: "Line-up · about a minute", icon: "🧩", keys: ["daily", "puzzle", "line-up", "lineup", "today", "bhoogol of the day"], go: () => openDaily() },
+  { id: "trails", label: "Story trails", sub: "Short journeys across the globe", icon: "🧭", keys: ["trails", "trail", "tours", "tour", "stories", "journey"], go: () => openStoryToursModal() },
+  { id: "games", label: "Quick games", sub: "Five rounds, about a minute", icon: "🎮", keys: ["games", "game", "quiz", "play", "arcade"], go: () => setMode("quiz") },
+  { id: "data", label: "Data maps", sub: "Population, money and long lives on the globe", icon: "📊", keys: ["data", "atlas", "population map", "gdp", "statistics"], go: () => setMode("atlas") },
+  { id: "nature", label: "Nature map", sub: "Oceans, rivers, mountains and wonders", icon: "⛰️", keys: ["nature", "earth", "physical", "rivers", "mountains", "oceans", "wonders"], go: () => setMode("earth") },
+];
+const HOME_JUMP = ["compare", "trails", "games", "nature"];
+
+// The quiet invitation: a small pill instead of a card in your face. Tap it for the full home sheet.
+function showHomePill(from) {
+  const el = $("#homePill");
+  if (!el || homeOpen() || S.quiz || S.daily || S.activeTour || S.mode !== "explore" || panelVisible() || Coach.i >= 0) return;
+  el.classList.remove("hidden");
+  track("home_pill_shown", { from });
+  clearTimeout(S.pillTimer);
+  S.pillTimer = setTimeout(hideHomePill, 14000);
+}
+function hideHomePill() {
+  clearTimeout(S.pillTimer);
+  $("#homePill")?.classList.add("hidden");
+}
+
+// Compare without picking a country first: choose one, then the other
+function openComparePicker(from = "") {
+  closeHome();
+  hideNext();
+  hideHomePill();
+  if (S.mode !== "explore") setMode("explore");
+  track("compare_start", { from });
+  if (S.selected?.gv && panelVisible()) return startComparePick();
+  ++S.panelToken;
+  clearCompare();
+  S.compareFirst = true;
+  $("#panel").classList.remove("hidden");
+  showPanelTabs(false);
+  $("#panelCompare").style.display = "none";
+  $("#panelHeader").style.setProperty("--flagbg", "none");
+  setPanelFlag(null, "");
+  $("#panelName").textContent = "Compare two countries";
+  $("#panelOfficial").textContent = "Pick the first one";
+  const popular = ["IND", "CHN", "USA", "BRA", "JPN", "GBR", "PAK", "AUS", "RUS", "NGA", "FRA", "IDN"].map((k) => S.byCca3.get(k)).filter(Boolean);
+  $("#panelBody").innerHTML = `
+    <div class="cmp-pick">
+      <div class="cmp-pick-title">Compare two countries</div>
+      <p class="cmp-pick-sub">First, pick one. ${isCoarse() ? "Tap" : "Click"} it on the globe, or search:</p>
+      <input id="cmpInput" class="cmp-input" type="text" placeholder="Type a country…" autocomplete="off" spellcheck="false" aria-label="First country to compare" />
+      <div id="cmpSuggest" class="pill-row"></div>
+      <button id="cmpCancel" class="cmp-cancel">Cancel</button>
+    </div>`;
+  const chip = (f) => `<button class="pill click" data-cca3="${f.gv.cca3}">${flagEmoji(f.gv.cca2)} ${esc(nameOf(f))}</button>`;
+  const wire = () => $$("#cmpSuggest .pill").forEach((p) => p.addEventListener("click", () => compareFirstPick(S.byCca3.get(p.dataset.cca3))));
+  const showDefault = () => { $("#cmpSuggest").innerHTML = popular.map(chip).join(""); wire(); };
+  showDefault();
+  $("#cmpInput").addEventListener("input", (e) => {
+    const q = normalize(e.target.value);
+    if (!q) return showDefault();
+    const hits = searchItems(q, (it) => it.kind === "country", 8);
+    $("#cmpSuggest").innerHTML = hits.length ? hits.map((it) => chip(it.f)).join("") : `<span class="cmp-none">No match</span>`;
+    wire();
+  });
+  $("#cmpInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#cmpSuggest .pill")?.click(); });
+  $("#cmpCancel").addEventListener("click", () => { S.compareFirst = false; closePanel(); });
+  if (!isCoarse()) $("#cmpInput").focus();
+  scheduleUrl();
+}
+function compareFirstPick(d) {
+  if (!d?.gv) return;
+  S.compareFirst = false;
+  selectCountry(d);
+  startComparePick(); // now "Compare India with…"
+}
 
 const Coach = { i: -1, poll: 0, after: 0 };
 const COACH_STEPS = [
@@ -6189,6 +6475,15 @@ function endCoach(say = true) {
 }
 
 function initWelcome() {
+  $("#homeJump")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-jump]");
+    if (!b) return;
+    closeHome(`jump_${b.dataset.jump}`);
+    if (b.dataset.jump === "search") return openPalette();
+    FEATURES.find((f) => f.id === b.dataset.jump)?.go();
+  });
+  $("#homePillGo")?.addEventListener("click", () => { hideHomePill(); track("home_pill_tap"); openHome("pill"); });
+  $("#homePillX")?.addEventListener("click", () => { hideHomePill(); store.set("gv-welcomed", true); });
   $("#homeList")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-home]");
     const it = b && S.homeItems?.find((x) => x.id === b.dataset.home);
@@ -6288,7 +6583,10 @@ function initWelcome() {
         S.globe.pointOfView({ lat: 18, lng: 30, altitude: 2.4 }, 2400);
         // first visit: say hello once the globe has landed; touch users who've been welcomed before
         // but never taught the gestures get the one-line hint instead
-        if (!store.get("gv-welcomed", false)) setTimeout(() => openHome("first_visit"), 2200);
+        let pilled = false;
+        try { pilled = sessionStorage.getItem("gv-pill") === "1"; sessionStorage.setItem("gv-pill", "1"); } catch (e) { /* private mode */ }
+        const first = !store.get("gv-welcomed", false);
+        if (!pilled) setTimeout(() => showHomePill(first ? "first_visit" : "return"), first ? 2000 : 3500);
         else if (isCoarse() && !store.get("gv-coached", false)) {
           store.set("gv-coached", true);
           setTimeout(() => toast("Drag to spin · pinch to zoom · tap any country", 5200), 1600);

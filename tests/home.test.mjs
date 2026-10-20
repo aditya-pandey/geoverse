@@ -40,3 +40,12 @@ test("the trail card suggests one you haven't finished, or resumes a paused one"
   assert.equal(paused.title, "Carry on your story trail");
   assert.match(paused.sub, /stop 3 of 5/);
 });
+
+test("every 'Jump straight to' button and search shortcut points at a real feature", () => {
+  const stub = () => {};
+  const { FEATURES, HOME_JUMP } = load(["FEATURES", "HOME_JUMP"], { openComparePicker: stub, openDaily: stub, openStoryToursModal: stub, setMode: stub });
+  const ids = new Set(FEATURES.map((f) => f.id));
+  for (const id of HOME_JUMP) assert.ok(ids.has(id), id);
+  for (const f of FEATURES) { assert.ok(f.label && f.keys.length && typeof f.go === "function", f.id); }
+  assert.ok(FEATURES.find((f) => f.id === "compare").keys.includes("compare"));
+});

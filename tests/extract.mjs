@@ -21,6 +21,7 @@ function block(name) {
     if (c === "/" && SRC[i + 1] === "/") { i = SRC.indexOf("\n", i); continue; }
     if ("({[".includes(c)) { depth++; seenOpen = true; }
     else if (")}]".includes(c)) depth--;
+    if (c === ";" && depth === 0) return SRC.slice(m.index, i + 1); // a one-line constant: const X = 5;
     if (seenOpen && depth === 0 && (c === "}" || c === ";" || c === ")") && /^\s*(\n|;|$)/.test(SRC.slice(i + 1, i + 3))) {
       return SRC.slice(m.index, SRC[i + 1] === ";" ? i + 2 : i + 1);
     }
