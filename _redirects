@@ -1,0 +1,7 @@
+# Short tracked links for social media. 302 (temporary), so the tags can change later.
+# Netlify passes any query string on the short link through to the destination.
+# Only these four exact paths are matched: the /api/daily function and the data/ files are untouched.
+/yt      /?utm_source=youtube&utm_medium=social&utm_campaign=channel_link     302
+/ig      /?utm_source=instagram&utm_medium=social&utm_campaign=bio_link       302
+/story   /?utm_source=instagram&utm_medium=social&utm_campaign=story_link     302
+/li      /?utm_source=linkedin&utm_medium=social&utm_campaign=launch_post     302

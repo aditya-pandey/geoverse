@@ -45,6 +45,21 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
 };
 
+// Links shared on social media carry tracking tags (utm_*, fbclid, …) and we have a few testing switches.
+// None of them are app state: they don't make a visit a deep link, and the tracking tags are tidied out
+// of the address once the page has loaded (GA4 already has them: index.html hands it the original URL).
+const NOT_APP_PARAMS = /^(utm_[a-z0-9_]+|fbclid|gclid|igshid|si|notrack|ga_debug|fps|intro)$/i;
+const TRACKING_PARAMS = /^(utm_[a-z0-9_]+|fbclid|gclid|igshid|si)$/i;
+function isDeepLink(search) {
+  return [...new URLSearchParams(search).keys()].some((k) => !NOT_APP_PARAMS.test(k));
+}
+function withoutTracking(search) {
+  const p = new URLSearchParams(search);
+  for (const k of [...p.keys()]) if (TRACKING_PARAMS.test(k)) p.delete(k);
+  const rest = p.toString();
+  return rest ? "?" + rest : "";
+}
+
 // Google Analytics 4 events (the tag lives in index.html). Never throws, never blocks; a no-op on localhost,
 // with ?notrack, or wherever the tag isn't present. Event and parameter names: see ANALYTICS.md.
 function track(name, params = {}) {
@@ -5685,6 +5700,7 @@ async function applyUrl() {
   applyingUrl = true;
   try {
     const p = new URLSearchParams(location.search);
+    for (const k of [...p.keys()]) if (NOT_APP_PARAMS.test(k)) p.delete(k); // tracking tags and test switches aren't places
     if (p.has("daily")) { if (!S.daily) await openDaily(); return; }
     if (S.daily) closeDaily(true);
     const challenge = p.get("challenge");
@@ -6590,7 +6606,9 @@ function initWelcome() {
       const rest = qs.toString();
       history.replaceState(history.state, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
     }
-    const deepLink = location.search.length > 1;
+    const deepLink = isDeepLink(location.search);
+    const tidy = location.pathname + withoutTracking(location.search) + location.hash;
+    if (tidy !== location.pathname + location.search + location.hash) history.replaceState(history.state, "", tidy);
     // two frames: the globe has been drawn behind the loader, so it fades onto a finished picture
     requestAnimationFrame(() => requestAnimationFrame(() => {
       playIntro(() => {

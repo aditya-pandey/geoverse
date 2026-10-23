@@ -25,6 +25,9 @@
     gtag("js", new Date());
     var cfg = { app_version: "2026.10.18" };
     if (/[?&]ga_debug\b/.test(q)) cfg.debug_mode = true; // GA treats any debug_mode key as "on", so only add it when asked
+    // the address as it arrived, utm_* tags and all: app.js tidies the URL before gtag.js (async) gets to read it
+    cfg.page_location = location.href;
+    if (document.referrer) cfg.page_referrer = document.referrer;
     gtag("config", "G-R0PQMW24PX", cfg);
     if (!window.GV_GA) return;
     var s = document.createElement("script");
@@ -64,7 +67,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mukta:wght@400;500;600;700&family=Kalam:wght@700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261020d" />
+<link rel="stylesheet" href="style.css?v=20261024a" />
 </head>
 <body>
 
@@ -651,14 +654,14 @@
   }
   window.GV_LIBS = Promise.all([
     load("https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"),
-    load("engine-core.js?v=20261020d"),
-    load("engine.js?v=20261020d", true),
+    load("engine-core.js?v=20261024a"),
+    load("engine.js?v=20261024a", true),
   ]);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="app.js?v=20261020d"></script>
+<script src="app.js?v=20261024a"></script>
 </body>
 </html>

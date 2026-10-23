@@ -59,6 +59,21 @@ Names in **bold** are GA4 recommended events, which GA's built-in reports unders
 | `analytics_opt_out` | Someone turns counting off | (none) |
 | **`exception`** | JavaScript error, lost 3D view, failed start-up | `description`, `fatal` |
 
+## Tracked links
+
+Short links that tag visits by where they came from. They're defined in `_redirects` (Netlify, 302) and land on the home page with UTM tags; the app tidies the tags out of the address once it has loaded, and GA4 still records them because `index.html` hands GA the original URL (`page_location`).
+
+| Short link | Use it in | Full UTM URL |
+|---|---|---|
+| `bhoogol.netlify.app/yt` | YouTube: channel links, video descriptions | `https://bhoogol.netlify.app/?utm_source=youtube&utm_medium=social&utm_campaign=channel_link` |
+| `bhoogol.netlify.app/ig` | Instagram bio | `https://bhoogol.netlify.app/?utm_source=instagram&utm_medium=social&utm_campaign=bio_link` |
+| `bhoogol.netlify.app/story` | Instagram story link sticker | `https://bhoogol.netlify.app/?utm_source=instagram&utm_medium=social&utm_campaign=story_link` |
+| `bhoogol.netlify.app/li` | LinkedIn posts | `https://bhoogol.netlify.app/?utm_source=linkedin&utm_medium=social&utm_campaign=launch_post` |
+
+- **Where to read the results:** GA4 → Reports → Acquisition → Traffic acquisition, with the primary dimension set to **Session source / medium** (e.g. `instagram / social`). Add **Session campaign** as a secondary dimension to tell the bio from the story link.
+- **A new campaign:** add a line to `_redirects`, e.g. `/diwali  /?utm_source=instagram&utm_medium=social&utm_campaign=diwali_reel  302`, and a row here.
+- **UTM links don't count as deep links:** a visitor arriving through one still gets the normal opening and first-visit welcome. The same goes for `fbclid`, `gclid`, `igshid` and `si`, which some apps add on their own.
+
 ## One-time setup in Google Analytics
 
 These steps are for you to do in the GA admin, since they can't be done from code.
