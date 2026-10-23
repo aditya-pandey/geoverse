@@ -1,0 +1,164 @@
+{
+  "id": "bhoogol-countdown-smallest-countries",
+  "title": "The 5 smallest countries on Earth",
+  "voice": "am_michael",
+  "speed": 1.04,
+  "sources": [
+    "Vatican City 0.44 km², about 1,000 people: UN data (data.un.org)",
+    "Central Park 341 ha = 3.41 km², 4.0 km × 0.8 km: Central Park facts",
+    "Monaco 2.08 km², about 38,000 people, most densely populated country: IMSEE via Hello Monaco; Australian DFAT country brief",
+    "Nauru 21 km², no official capital: Britannica",
+    "Tuvalu 26 km², nine islands, highest point 4.6 m: ASPRS 'Tuvalu' (2019)",
+    "San Marino 61 km², enclave of Italy, oldest constitutional republic, founded 301: Wikipedia via mirror",
+    "Manhattan land area 58.7 km²"
+  ],
+  "items": [
+    {
+      "rank": 5,
+      "cca3": "SMR",
+      "cca2": "sm",
+      "name": "San Marino",
+      "area": "61 km²",
+      "nick": "The Most Serene Republic",
+      "visual": "enclave",
+      "parent": "ITA"
+    },
+    {
+      "rank": 4,
+      "cca3": "TUV",
+      "cca2": "tv",
+      "name": "Tuvalu",
+      "area": "26 km²",
+      "nick": "Nine islands",
+      "visual": "islands",
+      "note": "highest point 4.6 m"
+    },
+    {
+      "rank": 3,
+      "cca3": "NRU",
+      "cca2": "nr",
+      "name": "Nauru",
+      "area": "21 km²",
+      "nick": "One island",
+      "visual": "island",
+      "note": "capital: none"
+    },
+    {
+      "rank": 2,
+      "cca3": "MCO",
+      "cca2": "mc",
+      "name": "Monaco",
+      "area": "2.08 km²",
+      "nick": "38,000 people",
+      "visual": "park"
+    },
+    {
+      "rank": 1,
+      "cca3": "VAT",
+      "cca2": "va",
+      "name": "Vatican City",
+      "area": "0.44 km²",
+      "nick": "About 1,000 people",
+      "visual": "parkTile"
+    }
+  ],
+  "script": [
+    {
+      "say": "The smallest country on Earth is so tiny, New York's Central Park is almost eight times bigger.",
+      "scene": "hook"
+    },
+    {
+      "say": "These are the five smallest countries in the world.",
+      "scene": "lineup"
+    },
+    {
+      "say": "Number five. San Marino.",
+      "scene": "fly",
+      "rank": 5,
+      "pauseAfter": 1.0
+    },
+    {
+      "say": "Sixty-one square kilometers, about the size of Manhattan.",
+      "scene": "card",
+      "rank": 5,
+      "step": 0
+    },
+    {
+      "say": "It's completely surrounded by Italy, and it's the oldest republic still standing, founded in the year three hundred and one.",
+      "scene": "card",
+      "rank": 5,
+      "step": 1
+    },
+    {
+      "say": "Number four. Tuvalu.",
+      "scene": "fly",
+      "rank": 4,
+      "pauseAfter": 1.0
+    },
+    {
+      "say": "Twenty-six square kilometers, scattered across nine tiny islands in the Pacific.",
+      "scene": "card",
+      "rank": 4,
+      "step": 0
+    },
+    {
+      "say": "Its highest point is just four point six meters above the sea.",
+      "scene": "card",
+      "rank": 4,
+      "step": 1
+    },
+    {
+      "say": "Number three. Nauru.",
+      "scene": "fly",
+      "rank": 3,
+      "pauseAfter": 1.0
+    },
+    {
+      "say": "Twenty-one square kilometers. One single island, and no official capital city.",
+      "scene": "card",
+      "rank": 3,
+      "step": 0
+    },
+    {
+      "say": "Number two. Monaco.",
+      "scene": "fly",
+      "rank": 2,
+      "pauseAfter": 1.0
+    },
+    {
+      "say": "Just two square kilometers. That's smaller than Central Park.",
+      "scene": "card",
+      "rank": 2,
+      "step": 0
+    },
+    {
+      "say": "Yet about thirty-eight thousand people live here. The most crowded country on the planet.",
+      "scene": "card",
+      "rank": 2,
+      "step": 1
+    },
+    {
+      "say": "And number one.",
+      "scene": "fly",
+      "rank": 1,
+      "pauseBefore": 0.45
+    },
+    {
+      "say": "Vatican City.",
+      "scene": "fly",
+      "rank": 1,
+      "reveal": true,
+      "pauseAfter": 1.2
+    },
+    {
+      "say": "Less than half a square kilometer. Around a thousand people. And still its own country, with its own flag.",
+      "scene": "card",
+      "rank": 1,
+      "step": 0
+    },
+    {
+      "say": "Which one would you visit? Spin the globe yourself, on Bhoogol.",
+      "scene": "outro"
+    }
+  ]
+}

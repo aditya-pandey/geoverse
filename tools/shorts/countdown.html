@@ -1,0 +1,447 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Bhoogol countdown</title>
+<style>
+@font-face{font-family:'Baloo 2';font-weight:800;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:'Baloo 2';font-weight:700;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2)}
+@font-face{font-family:'Mukta';font-weight:600;src:url(node_modules/@fontsource/mukta/files/mukta-latin-600-normal.woff2)}
+@font-face{font-family:'Kalam';font-weight:700;src:url(node_modules/@fontsource/kalam/files/kalam-latin-700-normal.woff2)}
+@font-face{font-family:'Kalam';font-weight:700;src:url(node_modules/@fontsource/kalam/files/kalam-latin-ext-700-normal.woff2);unicode-range:U+0100-024F}
+@font-face{font-family:'JetBrains Mono';font-weight:500;src:url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2)}
+:root{--space:#12133A;--gold:#FFB020;--mint:#3DDC97;--chalk:#F7F5EF;--ink:#12133A;--goldink:#B86E00}
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:radial-gradient(ellipse 85% 60% at 50% 45%,#1b1d4d 0%,#12133A 60%,#0b0c26 100%)}
+canvas{position:absolute;left:0;top:0}
+.abs{position:absolute}
+.w{display:inline-block}
+#paper{position:absolute;inset:0;overflow:hidden;display:none;transform-origin:50% 50%}
+#paperBg{position:absolute;left:-60px;top:-60px;width:1200px;height:2040px}
+#paperIn{position:absolute;inset:0;transform-origin:50% 40%}
+.flagcard{position:absolute;left:280px;top:300px;width:520px;transform-style:preserve-3d}
+.flagcard img{display:block;width:100%;height:auto;border:16px solid #fff;border-radius:6px;box-shadow:0 30px 40px rgba(18,19,58,.28),0 6px 10px rgba(18,19,58,.18)}
+.hand{font-family:'Kalam';font-weight:700;color:var(--ink);white-space:nowrap}
+.cap{position:absolute;left:0;width:1080px;top:1352px;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:76px;line-height:1.05;color:#fff;
+  paint-order:stroke fill;-webkit-text-stroke:12px #12133A;text-shadow:0 8px 0 rgba(18,19,58,.55)}
+.cap .on{color:var(--gold)}
+.badge{position:absolute;left:40px;top:160px;width:136px;height:136px}
+.badge img{width:136px;height:136px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.35))}
+.badge .n{position:absolute;inset:0;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:88px;line-height:150px;color:#fff;paint-order:stroke fill;-webkit-text-stroke:10px #12133A}
+.mini{position:absolute;width:172px;height:129px;border:8px solid #fff;border-radius:8px;box-shadow:0 14px 22px rgba(0,0,0,.4);background:#1C1E52;overflow:hidden}
+.mini img{width:100%;height:100%;object-fit:cover;display:block}
+.mini .q{position:absolute;inset:0;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:96px;line-height:140px;color:var(--gold)}
+.title{position:absolute;left:60px;width:960px;text-align:center;font-family:'Baloo 2';font-weight:800;color:#fff;line-height:1.02;
+  paint-order:stroke fill;-webkit-text-stroke:10px #12133A;text-shadow:0 8px 0 rgba(18,19,58,.5)}
+.pill{display:inline-block;font-family:'Baloo 2';font-weight:700;font-size:50px;color:#1a1300;background:var(--gold);border-radius:999px;padding:16px 52px 12px;box-shadow:0 7px 0 #C47F00}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1080" height="1920"></canvas>
+  <canvas id="earth" width="1080" height="1920"></canvas>
+  <canvas id="over" width="1080" height="1920"></canvas>
+  <div id="paper"><canvas id="paperBg" width="1200" height="2040"></canvas><div id="paperIn"></div></div>
+  <div id="ui"></div>
+</div>
+<script src="node_modules/d3-array/dist/d3-array.min.js"></script>
+<script src="node_modules/d3-geo/dist/d3-geo.min.js"></script>
+<script src="node_modules/topojson-client/dist/topojson-client.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s), W = 1080, H = 1920, NS = 'http://www.w3.org/2000/svg';
+/* ---------- motion helpers (brand: settle, pop) ---------- */
+function bez(x1, y1, x2, y2) { const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = t => ((ax * t + bx) * t + cx) * t, Y = t => ((ay * t + by) * t + cy) * t;
+  return x => { if (x <= 0) return 0; if (x >= 1) return 1; let lo = 0, hi = 1, t = x; for (let i = 0; i < 40; i++) { X(t) < x ? lo = t : hi = t; t = (lo + hi) / 2; } return Y(t); }; }
+const E = { settle: bez(.2, .9, .25, 1), pop: bez(.34, 1.56, .64, 1), inout: bez(.65, 0, .35, 1), in: bez(.55, 0, .9, .3), out: bez(.16, 1, .3, 1) };
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), prog = (t, a, b) => clamp((t - a) / (b - a)), lerp = (a, b, p) => a + (b - a) * p;
+function css(el, o) { const s = el.style; if ('op' in o) { s.opacity = o.op; s.visibility = o.op <= .001 ? 'hidden' : 'visible'; }
+  s.transform = `translate(${o.x || 0}px,${o.y || 0}px) rotate(${o.r || 0}deg) scale(${o.s ?? 1})`; s.filter = o.blur > .05 ? `blur(${o.blur}px)` : 'none'; }
+const h = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const flagSrc = (c) => `node_modules/flag-icons/flags/4x3/${c}.svg`;
+const SFX = []; const sfx = (t, name, gain = 1) => SFX.push({ t: +Math.max(0, t).toFixed(3), name, gain });
+
+/* ---------- data ---------- */
+let SPEC, TIM, WORLD = {}, MARK = '';
+async function loadData() {
+  const [t10, raw, circle] = await Promise.all([
+    fetch('node_modules/world-atlas/countries-10m.json').then((r) => r.json()),
+    fetch('node_modules/world-countries/countries.json').then((r) => r.json()),
+    fetch('../../brand/identity/dist/marks/marker-circle.svg').then((r) => r.text())]);
+  MARK = circle;
+  const byN = new Map(raw.map((c) => [c.ccn3, c]));
+  for (const f of topojson.feature(t10, t10.objects.countries).features) {
+    const c = byN.get(String(f.id).padStart(3, '0')); if (c) { f.cca3 = c.cca3; f.latlng = c.latlng; WORLD[c.cca3] = f; }
+  }
+}
+
+/* ---------- the satellite globe (WebGL, NASA Blue Marble) ---------- */
+const gl = $('#earth').getContext('webgl', { preserveDrawingBuffer: true, premultipliedAlpha: false, antialias: false });
+let PROG, U = {};
+function initGL(img) {
+  const vs = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
+  const fs = `precision highp float;
+  uniform sampler2D tex; uniform vec2 cen; uniform float r; uniform vec2 c0; uniform float alpha; uniform float H;
+  const float PI = 3.14159265;
+  void main(){
+    vec2 q = vec2(gl_FragCoord.x - cen.x, gl_FragCoord.y - (H - cen.y)) / r;
+    float rho = length(q);
+    float edge = 1.0 - smoothstep(1.0 - 1.5 / r, 1.0, rho);
+    if (rho > 1.0) { gl_FragColor = vec4(0.); return; }
+    float c = asin(min(rho, 1.0));
+    float lat0 = c0.y, lon0 = c0.x;
+    float lat = asin(clamp(cos(c) * sin(lat0) + (rho > 1e-6 ? q.y * sin(c) * cos(lat0) / rho : 0.0), -1.0, 1.0));
+    float lon = lon0 + atan(q.x * sin(c), rho * cos(c) * cos(lat0) - q.y * sin(c) * sin(lat0));
+    vec2 uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);
+    vec3 col = texture2D(tex, uv).rgb;
+    col = pow(col, vec3(0.92)) * 1.06;                                  /* a touch richer */
+    vec3 n = vec3(q.x, q.y, sqrt(max(0.0, 1.0 - rho * rho)));
+    float lit = clamp(dot(n, normalize(vec3(-0.45, 0.5, 0.75))), 0.0, 1.0);
+    col *= mix(0.42, 1.12, lit);                                         /* light from the upper left, as in the brand */
+    col = mix(col, vec3(0.55, 0.72, 1.0), pow(rho, 8.0) * 0.55);         /* atmosphere at the rim */
+    gl_FragColor = vec4(col, edge * alpha);
+  }`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  PROG = gl.createProgram(); gl.attachShader(PROG, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(PROG, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(PROG); gl.useProgram(PROG);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(PROG, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  for (const k of ['cen', 'r', 'c0', 'alpha', 'H']) U[k] = gl.getUniformLocation(PROG, k);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+}
+const octx = $('#over').getContext('2d');
+const proj = d3.geoOrthographic().clipAngle(90).precision(.3), opath = d3.geoPath(proj, octx);
+function drawEarth(C) {
+  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform2f(U.cen, C.cx, C.cy); gl.uniform1f(U.r, C.r); gl.uniform1f(U.H, H);
+  gl.uniform2f(U.c0, C.lon * Math.PI / 180, C.lat * Math.PI / 180); gl.uniform1f(U.alpha, C.alpha ?? 1);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  octx.clearRect(0, 0, W, H);
+  if ((C.alpha ?? 1) <= 0) return;
+  octx.save(); octx.globalAlpha = C.alpha ?? 1;
+  /* outer glow */
+  const g = octx.createRadialGradient(C.cx, C.cy, C.r * .96, C.cx, C.cy, C.r * 1.16);
+  g.addColorStop(0, 'rgba(143,178,255,.45)'); g.addColorStop(1, 'rgba(143,178,255,0)');
+  octx.fillStyle = g; octx.beginPath(); octx.arc(C.cx, C.cy, C.r * 1.16, 0, 6.2832); octx.arc(C.cx, C.cy, C.r * .995, 0, 6.2832, true); octx.fill();
+  proj.scale(C.r).translate([C.cx, C.cy]).rotate([-C.lon, -C.lat]);
+  for (const hl of C.hi || []) {
+    const f = WORLD[hl.cca3]; if (!f) continue;
+    octx.beginPath(); opath(f); octx.fillStyle = `rgba(255,176,32,${.6 * hl.a})`; octx.fill();
+    octx.strokeStyle = `rgba(247,245,239,${hl.a})`; octx.lineWidth = 2.5; octx.stroke();
+    /* a pin, because these countries are specks even this close */
+    const p = proj([hl.lng, hl.lat]); if (!p || d3.geoDistance([hl.lng, hl.lat], [C.lon, C.lat]) > 1.45) continue;
+    const pulse = (hl.t % 1.2) / 1.2;
+    octx.strokeStyle = `rgba(255,176,32,${hl.a * (1 - pulse)})`; octx.lineWidth = 6;
+    octx.beginPath(); octx.arc(p[0], p[1], 18 + 60 * pulse, 0, 6.2832); octx.stroke();
+    octx.fillStyle = `rgba(255,176,32,${hl.a})`; octx.strokeStyle = `rgba(247,245,239,${hl.a})`; octx.lineWidth = 5;
+    octx.beginPath(); octx.arc(p[0], p[1], 15, 0, 6.2832); octx.fill(); octx.stroke();
+    if (hl.label) {
+      octx.font = "800 64px 'Baloo 2'"; octx.textAlign = 'center'; octx.lineJoin = 'round';
+      const ly = p[1] - 50 - 30 * (1 - E.settle(hl.la ?? 1));
+      octx.globalAlpha = (C.alpha ?? 1) * (hl.la ?? 1);
+      octx.lineWidth = 12; octx.strokeStyle = '#12133A'; octx.strokeText(hl.label, p[0], ly);
+      octx.fillStyle = hl.label === '?' ? '#FFB020' : '#F7F5EF'; octx.fillText(hl.label, p[0], ly);
+      octx.globalAlpha = C.alpha ?? 1;
+    }
+  }
+  octx.restore();
+}
+
+/* ---------- stars ---------- */
+const bctx = $('#bg').getContext('2d'); let STARS = [];
+function stars(t, zoom) { bctx.clearRect(0, 0, W, H);
+  for (const s of STARS) { const z = 1 + (zoom - 1) * s.z, x = 540 + (s.x - 540) * z, y = 960 + (((s.y + t * 6 * s.z) % 2000) - 960) * z, tw = .55 + .45 * Math.sin(t * 1.7 + s.ph);
+    bctx.globalAlpha = .12 + .55 * s.z * tw; bctx.fillStyle = '#F7F5EF'; bctx.beginPath(); bctx.arc(x, y, (.7 + 1.6 * s.sz * s.z) * Math.sqrt(z), 0, 6.283); bctx.fill(); }
+  bctx.globalAlpha = 1; }
+
+/* ---------- the exercise-book page ---------- */
+function paperTexture() {
+  const c = $('#paperBg'), x = c.getContext('2d'), w = c.width, hh = c.height;
+  x.fillStyle = '#F7F5EF'; x.fillRect(0, 0, w, hh);
+  let seed = 7; const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 26000; i++) { x.fillStyle = `rgba(${R() < .5 ? '120,100,60' : '255,255,255'},${.03 + R() * .05})`; x.fillRect(R() * w, R() * hh, 1 + R() * 2.5, 1 + R() * 2.5); }
+  for (let i = 0; i < 260; i++) { x.strokeStyle = `rgba(150,130,90,${.05 + R() * .06})`; x.lineWidth = .8; x.beginPath(); const a = R() * w, b = R() * hh; x.moveTo(a, b); x.quadraticCurveTo(a + R() * 40 - 20, b + R() * 40 - 20, a + R() * 70 - 35, b + R() * 70 - 35); x.stroke(); }
+  x.strokeStyle = 'rgba(46,107,255,.16)'; x.lineWidth = 2;                    /* the squared lines of a geography notebook */
+  for (let y = 40; y < hh; y += 56) { x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); }
+  for (let X = 30; X < w; X += 56) { x.beginPath(); x.moveTo(X, 0); x.lineTo(X, hh); x.stroke(); }
+  x.strokeStyle = 'rgba(220,60,60,.45)'; x.lineWidth = 3; x.beginPath(); x.moveTo(170, 0); x.lineTo(170, hh); x.stroke();
+  const v = x.createRadialGradient(w / 2, hh / 2, hh * .3, w / 2, hh / 2, hh * .72); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(90,70,30,.22)'); x.fillStyle = v; x.fillRect(0, 0, w, hh);
+}
+function markEl(w, ht) {
+  const wrap = h(`<div class="abs" style="width:${w}px;height:${ht}px"></div>`);
+  wrap.innerHTML = MARK.replace('<svg ', `<svg preserveAspectRatio="none" width="${w}" height="${ht}" `);
+  const svg = wrap.firstChild, id = 'm' + Math.random().toString(36).slice(2);
+  const defs = document.createElementNS(NS, 'defs'), mask = document.createElementNS(NS, 'mask'); mask.setAttribute('id', id); mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  ['x', 'y'].forEach((k) => mask.setAttribute(k, -60)); ['width', 'height'].forEach((k) => mask.setAttribute(k, 380));
+  const rev = document.createElementNS(NS, 'path'); rev.setAttribute('fill', '#fff'); mask.appendChild(rev); defs.appendChild(mask); svg.prepend(defs);
+  const g = document.createElementNS(NS, 'g'); g.setAttribute('mask', `url(#${id})`); [...svg.querySelectorAll(':scope > path')].forEach((p) => g.appendChild(p)); svg.appendChild(g);
+  wrap.draw = (p) => { const a0 = 160 * Math.PI / 180, sw = 2 * Math.PI * p, R = 260;
+    rev.setAttribute('d', p >= .999 ? `M-132 128a260 260 0 1 0 520 0a260 260 0 1 0 -520 0Z` : p <= 0 ? 'M0 0Z' :
+      `M128 128L${128 + R * Math.cos(a0)} ${128 + R * Math.sin(a0)}A${R} ${R} 0 ${sw > Math.PI ? 1 : 0} 1 ${128 + R * Math.cos(a0 + sw)} ${128 + R * Math.sin(a0 + sw)}Z`); };
+  wrap.draw(0); return wrap;
+}
+/* write-on for handwriting: reveal left to right */
+function writeOn(el, p) { el.style.clipPath = `inset(-20% ${100 - 100 * clamp(p)}% -30% -5%)`; }
+/* draw a country to scale in an SVG (km → px via an equal-area projection centred on it) */
+function shapeSVG(features, { pxPerKm, fill, stroke, width = 4 }) {
+  const fc = { type: 'FeatureCollection', features };
+  const c = d3.geoCentroid(fc), p = d3.geoAzimuthalEqualArea().rotate([-c[0], -c[1]]).scale(6371 * pxPerKm).translate([0, 0]);
+  const path = d3.geoPath(p), b = path.bounds(fc);
+  const pad = 10, wv = b[1][0] - b[0][0] + 2 * pad, hv = b[1][1] - b[0][1] + 2 * pad;
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', wv); svg.setAttribute('height', hv);
+  svg.setAttribute('viewBox', `${b[0][0] - pad} ${b[0][1] - pad} ${wv} ${hv}`); svg.style.overflow = 'visible';
+  for (const f of features) { const e = document.createElementNS(NS, 'path'); e.setAttribute('d', path(f)); e.setAttribute('fill', fill); e.setAttribute('stroke', stroke);
+    e.setAttribute('stroke-width', width); e.setAttribute('stroke-linejoin', 'round'); e.setAttribute('vector-effect', 'non-scaling-stroke'); svg.appendChild(e); }
+  svg.proj = p; svg.box = { x: b[0][0] - pad, y: b[0][1] - pad, w: wv, h: hv }; return svg;
+}
+
+/* ---------- build ---------- */
+const UI = $('#ui'), PIN = $('#paperIn');
+let LINES, ITEMS, DUR, CAM = [], CARDS = {}, CAPS = [];
+function line(i) { return LINES[i]; }
+function buildTimeline() {
+  LINES = TIM.lines; ITEMS = SPEC.items;
+  const L = (pred) => LINES.filter(pred);
+  const hook = L((l) => l.scene === 'hook')[0], lineup = L((l) => l.scene === 'lineup')[0], outro = L((l) => l.scene === 'outro')[0];
+  DUR = TIM.dur + 2.2;
+  /* camera keyframes: [t, lon, lat, r, cy] */
+  const K = [[0, -30, 25, 430, 1090], [hook.t1, 10, 38, 640, 1090], [lineup.t1, 12, 40, 520, 1000]];
+  let prev = K[K.length - 1];
+  for (const it of ITEMS) {
+    const flies = L((l) => l.scene === 'fly' && l.rank === it.rank);
+    const tgt = [it.lng, it.lat];
+    if (it.rank === 1 && flies.length > 1) {
+      K.push([flies[0].t0, prev[1], prev[2], prev[3], 990]);
+      K.push([flies[1].t0 - .05, 12, 42, 560, 990]);                         /* pull back… */
+      K.push([flies[1].t0 + .9, tgt[0], tgt[1], 1500, 980]);                 /* …then dive */
+    } else {
+      K.push([flies[0].t0, prev[1], prev[2], prev[3], 990]);
+      K.push([flies[0].t0 + 1.7, tgt[0], tgt[1], it.zoom || 1250, 980]);
+    }
+    prev = K[K.length - 1];
+  }
+  K.push([outro.t0, prev[1], prev[2], prev[3], 980]); K.push([outro.t0 + 2.2, 40, 22, 430, 860]);
+  CAM = K;
+  /* card ranges per item: from its first card line to the next fly (or outro) */
+  for (const it of ITEMS) {
+    const cs = L((l) => l.scene === 'card' && l.rank === it.rank); if (!cs.length) continue;
+    const next = LINES.find((l) => l.t0 > cs[cs.length - 1].t0 && l.scene !== 'card');
+    CARDS[it.rank] = { a: cs[0].t0 - .15, b: next ? next.t0 - .05 : DUR, steps: cs.map((c) => c.t0) };
+  }
+  /* captions: chunks of up to 3 words, broken at punctuation */
+  for (const l of LINES) { let cur = [];
+    l.words.forEach((w, i) => { cur.push(w); if (cur.length === 3 || /[,.;:?!]$/.test(w.w) || i === l.words.length - 1) { CAPS.push(cur); cur = []; } }); }
+  /* sounds */
+  sfx(.05, 'whoosh', .5);
+  sfx(lineup.t0 + .2, 'drop', .6); sfx(lineup.t0 + .5, 'drop', .5); sfx(lineup.t0 + .8, 'drop', .5); sfx(lineup.t0 + 1.1, 'drop', .5); sfx(lineup.t0 + 1.4, 'pop', .7);
+  for (const it of ITEMS) {
+    const flies = L((l) => l.scene === 'fly' && l.rank === it.rank);
+    sfx(flies[0].t0 - .1, 'whoosh', .7); sfx(flies[0].t0 + .1, 'pop', .8);
+    if (it.rank === 1) { sfx(flies[1].t0 - 1.4, 'rise', .9); sfx(flies[1].t0, 'hit', 1); }
+    const c = CARDS[it.rank]; if (c) { sfx(c.a - .05, 'whoosh', .55); sfx(c.a + .35, 'drop', .7); c.steps.slice(1).forEach((s) => sfx(s + .1, 'pop', .55));
+      if (it.visual === 'parkTile') for (let i = 0; i < 8; i++) sfx(c.a + 2.3 + i * .32, 'tick', .35); }
+  }
+  sfx(outro.t0 - .1, 'whoosh', .6); sfx(outro.t0 + .5, 'boom', .8);
+}
+function camAt(t) {
+  let i = 0; while (i < CAM.length - 1 && t >= CAM[i + 1][0]) i++;
+  const a = CAM[i], b = CAM[Math.min(i + 1, CAM.length - 1)];
+  const f = b === a ? 1 : E.inout(prog(t, a[0], b[0]));
+  const ll = d3.geoInterpolate([a[1], a[2]], [b[1], b[2]])(f), dist = d3.geoDistance([a[1], a[2]], [b[1], b[2]]);
+  const lift = 1 - .45 * Math.sin(Math.PI * f) * Math.min(1, dist / 1.2);           /* a little lift on long hops */
+  return { lon: ll[0] + Math.sin(t * .15) * .6, lat: ll[1], r: lerp(a[3], b[3], f) * lift, cy: lerp(a[4], b[4], f), cx: 540 };
+}
+
+/* lineup, badge, captions, outro */
+let lineupEls, badge, capEl, outroEls, hookEls;
+function buildUI() {
+  hookEls = { eb: h(`<div class="title" style="top:250px;font-size:100px">Smaller than<br><span style="color:#FFB020">Central Park?</span></div>`) };
+  UI.append(hookEls.eb);
+  lineupEls = { title: h(`<div class="title" style="top:250px;font-size:92px">The 5 smallest<br>countries on Earth</div>`), cards: [] };
+  UI.append(lineupEls.title);
+  const flags = [...ITEMS].sort((a, b) => b.rank - a.rank);
+  flags.forEach((it, i) => { const last = it.rank === 1;
+    const c = h(`<div class="mini" style="left:${46 + i * 202}px;top:1060px">${last ? '<div class="q">?</div>' : `<img src="${flagSrc(it.cca2)}">`}</div>`);
+    UI.append(c); lineupEls.cards.push(c); });
+  badge = h(`<div class="badge"><img src="../../brand/identity/dist/worlds/kancha-marigold.svg"><div class="n">5</div></div>`); UI.append(badge);
+  capEl = h(`<div class="cap"></div>`); UI.append(capEl);
+  outroEls = { wm: h(`<img class="abs" src="../../brand/identity/dist/logo/bhoogol-wordmark-night.svg" style="left:170px;top:520px;width:740px">`),
+    pill: h(`<div class="abs" style="left:0;width:1080px;top:800px;text-align:center"><span class="pill">${esc(SPEC.site || 'bhoogol.netlify.app')}</span></div>`),
+    sub: h(`<div class="abs" style="left:0;width:1080px;top:930px;text-align:center;font-family:'Mukta';font-weight:600;font-size:38px;color:rgba(247,245,239,.75)">Every country, on a globe you can spin.</div>`) };
+  UI.append(outroEls.wm, outroEls.pill, outroEls.sub);
+}
+/* the card scene for each item */
+function buildCard(it) {
+  const root = h(`<div class="abs" style="inset:0"></div>`);
+  const nick = h(`<div class="abs hand" style="left:0;width:1080px;text-align:center;top:236px;font-size:56px;transform:rotate(-3deg)">${esc(it.nick)}</div>`);
+  const flag = h(`<div class="flagcard" style="left:320px;top:330px;width:440px"><img src="${flagSrc(it.cca2)}"></div>`);
+  const area = h(`<div class="abs hand" style="left:0;width:1080px;text-align:center;top:712px;font-size:128px;line-height:1;transform:rotate(-4deg)">${esc(it.area)}</div>`);
+  const under = markEl(470, 110); under.style.left = '305px'; under.style.top = '700px';
+  root.append(nick, flag, under, area);
+  const fig = buildFigure(it); root.append(fig.el);
+  PIN.appendChild(root);
+  return { root, nick, flag, area, under, fig };
+}
+function buildFigure(it) {
+  const el = h(`<div class="abs" style="left:0;top:0;width:1080px;height:1920px"></div>`), parts = {};
+  const Y = 950, BH = 430;                       /* the figure lives between the area and the captions */
+  const place = (svg, cx, cy) => { svg.style.position = 'absolute'; svg.style.left = (cx - svg.box.w / 2) + 'px'; svg.style.top = (cy - svg.box.h / 2) + 'px'; el.appendChild(svg); return svg; };
+  const at = (svg, ll) => { const p = svg.proj(ll); return [p[0] - svg.box.x + parseFloat(svg.style.left), p[1] - svg.box.y + parseFloat(svg.style.top)]; };
+  const label = (txt, x, y, size = 46, rot = -3, color = 'var(--ink)', align = 'left') => { const l = h(`<div class="abs hand" style="left:${x}px;top:${y}px;font-size:${size}px;color:${color};transform:rotate(${rot}deg);text-align:${align}">${esc(txt)}</div>`); el.appendChild(l); return l; };
+  if (it.visual === 'enclave') {
+    const italy = WORLD[it.parent], sm = WORLD[it.cca3];
+    const main = { type: 'Feature', geometry: { type: 'Polygon', coordinates: italy.geometry.coordinates.reduce((a, b) => (d3.geoArea({ type: 'Polygon', coordinates: b }) > d3.geoArea({ type: 'Polygon', coordinates: a }) ? b : a)) } };
+    const s = place(shapeSVG([main], { pxPerKm: .36, fill: 'rgba(46,107,255,.10)', stroke: '#12133A', width: 4 }), 390, Y + BH / 2);
+    const [px, py] = at(s, [sm.latlng[1], sm.latlng[0]]);
+    const dot = h(`<div class="abs" style="left:${px - 11}px;top:${py - 11}px;width:22px;height:22px;border-radius:50%;background:#FFB020;box-shadow:0 0 0 5px #12133A"></div>`); el.appendChild(dot);
+    const m = markEl(170, 130); m.style.left = (px - 85) + 'px'; m.style.top = (py - 67) + 'px'; el.appendChild(m);
+    parts.it = label('Italy', 300, Y + 250, 56, -8); parts.sm = label('← San Marino', px + 80, py - 30, 52, -4, '#B86E00'); parts.m = m;
+    parts.ext = label('Founded 301', 600, Y + 280, 74, -5, '#B86E00');
+  } else if (it.visual === 'islands') {
+    const f = WORLD[it.cca3], polys = f.geometry.coordinates.map((c) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: c } }));
+    const s = place(shapeSVG(polys, { pxPerKm: .62, fill: 'none', stroke: 'none', width: 0 }), 330, Y + 180);
+    /* the atolls are specks at this scale, so each gets a dot */
+    parts.dots = polys.map((pl) => { const [x, y] = at(s, d3.geoCentroid(pl)); const d = h(`<div class="abs" style="left:${x - 10}px;top:${y - 10}px;width:20px;height:20px;border-radius:50%;background:#12133A"></div>`); el.appendChild(d); return d; });
+    parts.lbl = label('9 islands', 230, Y + 360, 58, -3);
+    const k = 62;  /* px per metre */
+    const sea = h(`<svg class="abs" style="left:600px;top:${Y}px" width="340" height="430" viewBox="0 0 340 430">
+      <rect x="60" y="${370 - 4.6 * k}" width="74" height="${4.6 * k}" fill="#FFB020" stroke="#12133A" stroke-width="5" rx="4"/>
+      <g fill="#12133A"><circle cx="230" cy="${370 - 1.75 * k + 15}" r="15"/><rect x="217" y="${370 - 1.75 * k + 33}" width="26" height="${1.75 * k - 33}" rx="12"/></g>
+      <path d="M0 372 Q28 356 56 372 T112 372 T168 372 T224 372 T280 372 T340 372 V430 H0Z" fill="rgba(46,107,255,.45)"/></svg>`);
+    el.appendChild(sea); parts.sea = sea;
+    parts.ext = label('4.6 m', 600, Y - 6, 64, -4, '#B86E00'); parts.person = label('a person', 780, Y + 180, 40, -3);
+  } else if (it.visual === 'island') {
+    const s = place(shapeSVG([WORLD[it.cca3]], { pxPerKm: 46, fill: 'rgba(46,107,255,.10)', stroke: '#12133A', width: 5 }), 360, Y + BH / 2);
+    parts.shape = s; parts.lbl = label('Capital?', 640, Y + 90, 66, -5);
+    parts.ext = label('none', 690, Y + 190, 90, -6, '#B86E00');
+    const m = markEl(260, 160); m.style.left = '640px'; m.style.top = (Y + 175) + 'px'; el.appendChild(m); parts.m = m;
+  } else if (it.visual === 'park' || it.visual === 'parkTile') {
+    /* areas, not outlines: Natural Earth's shapes for these two are too rough to draw to scale */
+    const PW = 800, PH = 160, x0 = 140, y0 = Y + 70, park = 3.41;
+    const box = h(`<div class="abs" style="left:${x0}px;top:${y0}px;width:${PW}px;height:${PH}px;background:rgba(61,220,151,.35);border:5px solid #12133A;border-radius:8px;overflow:hidden"></div>`);
+    el.appendChild(box); parts.park = box;
+    parts.pl = label('Central Park, 3.41 km²', x0, y0 - 74, 48, -2);
+    if (it.visual === 'park') {
+      const w = PW * 2.08 / park;
+      const bar = h(`<div class="abs" style="left:0;top:0;height:100%;width:${w}px;background:#FFB020;border-right:5px solid #12133A"></div>`); box.appendChild(bar); parts.bar = bar; parts.barW = w;
+      const g = document.createElementNS(NS, 'svg'); g.setAttribute('width', w); g.setAttribute('height', PH); g.style.position = 'absolute'; g.style.left = '0'; g.style.top = '0'; box.appendChild(g);
+      let seed = 3; const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      parts.dots = Array.from({ length: 520 }, () => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', 6 + R() * (w - 18)); c.setAttribute('cy', 6 + R() * (PH - 22)); c.setAttribute('r', 3.4); c.setAttribute('fill', '#12133A'); c.setAttribute('opacity', 0); g.appendChild(c); return c; });
+      parts.sl = label('Monaco', x0 + 24, y0 + PH + 18, 56, -3, '#B86E00');
+      parts.pct = label('61% of the park', x0 + 330, y0 + PH + 24, 48, -3);
+      parts.ext = label('38,000 people', 300, y0 + PH + 120, 76, -5, '#B86E00');
+    } else {
+      const bw = PW * .44 / park; parts.blocks = []; parts.nums = [];
+      for (let i = 0; i < 8; i++) { const ww = i < 7 ? bw : PW - 7 * bw;
+        const b = h(`<div class="abs" style="left:${i * bw}px;top:0;width:${ww}px;height:100%;background:${i < 7 ? '#FFB020' : 'rgba(255,176,32,.45)'};border-right:${i < 7 ? '4px solid #12133A' : '0'};box-sizing:border-box"></div>`);
+        box.appendChild(b); parts.blocks.push(b);
+        parts.nums.push(label(String(i + 1), x0 + i * bw + bw / 2 - 14, y0 + PH + 10, 50, -4, i < 7 ? 'var(--ink)' : '#B86E00')); }
+      parts.sl = label('= 1 Vatican City', x0, y0 + PH + 90, 52, -3, '#B86E00');
+      parts.ext = label('almost 8 fit!', 600, y0 + PH + 70, 72, -5, '#B86E00');
+    }
+  }
+  return { el, parts };
+}
+
+/* ---------- per-frame ---------- */
+const RANKS = () => [...ITEMS].sort((a, b) => b.rank - a.rank);
+function seek(t) {
+  const hook = LINES.find((l) => l.scene === 'hook'), lineup = LINES.find((l) => l.scene === 'lineup'), outro = LINES.find((l) => l.scene === 'outro');
+  /* which item is current (by its first fly line) */
+  let cur = null; for (const it of RANKS()) { const f = LINES.find((l) => l.scene === 'fly' && l.rank === it.rank); if (t >= f.t0 - .1) cur = it; }
+  /* camera + globe */
+  const C = camAt(t);
+  const zoomStars = 1 + .5 * prog(t, 0, hook.t1);
+  stars(t, zoomStars);
+  C.alpha = (1 - .55 * E.inout(prog(t, outro.t0 + .2, outro.t0 + 1.0))) * (1 - .45 * (t >= lineup.t0 - .2 && t < lineup.t1 + .2 ? E.inout(prog(t, lineup.t0 - .2, lineup.t0 + .3)) * (1 - E.inout(prog(t, lineup.t1 - .2, lineup.t1 + .2))) : 0));
+  C.hi = [];
+  /* tease: a '?' pin over Rome at the end of the hook */
+  const vat = ITEMS.find((i) => i.rank === 1);
+  if (t > hook.t0 + 2.2 && t < lineup.t1) C.hi.push({ cca3: '__', lng: vat.lng, lat: vat.lat, a: prog(t, hook.t0 + 2.2, hook.t0 + 2.6) * (1 - prog(t, lineup.t1 - .3, lineup.t1)), t, label: '?', la: prog(t, hook.t0 + 2.4, hook.t0 + 2.9) });
+  if (cur) { const f = LINES.find((l) => l.scene === 'fly' && l.rank === cur.rank), rev = LINES.find((l) => l.scene === 'fly' && l.rank === cur.rank && l.reveal);
+    const arrive = rev ? rev.t0 + .6 : f.t0 + 1.3;
+    C.hi.push({ cca3: cur.cca3, lng: cur.lng, lat: cur.lat, a: prog(t, arrive - .2, arrive + .3), t, label: cur.name, la: prog(t, arrive, arrive + .5) }); }
+  if (t >= outro.t0) C.hi = [];
+  drawEarth(C);
+  /* hook eyebrow */
+  const hp = E.pop(prog(t, .05, .5)), ho = E.in(prog(t, lineup.t0 - .1, lineup.t0 + .2));
+  css(hookEls.eb, { op: clamp(hp * 2) * (1 - ho), s: .8 + .2 * hp, y: -ho * 40, blur: ho * 10 });
+  /* lineup */
+  const lu = E.settle(prog(t, lineup.t0, lineup.t0 + .5)), lo = E.in(prog(t, lineup.t1 - .1, lineup.t1 + .25));
+  css(lineupEls.title, { op: lu * (1 - lo), y: (1 - lu) * 40 - lo * 30, s: .96 + .04 * lu, blur: (1 - lu) * 10 });
+  lineupEls.cards.forEach((c, i) => { const a = lineup.t0 + .2 + i * .3, p = E.pop(prog(t, a, a + .45));
+    css(c, { op: clamp(p * 3) * (1 - lo), y: (1 - p) * -220 + lo * 120, r: (1 - p) * (i % 2 ? 14 : -14) + (i - 2) * 2.5, s: .85 + .15 * p }); });
+  /* countdown badge */
+  if (cur && t < outro.t0) { const f = LINES.find((l) => l.scene === 'fly' && l.rank === cur.rank), p = E.pop(prog(t, f.t0, f.t0 + .45));
+    badge.querySelector('.n').textContent = cur.rank; css(badge, { op: clamp(p * 2) * (1 - prog(t, outro.t0 - .3, outro.t0)), s: .5 + .5 * p, r: (1 - p) * -40 }); }
+  else css(badge, { op: 0 });
+  /* card scene */
+  let onCard = null; for (const it of ITEMS) { const c = CARDS[it.rank]; if (c && t >= c.a - .02 && t < c.b + .4) onCard = it; }
+  const paper = $('#paper');
+  if (onCard) {
+    const c = CARDS[onCard.rank], inn = E.inout(prog(t, c.a, c.a + .38)), out = E.in(prog(t, c.b, c.b + .35));
+    paper.style.display = 'block';
+    paper.style.transform = `translateX(${(1 - inn) * 1150 - out * 1150}px) rotate(${(1 - inn) * 6 - out * 6}deg)`;
+    paper.style.filter = (inn < 1 || out > 0) ? `blur(${(Math.sin(Math.PI * inn) + Math.sin(Math.PI * out)) * 6}px)` : 'none';
+    for (const it of ITEMS) if (CARDS[it.rank]?.dom) CARDS[it.rank].dom.root.style.display = it === onCard ? 'block' : 'none';
+    seekCard(onCard, t - c.a, c);
+  } else paper.style.display = 'none';
+  /* captions */
+  let chunk = null; for (const ch of CAPS) if (t >= ch[0].t0 - .02 && t < ch[ch.length - 1].t1 + .25) chunk = ch;
+  if (chunk) { const p = E.pop(prog(t, chunk[0].t0 - .02, chunk[0].t0 + .18));
+    capEl.innerHTML = chunk.map((w) => `<span class="w${t >= w.t0 - .02 && t < w.t1 + .1 ? ' on' : ''}">${esc(w.w)}</span>`).join(' ');
+    css(capEl, { op: 1, s: .88 + .12 * p }); capEl.style.top = (onCard ? 1452 : 1352) + 'px'; }
+  else css(capEl, { op: 0 });
+  /* outro */
+  const ou = t - outro.t0;
+  css(outroEls.wm, { op: E.settle(prog(ou, .5, 1.1)), y: (1 - E.settle(prog(ou, .5, 1.1))) * 50 });
+  const pp = E.pop(prog(ou, .9, 1.3)); css(outroEls.pill, { op: clamp(pp * 2), s: .7 + .3 * pp });
+  css(outroEls.sub, { op: E.settle(prog(ou, 1.2, 1.7)), y: (1 - E.settle(prog(ou, 1.2, 1.7))) * 20 });
+}
+function seekCard(it, tau, c) {
+  if (!c.dom) c.dom = buildCard(it);
+  const d = c.dom, P = d.fig.parts, s1 = c.steps[1] != null ? c.steps[1] - c.a : 99;
+  /* the page drifts like a hand-held camera */
+  PIN.style.transform = `scale(${1.02 + tau * .006}) rotate(${-1.2 + Math.sin(tau * .5) * .8}deg) translateY(${Math.sin(tau * .7) * 6}px)`;
+  writeOn(d.nick, prog(tau, .35, 1.0));
+  const fl = E.settle(prog(tau, .25, .85));
+  d.flag.style.transform = `perspective(1400px) translateY(${(1 - fl) * -700}px) rotateX(${10 + (1 - fl) * 30}deg) rotateY(${Math.sin(tau * .9) * 11}deg) rotateZ(${-4 + (1 - fl) * -18 + Math.sin(tau * .6) * 2}deg) scale(${.96 + .04 * Math.sin(tau * .4)})`;
+  d.flag.style.opacity = clamp(fl * 3);
+  writeOn(d.area, prog(tau, .7, 1.25)); d.under.draw(E.settle(prog(tau, 1.2, 1.6)));
+  const fig = E.settle(prog(tau, .9, 1.4)); css(d.fig.el, { op: fig, y: (1 - fig) * 30 });
+  if (it.visual === 'enclave') { writeOn(P.it, prog(tau, 1.2, 1.6)); P.m.draw(E.settle(prog(tau, 1.6, 2.0))); writeOn(P.sm, prog(tau, 1.8, 2.5));
+    writeOn(P.ext, prog(tau, s1 + 5.6, s1 + 6.4)); }
+  if (it.visual === 'islands') { P.dots.forEach((dd, i) => { const p = E.pop(prog(tau, 1.2 + i * .12, 1.5 + i * .12)); dd.style.transform = `scale(${p})`; });
+    writeOn(P.lbl, prog(tau, 2.4, 3.0)); const sp = E.settle(prog(tau, s1, s1 + .5));
+    P.sea.style.opacity = sp; P.sea.style.transform = `translateY(${(1 - sp) * 30}px)`; writeOn(P.ext, prog(tau, s1 + .5, s1 + 1.0)); writeOn(P.person, prog(tau, s1 + 1.2, s1 + 1.7)); }
+  if (it.visual === 'island') { const sp = E.pop(prog(tau, 1.0, 1.5)); P.shape.style.transform = `scale(${sp}) rotate(${(1 - sp) * -10}deg)`;
+    writeOn(P.lbl, prog(tau, 2.6, 3.2)); writeOn(P.ext, prog(tau, 3.4, 3.9)); P.m.draw(E.settle(prog(tau, 3.8, 4.3))); }
+  if (it.visual === 'park') { writeOn(P.pl, prog(tau, 1.1, 1.8)); const bp = E.inout(prog(tau, 2.2, 3.0)); P.bar.style.width = (P.barW * bp) + 'px';
+    writeOn(P.sl, prog(tau, 2.8, 3.3)); writeOn(P.pct, prog(tau, 3.1, 3.7));
+    const k = Math.floor(P.dots.length * E.out(prog(tau, s1 + .2, s1 + 2.4))); P.dots.forEach((dd, i) => dd.setAttribute('opacity', i < k ? 1 : 0));
+    writeOn(P.ext, prog(tau, s1 + 1.4, s1 + 2.1)); }
+  if (it.visual === 'parkTile') { writeOn(P.pl, prog(tau, 1.1, 1.8));
+    P.blocks.forEach((b, i) => { const a = 2.3 + i * .32, p = E.pop(prog(tau, a, a + .3)); b.style.transform = `scaleY(${p})`; b.style.opacity = clamp(p * 3); writeOn(P.nums[i], prog(tau, a + .05, a + .3)); });
+    writeOn(P.sl, prog(tau, 2.6, 3.2)); writeOn(P.ext, prog(tau, 5.0, 5.6)); }
+}
+
+/* ---------- entry ---------- */
+window.setup = async ({ spec, timing, site }) => {
+  SPEC = { ...spec, site }; TIM = timing;
+  await loadData();
+  for (const it of SPEC.items) { const f = WORLD[it.cca3]; it.lat = f.latlng[0]; it.lng = f.latlng[1]; if (it.cca3 === 'VAT') { it.lat = 41.903; it.lng = 12.453; } }
+  const img = new Image(); img.src = 'assets/earth-blue-marble.jpg'; await img.decode(); initGL(img);
+  let seed = 11; const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  STARS = Array.from({ length: 200 }, () => ({ x: R() * W, y: R() * 2000, z: .2 + R() * .8, ph: R() * 6.28, sz: R() }));
+  await Promise.all(["800 92px 'Baloo 2'", "700 50px 'Baloo 2'", "700 60px Kalam", "600 38px Mukta", "500 30px 'JetBrains Mono'"].map((f) => document.fonts.load(f)));
+  paperTexture(); buildTimeline(); buildUI();
+  for (const it of ITEMS) if (CARDS[it.rank]) CARDS[it.rank].dom = buildCard(it);
+  for (const it of ITEMS) if (CARDS[it.rank]) CARDS[it.rank].dom.root.style.display = 'none';
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+  return { dur: DUR, sfx: SFX };
+};
+window.seek = seek;
+</script>
+</body></html>

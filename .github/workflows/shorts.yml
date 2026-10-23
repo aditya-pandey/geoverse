@@ -1,0 +1,79 @@
+# Bhoogol Shorts: every Sunday morning (India time), make next week's 7 quiz videos,
+# plus a cinematic country story to follow each Guess video.
+# Got a domain? Add a repository variable BHOOGOL_SITE (e.g. bhoogol.in) and the videos use it.
+# They land as a GitHub release ("Shorts · week of …") with the captions in the notes,
+# so you can download each MP4 straight from your phone. No AI, no paid services.
+#
+# Run it by hand any time: Actions → Bhoogol Shorts → Run workflow.
+
+name: Bhoogol Shorts
+
+on:
+  schedule:
+    - cron: "30 0 * * 0" # Sunday 06:00 IST
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First day (YYYY-MM-DD). Empty = tomorrow."
+        required: false
+      count:
+        description: "How many videos"
+        required: false
+        default: "7"
+
+permissions:
+  contents: write # to publish the release
+
+concurrency:
+  group: shorts
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: tools/shorts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/shorts/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+
+      - name: Pick the week
+        id: when
+        run: |
+          START="${{ github.event.inputs.start }}"
+          [ -z "$START" ] && START=$(TZ=Asia/Kolkata date -d tomorrow +%F)
+          echo "start=$START" >> "$GITHUB_OUTPUT"
+          echo "count=${{ github.event.inputs.count || '7' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Make the videos
+        run: node make.mjs --start ${{ steps.when.outputs.start }} --count ${{ steps.when.outputs.count }} --stories --jobs 3 ${{ vars.BHOOGOL_SITE && format('--site {0}', vars.BHOOGOL_SITE) || '' }}
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="shorts-${{ steps.when.outputs.start }}"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" out/*.mp4 \
+            --title "Shorts · week of ${{ steps.when.outputs.start }}" \
+            --notes-file out/posts.md --prerelease
+
+      - name: Keep a copy as a build artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorts-${{ steps.when.outputs.start }}
+          path: tools/shorts/out/
+          retention-days: 30

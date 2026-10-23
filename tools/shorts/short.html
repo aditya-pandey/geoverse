@@ -1,0 +1,560 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Bhoogol short</title>
+<style>
+@font-face{font-family:'Baloo 2';font-weight:800;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:'Baloo 2';font-weight:700;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2)}
+@font-face{font-family:'Baloo 2';font-weight:700;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-ext-700-normal.woff2);unicode-range:U+0100-024F,U+1E00-1EFF}
+@font-face{font-family:'Mukta';font-weight:500;src:url(node_modules/@fontsource/mukta/files/mukta-latin-500-normal.woff2)}
+@font-face{font-family:'Mukta';font-weight:600;src:url(node_modules/@fontsource/mukta/files/mukta-latin-600-normal.woff2)}
+@font-face{font-family:'Mukta';font-weight:500;src:url(node_modules/@fontsource/mukta/files/mukta-latin-ext-500-normal.woff2);unicode-range:U+0100-024F,U+1E00-1EFF}
+@font-face{font-family:'JetBrains Mono';font-weight:500;src:url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2)}
+:root{--space:#12133A;--ocean:#2E6BFF;--mint:#3DDC97;--gold:#FFB020;--chalk:#F7F5EF;--muted:rgba(247,245,239,.68);--surface:#1D1F55;--line:rgba(247,245,239,.12)}
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;
+  background:radial-gradient(ellipse 85% 60% at 50% 42%,#1d1f52 0%,#12133A 60%,#0c0d29 100%);
+  font-family:'Mukta',sans-serif;color:var(--chalk)}
+canvas{position:absolute;left:0;top:0}
+.abs{position:absolute}
+.w{display:inline-block}
+.display{font-family:'Baloo 2';font-weight:800;line-height:1.02;letter-spacing:-.01em}
+.eyebrow{font-family:'JetBrains Mono';font-weight:500;color:var(--gold);font-size:30px;letter-spacing:.02em}
+.sub{color:var(--muted);font-weight:500}
+.center{left:0;width:1080px;text-align:center}
+.card{position:absolute;left:80px;width:920px;height:118px;border-radius:30px;background:var(--surface);
+  box-shadow:inset 0 0 0 2px var(--line),0 14px 30px rgba(0,0,0,.25);display:flex;align-items:center;overflow:hidden}
+.card .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,176,32,.16);width:0}
+.card .badge{position:relative;width:62px;height:62px;border-radius:50%;margin-left:26px;background:rgba(247,245,239,.10);
+  font-family:'Baloo 2';font-weight:800;font-size:36px;line-height:66px;text-align:center;color:var(--chalk)}
+.card .flag{position:relative;width:84px;height:63px;border-radius:10px;margin-left:22px;object-fit:cover;box-shadow:0 0 0 2px rgba(247,245,239,.18)}
+.card .name{position:relative;margin-left:26px;font-family:'Baloo 2';font-weight:700;font-size:52px;line-height:1;white-space:nowrap;padding-top:6px}
+.card .val{position:absolute;right:34px;font-family:'Mukta';font-weight:600;font-size:38px;color:var(--gold);white-space:nowrap}
+.tcard{position:absolute;top:1160px;width:440px;height:370px;border-radius:40px;background:var(--surface);
+  box-shadow:inset 0 0 0 2px var(--line),0 20px 40px rgba(0,0,0,.3);text-align:center;overflow:hidden}
+.tcard .flag{width:160px;height:120px;border-radius:16px;margin-top:36px;object-fit:cover;box-shadow:0 0 0 2px rgba(247,245,239,.18)}
+.tcard .name{font-family:'Baloo 2';font-weight:800;font-size:58px;line-height:1.05;margin-top:18px;padding:0 16px}
+.tcard .val{font-family:'Mukta';font-weight:600;font-size:38px;color:var(--chalk);margin-top:2px}
+.tcard .tick{position:absolute;right:26px;top:24px;width:70px;height:70px;border-radius:50%;background:var(--mint);opacity:0}
+.or{position:absolute;left:490px;top:1295px;width:100px;height:100px;border-radius:50%;background:var(--gold);color:#1a1300;
+  font-family:'Baloo 2';font-weight:800;font-size:44px;line-height:106px;text-align:center;box-shadow:0 6px 0 #C47F00}
+.clue{position:absolute;left:80px;width:920px;border-radius:34px;background:var(--surface);padding:30px 40px 34px;box-sizing:border-box;
+  box-shadow:inset 0 0 0 2px var(--line),0 14px 30px rgba(0,0,0,.25)}
+.clue .k{font-family:'JetBrains Mono';font-weight:500;font-size:26px;color:var(--gold)}
+.clue .t{font-family:'Baloo 2';font-weight:700;font-size:50px;line-height:1.14;margin-top:8px}
+.clue.first .t{font-size:58px}
+.timer{position:absolute;width:150px;height:150px}
+.timer .n{position:absolute;inset:0;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:88px;line-height:162px;color:var(--chalk)}
+.pill{display:inline-block;font-family:'Baloo 2';font-weight:700;font-size:50px;color:#1a1300;background:var(--gold);border-radius:999px;
+  padding:16px 52px 12px;box-shadow:0 7px 0 #C47F00}
+#reveal{font-size:110px}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1080" height="1920"></canvas>
+  <img id="bigworld" class="abs" style="left:-210px;top:0;width:1500px;height:1500px;display:none">
+  <canvas id="globe" width="1080" height="1920"></canvas>
+  <div id="vig" class="abs" style="inset:0;display:none;background:radial-gradient(ellipse 75% 60% at 50% 48%,rgba(5,6,20,0) 55%,rgba(5,6,20,.6) 100%)"></div>
+  <div id="ui"></div>
+  <div id="bars" class="abs" style="inset:0;display:none;pointer-events:none">
+    <div id="barT" class="abs" style="left:0;top:0;width:1080px;height:0;background:#05060f"></div>
+    <div id="barB" class="abs" style="left:0;bottom:0;width:1080px;height:0;background:#05060f"></div></div>
+  <div id="outro" class="abs" style="inset:0;display:none">
+    <img id="wordmark" class="abs" style="left:150px;top:560px;width:780px">
+    <div id="o1" class="abs center display" style="top:840px;font-size:62px;color:var(--chalk)">Play today's Daily Bhoogol</div>
+    <div id="o2" class="abs center" style="top:950px"><span class="pill" id="site">bhoogol.netlify.app</span></div>
+    <div id="o3" class="abs center sub" style="top:1090px;font-size:34px">A new puzzle every midnight. Free.</div>
+  </div>
+</div>
+
+<script src="node_modules/d3-array/dist/d3-array.min.js"></script>
+<script src="node_modules/d3-geo/dist/d3-geo.min.js"></script>
+<script src="node_modules/topojson-client/dist/topojson-client.min.js"></script>
+<script>
+const $ = (s, r = document) => r.querySelector(s), NS = 'http://www.w3.org/2000/svg', FPS = 30;
+const W = 1080, H = 1920;
+
+/* ---------- easing & time helpers (same feel as the brand: settle, pop) ---------- */
+function bez(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = t => ((ax * t + bx) * t + cx) * t, Y = t => ((ay * t + by) * t + cy) * t;
+  return x => { if (x <= 0) return 0; if (x >= 1) return 1; let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 40; i++) { X(t) < x ? lo = t : hi = t; t = (lo + hi) / 2; } return Y(t); };
+}
+const E = { settle: bez(.2, .9, .25, 1), pop: bez(.34, 1.56, .64, 1), inout: bez(.65, 0, .35, 1), in: bez(.55, 0, .9, .3), out: bez(.16, 1, .3, 1) };
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+function css(el, o) {
+  const s = el.style;
+  if ('op' in o) { s.opacity = o.op; s.visibility = o.op <= 0.001 ? 'hidden' : 'visible'; }
+  s.transform = `translate(${o.x || 0}px,${o.y || 0}px) scale(${o.s ?? 1})`;
+  s.filter = o.blur > .05 ? `blur(${o.blur}px)` : 'none';
+}
+/* rise in, lift out — the house move for any text */
+function enter(el, t, a, out, o = {}) {
+  const p = E.settle(prog(t, a, a + (o.d || .55))), q = out == null ? 0 : E.in(prog(t, out, out + .35));
+  css(el, { op: p * (1 - q), y: (1 - p) * (o.rise ?? 40) - q * 30, blur: (1 - p) * 12 + q * 10, s: o.s ?? 1 });
+}
+function wordsIn(el, t, a, stagger, out) {
+  [...el.querySelectorAll('.w')].forEach((w, i) => enter(w, t, a + i * stagger, out == null ? null : out + i * .02));
+}
+const h = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const splitWords = (s) => esc(s).split(' ').map((w) => `<span class="w">${w}</span>`).join(' ');
+const flagSrc = (cca2) => `node_modules/flag-icons/flags/4x3/${cca2}.svg`;
+
+/* ---------- world data ---------- */
+const PALETTE = ['#F7D37E', '#9FE3C2', '#FFB49B', '#B5C4FF', '#E4BDF4', '#94D9E6']; // Bhoogol pol-1…6
+let WORLD = null, MARKS = {};
+async function loadWorld() {
+  const [topo, raw, india, circle, tick, sparkle] = await Promise.all([
+    fetch('node_modules/world-atlas/countries-50m.json').then((r) => r.json()),
+    fetch('node_modules/world-countries/countries.json').then((r) => r.json()),
+    fetch('../../data/india-official.geojson').then((r) => r.json()).catch(() => null),
+    fetch('../../brand/identity/dist/marks/marker-circle.svg').then((r) => r.text()),
+    fetch('../../brand/identity/dist/marks/marker-tick.svg').then((r) => r.text()),
+    fetch('../../brand/identity/dist/marks/marker-sparkle.svg').then((r) => r.text()),
+  ]);
+  MARKS = { circle, tick, sparkle };
+  const byCcn3 = new Map(raw.map((c) => [c.ccn3, c]));
+  const feats = topojson.feature(topo, topo.objects.countries).features;
+  const nb = topojson.neighbors(topo.objects.countries.geometries);
+  /* colour so no two neighbours match (greedy, biggest first) */
+  const area = feats.map((f) => d3.geoArea(f)), col = new Array(feats.length).fill(-1);
+  [...feats.keys()].sort((a, b) => area[b] - area[a]).forEach((i) => {
+    const used = new Set(nb[i].map((j) => col[j]));
+    let c = (i * 7) % 6; for (let k = 0; k < 6 && used.has(c); k++) c = (c + 1) % 6; col[i] = c;
+  });
+  const byCca3 = new Map();
+  feats.forEach((f, i) => {
+    const c = byCcn3.get(String(f.id).padStart(3, '0'));
+    f.cca3 = c?.cca3 || null; f.fill = f.properties.name === 'Antarctica' ? '#E9F1F7' : PALETTE[col[i]];
+    if (f.cca3) byCca3.set(f.cca3, f);
+  });
+  /* the official Survey of India boundary, drawn last so it sits on top (as in the app) */
+  const ind = byCca3.get('IND');
+  if (ind && india?.features?.[0]) { ind.geometry = india.features[0].geometry; }
+  const order = feats.filter((f) => f !== ind); if (ind) order.push(ind);
+  WORLD = { feats: order, byCca3, sphere: { type: 'Sphere' } };
+}
+
+/* ---------- the globe ---------- */
+const gctx = $('#globe').getContext('2d');
+const proj = d3.geoOrthographic().precision(0.4).clipAngle(90);
+const path = d3.geoPath(proj, gctx);
+const grat = d3.geoGraticule10();
+function rotFor(lnglat) { return [-lnglat[0], -lnglat[1] * 0.85, 0]; }
+/* G = { cx, cy, r, rot:[λ,φ,γ], tint:[cca3], hi:[cca3], hiA, alpha } */
+function drawGlobe(G) {
+  gctx.clearRect(0, 0, W, H);
+  if (!G || G.alpha <= 0) return;
+  gctx.save(); gctx.globalAlpha = G.alpha;
+  proj.scale(G.r).translate([G.cx, G.cy]).rotate(G.rot);
+  /* glow */
+  const glow = gctx.createRadialGradient(G.cx, G.cy, G.r * .9, G.cx, G.cy, G.r * 1.22);
+  glow.addColorStop(0, 'rgba(143,178,255,.35)'); glow.addColorStop(1, 'rgba(143,178,255,0)');
+  gctx.fillStyle = glow; gctx.beginPath(); gctx.arc(G.cx, G.cy, G.r * 1.22, 0, 6.2832); gctx.fill();
+  /* ocean */
+  gctx.beginPath(); path(WORLD.sphere); gctx.fillStyle = '#2E6BFF'; gctx.fill();
+  gctx.beginPath(); path(grat); gctx.strokeStyle = 'rgba(255,255,255,.07)'; gctx.lineWidth = 1.5; gctx.stroke();
+  /* land */
+  const lw = Math.max(.8, G.r / 260);
+  for (const f of WORLD.feats) {
+    gctx.beginPath(); path(f);
+    const hi = G.hi?.includes(f.cca3), tint = G.tint?.includes(f.cca3);
+    gctx.fillStyle = f.fill; gctx.fill();
+    if (tint) { gctx.fillStyle = `rgba(255,176,32,${.55 * (G.tintA ?? 1)})`; gctx.fill(); }
+    if (hi) { gctx.fillStyle = `rgba(255,176,32,${.92 * (G.hiA ?? 1)})`; gctx.fill(); }
+    gctx.strokeStyle = 'rgba(18,19,58,.42)'; gctx.lineWidth = lw; gctx.stroke();
+  }
+  /* chalk outline, then the marigold fill on top, so even a thin country (Chile) reads as marigold */
+  for (const c of G.hi || []) { const f = WORLD.byCca3.get(c); if (!f) continue;
+    gctx.beginPath(); path(f); gctx.strokeStyle = `rgba(247,245,239,${G.hiA ?? 1})`; gctx.lineWidth = lw * 3.2; gctx.stroke();
+    gctx.fillStyle = f.fill; gctx.fill(); gctx.fillStyle = `rgba(255,176,32,${.95 * (G.hiA ?? 1)})`; gctx.fill(); }
+  /* light from the upper left, night side lower right (the brand's little worlds) */
+  const sh = gctx.createRadialGradient(G.cx - G.r * .45, G.cy - G.r * .5, G.r * .1, G.cx, G.cy, G.r * 1.05);
+  sh.addColorStop(0, 'rgba(255,255,255,.10)'); sh.addColorStop(.55, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(12,13,41,.42)');
+  gctx.beginPath(); path(WORLD.sphere); gctx.fillStyle = sh; gctx.fill();
+  gctx.strokeStyle = 'rgba(143,178,255,.55)'; gctx.lineWidth = 3; gctx.stroke();
+  gctx.restore();
+}
+/* screen position of a place on the globe, or null if it is round the back */
+function onGlobe(G, lnglat) {
+  proj.scale(G.r).translate([G.cx, G.cy]).rotate(G.rot);
+  const back = d3.geoDistance(lnglat, [-G.rot[0], -G.rot[1]]) > Math.PI / 2 - .05;
+  return back ? null : proj(lnglat);
+}
+function targetOf(item) {
+  /* where to point the camera: the country's main body (world-countries latlng), not overseas bits */
+  return [item.latlng[1], item.latlng[0]];
+}
+/* the teacher's loop around a country: shaped to its main body (Chile tall, Russia wide), never too thin */
+function placeMark(mark, G, item, lo, hi, drawP, opacity) {
+  const f = WORLD.byCca3.get(item.cca3);
+  if (!f || !onGlobe(G, targetOf(item))) { mark.style.display = 'none'; return; }
+  let geo = f.geometry;
+  if (geo.type === 'MultiPolygon') {
+    const parts = geo.coordinates.map((c) => ({ type: 'Polygon', coordinates: c }));
+    geo = parts.reduce((a, b) => (d3.geoArea(b) > d3.geoArea(a) ? b : a));
+  }
+  proj.scale(G.r).translate([G.cx, G.cy]).rotate(G.rot);
+  const b = d3.geoPath(proj).bounds(geo);
+  if (!b.every((pt) => pt.every(isFinite))) { mark.style.display = 'none'; return; }
+  let w = clamp((b[1][0] - b[0][0]) * 1.5, lo, hi), h = clamp((b[1][1] - b[0][1]) * 1.5, lo * .8, hi);
+  w = Math.max(w, h * .62); h = Math.max(h, w * .62);
+  const cx = (b[0][0] + b[1][0]) / 2, cy = (b[0][1] + b[1][1]) / 2;
+  /* the pencil loop fills only part of its 256-box (x 22–240, y 49–204), so size the box to make the loop itself w × h */
+  const W = w * 256 / 218, Hh = h * 256 / 155, ox = (131 - 128) / 256 * W, oy = (126.5 - 128) / 256 * Hh;
+  mark.style.display = 'block'; mark.style.width = W + 'px'; mark.style.height = Hh + 'px';
+  mark.firstChild.setAttribute('width', W); mark.firstChild.setAttribute('height', Hh);
+  mark.style.left = cx - W / 2 - ox + 'px'; mark.style.top = cy - Hh / 2 - oy + 'px';
+  mark.draw(drawP); mark.style.opacity = opacity;
+}
+function sizeOnGlobe(G, cca3) {
+  const f = WORLD.byCca3.get(cca3); if (!f) return 40;
+  proj.scale(G.r).translate([G.cx, G.cy]).rotate(G.rot);
+  const b = d3.geoPath(proj).bounds(f);
+  const w = b[1][0] - b[0][0], hh = b[1][1] - b[0][1];
+  return isFinite(w) ? Math.min(Math.max(w, hh), G.r * 1.2) : 40;
+}
+
+/* ---------- teacher's marks (draw on in one stroke) ---------- */
+function markEl(kind, w, hgt) {
+  const wrap = h(`<div class="abs" style="width:${w}px;height:${hgt}px;left:0;top:0"></div>`);
+  wrap.innerHTML = MARKS[kind].replace('<svg ', `<svg preserveAspectRatio="none" width="${w}" height="${hgt}" `);
+  const svg = wrap.firstChild, id = 'm' + Math.random().toString(36).slice(2);
+  const defs = document.createElementNS(NS, 'defs'), mask = document.createElementNS(NS, 'mask');
+  mask.setAttribute('id', id); mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  ['x', 'y'].forEach((k) => mask.setAttribute(k, -60)); ['width', 'height'].forEach((k) => mask.setAttribute(k, 380));
+  const rev = document.createElementNS(NS, 'path'); rev.setAttribute('fill', '#fff'); mask.appendChild(rev); defs.appendChild(mask); svg.prepend(defs);
+  const g = document.createElementNS(NS, 'g'); g.setAttribute('mask', `url(#${id})`);
+  [...svg.querySelectorAll(':scope > path')].forEach((p) => g.appendChild(p)); svg.appendChild(g);
+  wrap.draw = (p) => {
+    if (kind === 'circle') { const a0 = 160 * Math.PI / 180, sw = 2 * Math.PI * p, R = 260, cx = 128, cy = 128;
+      if (p >= .999) rev.setAttribute('d', `M${cx - R} ${cy}a${R} ${R} 0 1 0 ${2 * R} 0a${R} ${R} 0 1 0 ${-2 * R} 0Z`);
+      else if (p <= 0) rev.setAttribute('d', 'M0 0Z');
+      else rev.setAttribute('d', `M${cx} ${cy}L${cx + R * Math.cos(a0)} ${cy + R * Math.sin(a0)}A${R} ${R} 0 ${sw > Math.PI ? 1 : 0} 1 ${cx + R * Math.cos(a0 + sw)} ${cy + R * Math.sin(a0 + sw)}Z`); }
+    else rev.setAttribute('d', `M-60 -60H${-60 + 380 * p}V320H-60Z`);
+  };
+  wrap.draw(0); return wrap;
+}
+
+/* ---------- shared pieces ---------- */
+const UI = $('#ui');
+function header(eyebrow, q, top = 210, fit = true) {
+  const e = h(`<div class="abs center eyebrow" style="top:${top}px">${esc(eyebrow)}</div>`);
+  const t = h(`<div class="abs display" style="left:70px;width:940px;text-align:center;top:${top + 52}px;font-size:${q.length > 26 ? 84 : 96}px">${splitWords(q)}</div>`);
+  UI.append(e, t);
+  /* one line if it fits: shrink a little rather than wrap (the subtitle sits right under it) */
+  if (fit) { let fs = parseFloat(t.style.fontSize); while (t.offsetHeight > fs * 1.35 && fs > 64) { fs -= 2; t.style.fontSize = fs + 'px'; } }
+  return { e, t, bottom: top + 52 + t.offsetHeight };
+}
+function timer(x, y, len = 3) {
+  const el = h(`<div class="timer" style="left:${x - 75}px;top:${y - 75}px">
+    <svg width="150" height="150" viewBox="0 0 150 150" style="position:absolute;inset:0">
+      <circle cx="75" cy="75" r="64" fill="rgba(18,19,58,.7)" stroke="rgba(247,245,239,.16)" stroke-width="10"/>
+      <circle class="arc" cx="75" cy="75" r="64" fill="none" stroke="#FFB020" stroke-width="10" stroke-linecap="round"
+        transform="rotate(-90 75 75)" stroke-dasharray="402.1" stroke-dashoffset="0"/></svg><div class="n">3</div></div>`);
+  UI.append(el);
+  el.set = (t, a) => { /* a = start; counts 3, 2, 1 over len seconds */
+    const p = prog(t, a, a + len), shown = t >= a - .3 && t < a + len + .25, step = len / 3;
+    const inn = E.pop(prog(t, a - .3, a)), out = E.in(prog(t, a + len, a + len + .25));
+    css(el, { op: shown ? clamp(inn * 2) * (1 - out) : 0, s: .7 + .3 * inn - .2 * out });
+    el.querySelector('.arc').setAttribute('stroke-dashoffset', 402.1 * p);
+    const n = 3 - Math.floor(clamp((t - a) / step, 0, 2.999)); el.querySelector('.n').textContent = n;
+    const k = ((t - a) / step) % 1; el.querySelector('.n').style.transform = `scale(${t > a ? 1 + .25 * Math.max(0, 1 - k * 5) : 1})`;
+  };
+  return el;
+}
+function outro(t, a) {
+  const on = t >= a - .4; $('#outro').style.display = on ? 'block' : 'none'; $('#bigworld').style.display = on ? 'block' : 'none';
+  if (!on) return;
+  const w = E.settle(prog(t, a - .4, a + .9));
+  $('#bigworld').style.transform = `translateY(${lerp(2100, 1360, w) - (t - a) * 8}px) rotate(${-10 + (t - a) * 1.5}deg)`;
+  enter($('#wordmark'), t, a, null, { rise: 60, d: .7 });
+  enter($('#o1'), t, a + .25, null);
+  const b = E.pop(prog(t, a + .45, a + .85)); css($('#o2'), { op: clamp(b * 2), s: .7 + .3 * b });
+  enter($('#o3'), t, a + .7, null);
+}
+/* the ask that turns viewers into commenters, shown once the answer is out */
+function askEl(text, top) {
+  const el = h(`<div class="abs center" style="top:${top}px"><span style="display:inline-block;font-family:'Baloo 2';font-weight:700;font-size:40px;
+    color:#12133A;background:#3DDC97;border-radius:999px;padding:12px 34px 8px;box-shadow:0 6px 0 #239a69">${esc(text)}</span></div>`);
+  UI.append(el); css(el, { op: 0 }); return el;
+}
+const SFX = [];
+const sfx = (t, name, gain = 1) => SFX.push({ t: +t.toFixed(3), name, gain });
+
+/* ---------- format: Rank these 4 ---------- */
+function buildRank(ep) {
+  const hd = header('Rank these 4', ep.q);
+  const subTop = Math.max(392, hd.bottom + 8);
+  const sub = h(`<div class="abs center sub" style="top:${subTop}px;font-size:34px">Rank them in your head. Most at the top.</div>`); UI.append(sub);
+  const ask = askEl('How many did you get right?', subTop - 6);
+  const top0 = 1010, step = 132;
+  const cards = ep.items.map((it, i) => {
+    const c = h(`<div class="card" style="top:${top0 + i * step}px"><div class="bar"></div><div class="badge">?</div>
+      <img class="flag" src="${flagSrc(it.cca2)}"><div class="name">${esc(it.name)}</div><div class="val"></div></div>`);
+    UI.append(c); return c;
+  });
+  const max = Math.max(...ep.items.map((i) => i.value));
+  const tm = timer(540, 730, 2.4);
+  const mark = markEl('circle', 200, 160); UI.append(mark);
+  const src = h(`<div class="abs center sub" style="top:1560px;font-size:26px">${esc(METRIC_SRC(ep))}</div>`); UI.append(src);
+  const T = { cards: .45, count: 1.45, reveal: 4.0, step: 1.2 };
+  const revealAt = [3, 2, 1, 0].map((rank, k) => ({ rank, t: T.reveal + k * T.step })); // 4th first, winner last
+  const END = T.reveal + 4 * T.step + 1.1, OUT = END + .2, DUR = OUT + 2.3, ASK = T.reveal + 3 * T.step + .9;
+  [0, 1, 2, 3].forEach((i) => sfx(T.cards + i * .14, 'drop', .8));
+  [0, 1, 2].forEach((i) => sfx(T.count + i * .8, 'tick', 1));
+  revealAt.forEach(({ rank, t }) => { sfx(t - .05, 'whoosh', .5); sfx(t + .62, rank === 0 ? 'win' : 'pop', rank === 0 ? 1 : .8); });
+  sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .9);
+  const pos = (i) => ep.order.indexOf(i); // final slot of item i
+  return { DUR, seek(t) {
+    const out = E.in(prog(t, END, OUT));
+    css(hd.e, { op: (1 - out) * E.settle(prog(t, 0, .4)) }); wordsIn(hd.t, t, .05, .06, END);
+    enter(sub, t, .35, T.reveal - .3);
+    const ap = E.pop(prog(t, ASK, ASK + .4)); css(ask, { op: clamp(ap * 2) * (1 - out), s: .7 + .3 * ap });
+    /* arrangement after k reveals; cards glide from one arrangement to the next */
+    let k = 0; revealAt.forEach((r, j) => { if (t >= r.t + .35) k = j + 1; });
+    const mv = k ? E.inout(prog(t, revealAt[k - 1].t + .35, revealAt[k - 1].t + .85)) : 1;
+    const A0 = arrangement(Math.max(0, k - 1)), A1 = arrangement(k);
+    const done = revealAt.slice(0, k).map((r) => ep.order[r.rank]);
+    cards.forEach((c, i) => {
+      const a = T.cards + i * .14, p = E.settle(prog(t, a, a + .6));
+      const yy = lerp((A0.indexOf(i) - i) * step, (A1.indexOf(i) - i) * step, k ? mv : 1);
+      const rv = revealAt.find((r) => ep.order[r.rank] === i);
+      css(c, { op: p * (1 - out), y: (1 - p) * 70 + yy - out * 40, s: 1 + (rv ? .04 * Math.sin(Math.PI * prog(t, rv.t + .35, rv.t + .85)) : 0), blur: (1 - p) * 10 + out * 8 });
+      c.style.zIndex = rv && t >= rv.t ? 5 : 1;
+      const lit = rv ? prog(t, rv.t + .6, rv.t + .9) : 0, pp = rv ? E.pop(prog(t, rv.t + .6, rv.t + .95)) : 0;
+      const badge = c.querySelector('.badge');
+      badge.textContent = lit > 0 ? ep.order.indexOf(i) + 1 : '?';
+      badge.style.background = lit > 0 ? (ep.order.indexOf(i) === 0 ? '#3DDC97' : '#FFB020') : 'rgba(247,245,239,.10)';
+      badge.style.color = lit > 0 ? '#12133A' : '#F7F5EF'; badge.style.transform = `scale(${lit > 0 ? .6 + .4 * pp : 1})`;
+      c.querySelector('.val').textContent = lit > 0 ? ep.items[i].label : '';
+      c.querySelector('.val').style.opacity = lit;
+      c.querySelector('.bar').style.width = `${E.settle(prog(t, rv ? rv.t + .6 : 99, rv ? rv.t + 1.3 : 99)) * 100 * ep.items[i].value / max}%`;
+      c.style.boxShadow = rv && t >= rv.t && t < rv.t + 1.5 ? `inset 0 0 0 3px rgba(255,176,32,${1 - prog(t, rv.t + .9, rv.t + 1.5)}),0 14px 30px rgba(0,0,0,.25)` : '';
+    });
+    tm.set(t, T.count);
+    enter(src, t, T.reveal + .6, END);
+    /* globe: idle spin over the four, then fly to each as it is revealed */
+    const G = { cx: 540, cy: 730, r: 245, alpha: 1 - out, tint: ep.items.map((i) => i.cca3), tintA: 1 };
+    const cur = [...revealAt].reverse().find((r) => t >= r.t);
+    const centre = d3.geoCentroid({ type: 'MultiPoint', coordinates: ep.items.map(targetOf) });
+    if (!cur) { G.rot = rotFor([centre[0] + (t - 1.5) * 12, centre[1]]); }
+    else {
+      const k = revealAt.indexOf(cur), from = k === 0 ? [centre[0] + (cur.t - 1.5) * 12, centre[1]] : targetOf(ep.items[ep.order[revealAt[k - 1].rank]]);
+      const to = targetOf(ep.items[ep.order[cur.rank]]), f = E.inout(prog(t, cur.t, cur.t + .7));
+      G.rot = rotFor(d3.geoInterpolate(from, to)(f));
+      G.r = 245 * (1 - .1 * Math.sin(Math.PI * f));
+      G.hi = [ep.items[ep.order[cur.rank]].cca3]; G.hiA = prog(t, cur.t + .5, cur.t + .8);
+      G.tint = done.map((i) => ep.items[i].cca3);
+    }
+    if (t > END) G.cy = 730 - E.in(prog(t, END, OUT)) * 80;
+    drawGlobe(G);
+    /* one mark: circle the country just revealed (small ones would vanish otherwise) */
+    if (cur && t < END) {
+      const it = ep.items[ep.order[cur.rank]];
+      placeMark(mark, G, it, 110, 330, E.settle(prog(t, cur.t + .7, cur.t + 1.05)), 1 - prog(t, cur.t + 1.3, cur.t + 1.5));
+    } else mark.style.display = 'none';
+    outro(t, OUT);
+  } };
+  function arrangement(k) { /* slots after the first k reveals: revealed cards in their final slot, the rest keep their order */
+    const done = revealAt.slice(0, k).map((r) => ep.order[r.rank]);
+    const slots = new Array(4).fill(null); done.forEach((j) => slots[pos(j)] = j);
+    const rest = [0, 1, 2, 3].filter((j) => !done.includes(j)); let n = 0;
+    for (let q = 0; q < 4; q++) if (slots[q] === null) slots[q] = rest[n++];
+    return slots;
+  }
+}
+function METRIC_SRC(ep) { return ep.metric === 'neighbours' ? 'Countries sharing a land border · Natural Earth' : `Data: World Bank${ep.year ? ', ' + ep.year : ''}`; }
+
+/* ---------- format: This or That ---------- */
+function buildThisThat(ep) {
+  const hd = header('This or that', ep.q);
+  const cards = ep.items.map((it, i) => {
+    const c = h(`<div class="tcard" style="left:${i ? 560 : 80}px"><div class="tick"></div><img class="flag" src="${flagSrc(it.cca2)}">
+      <div class="name" style="font-size:${it.name.length > 11 ? 48 : 58}px">${esc(it.name)}</div><div class="val">&nbsp;</div></div>`);
+    UI.append(c); return c;
+  });
+  const tickMarks = cards.map((c) => { const m = markEl('tick', 46, 46); m.style.left = '12px'; m.style.top = '12px'; c.querySelector('.tick').appendChild(m); return m; });
+  const or = h(`<div class="or">or</div>`); UI.append(or);
+  const tm = timer(540, 1090, 2.4);
+  const ask = askEl('Were you right? Comment yes or no', hd.bottom + 4);
+  const W_ = ep.winner, L_ = 1 - W_, wv = ep.items[W_].value, lv = ep.items[L_].value, ratio = wv / lv;
+  const noun = { pop: 'the people', rain: 'the rain', forest: 'the forest', area: 'the size', life: 'the years', neighbours: 'the neighbours' }[ep.metric];
+  const punch = ep.metric === 'neighbours' ? `${wv} neighbours against ${lv}.` : ratio >= 1.45 ? `${ep.items[W_].name} has ${fmtRatio(ratio)} ${noun}.` : `${ep.items[W_].name} wins by ${Math.round((ratio - 1) * 100)}%.`;
+  const pl = h(`<div class="abs center display" style="top:1572px;font-size:52px;padding:0 60px;box-sizing:border-box">${splitWords(punch)}</div>`); UI.append(pl);
+  const src = h(`<div class="abs center sub" style="top:1660px;font-size:26px">${esc(METRIC_SRC(ep))}</div>`); UI.append(src);
+  const mark = markEl('circle', 200, 160); UI.append(mark);
+  const T = { cards: .4, count: 1.3, reveal: 3.8 }, END = 7.5, OUT = 7.7, DUR = 10.0;
+  sfx(T.cards, 'drop', .8); sfx(T.cards + .14, 'drop', .8); [0, 1, 2].forEach((i) => sfx(T.count + i * .8, 'tick'));
+  sfx(T.reveal - .05, 'whoosh', .6); sfx(T.reveal + .55, 'win', 1); sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .9);
+  return { DUR, seek(t) {
+    const out = E.in(prog(t, END, OUT));
+    css(hd.e, { op: (1 - out) * E.settle(prog(t, 0, .4)) }); wordsIn(hd.t, t, .05, .06, END);
+    const rv = prog(t, T.reveal + .5, T.reveal + .8), pp = E.pop(prog(t, T.reveal + .5, T.reveal + .9));
+    cards.forEach((c, i) => {
+      const p = E.settle(prog(t, T.cards + i * .14, T.cards + i * .14 + .6)), win = i === W_;
+      css(c, { op: p * (1 - out) * (win ? 1 : 1 - .45 * rv), y: (1 - p) * 80 - out * 40, s: win ? 1 + .05 * pp - .05 * rv * 0 : 1 - .04 * rv, blur: (1 - p) * 10 + out * 8 });
+      c.querySelector('.val').innerHTML = rv > 0 ? esc(ep.items[i].label) : '&nbsp;';
+      c.querySelector('.val').style.opacity = rv; c.querySelector('.val').style.color = win ? '#FFB020' : 'rgba(247,245,239,.7)';
+      c.style.boxShadow = win && rv > 0 ? `inset 0 0 0 ${4 * rv}px #3DDC97,0 20px 40px rgba(0,0,0,.3)` : '';
+      const tk = c.querySelector('.tick'); tk.style.opacity = win ? rv : 0; tk.style.transform = `scale(${win ? .5 + .5 * pp : 1})`;
+      if (win) tickMarks[i].draw(E.settle(prog(t, T.reveal + .65, T.reveal + .95)));
+    });
+    tickMarks.forEach((m) => { m.querySelectorAll('g[mask] path').forEach((p) => p.setAttribute('fill', '#12133A')); });
+    const op = E.pop(prog(t, T.cards + .2, T.cards + .6)); css(or, { op: clamp(op * 2) * (1 - rv) * (1 - out), s: .6 + .4 * op });
+    tm.set(t, T.count);
+    wordsIn(pl, t, T.reveal + 1.1, .05, END); enter(src, t, T.reveal + 1.3, END);
+    const ap = E.pop(prog(t, T.reveal + 1.6, T.reveal + 2.0)); css(ask, { op: clamp(ap * 2) * (1 - out), s: .7 + .3 * ap });
+    /* globe: drift between the two, then fly to the winner */
+    const A = targetOf(ep.items[0]), B = targetOf(ep.items[1]), mid = d3.geoInterpolate(A, B)(.5);
+    const drift = d3.geoInterpolate(A, B)(clamp(.5 + .25 * Math.sin((t - 1) * .5)));
+    const f = E.inout(prog(t, T.reveal, T.reveal + .75));
+    const at = t < T.reveal ? drift : d3.geoInterpolate(drift, targetOf(ep.items[W_]))(f);
+    const G = { cx: 540, cy: 740, r: 290, alpha: 1 - out, rot: rotFor(at), tint: ep.items.map((i) => i.cca3), tintA: 1 - rv };
+    if (t >= T.reveal) { G.hi = [ep.items[W_].cca3]; G.hiA = prog(t, T.reveal + .45, T.reveal + .75); G.tint = [ep.items[L_].cca3]; G.tintA = .5; }
+    G.cy -= out * 80; drawGlobe(G); void mid;
+    if (t >= T.reveal + .6 && t < END) {
+      placeMark(mark, G, ep.items[W_], 120, 340, E.settle(prog(t, T.reveal + .75, T.reveal + 1.1)), 1 - out);
+    } else mark.style.display = 'none';
+    outro(t, OUT);
+  } };
+}
+function fmtRatio(r) {
+  if (r >= 10) return `${Math.round(r)}×`;
+  const x = Math.round(r * 2) / 2; // halves read naturally: 2×, 2.5×, 3×
+  return Math.abs(x - r) < .12 ? `${x}×` : `about ${x}×`;
+}
+
+/* ---------- format: Guess the country ---------- */
+function buildGuess(ep) {
+  const it = ep.items[0];
+  const hd = header('Guess the country', 'Three clues. Can you get it in one?', 210, false);
+  hd.t.style.fontSize = '76px';
+  const tops = [470, 0, 0];
+  const clues = ep.clues.map((c, i) => {
+    const el = h(`<div class="clue${i ? '' : ' first'}" style="top:${tops[0]}px"><div class="k">Clue ${i + 1}</div><div class="t">${esc(c)}</div></div>`);
+    UI.append(el); return el;
+  });
+  /* stack the clue cards by their real heights */
+  let y = 470; clues.forEach((c) => { c.style.top = y + 'px'; y += c.offsetHeight + 26; });
+  const stackBottom = y;
+  const tm = timer(540, Math.min(1440, stackBottom + 36 + 205), 2.4);
+  const ask = askEl('Which clue gave it away? 1, 2 or 3', 240);
+  const name = h(`<div class="abs center display" id="reveal" style="top:1330px">${splitWords(it.name)}</div>`); UI.append(name);
+  const flag = h(`<img class="abs" src="${flagSrc(it.cca2)}" style="left:450px;top:1470px;width:180px;height:135px;border-radius:16px;box-shadow:0 0 0 3px rgba(247,245,239,.2)">`); UI.append(flag);
+  const itsTag = h(`<div class="abs center eyebrow" style="top:1280px">It's</div>`); UI.append(itsTag);
+  const mark = markEl('circle', 200, 160); UI.append(mark);
+  const C1 = .6, C2 = 2.8, C3 = 5.0, CNT = 6.4, REV = 8.9, END = 12.4, OUT = 12.6, DUR = 14.9;
+  [C1, C2, C3].forEach((a) => sfx(a, 'drop', .9)); [0, 1, 2].forEach((i) => sfx(CNT + i * .8, 'tick'));
+  sfx(REV - .05, 'whoosh', .7); sfx(REV + .75, 'win', 1); sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .9);
+  const spinFrom = [targetOf(it)[0] + 150, 10];
+  return { DUR, seek(t) {
+    const out = E.in(prog(t, END, OUT)), up = E.in(prog(t, REV - .2, REV + .25));
+    css(hd.e, { op: (1 - up) * E.settle(prog(t, 0, .4)) }); wordsIn(hd.t, t, .05, .05, REV - .3);
+    [C1, C2, C3].forEach((a, i) => enter(clues[i], t, a, REV - .25 + i * .05, { rise: 60 }));
+    tm.set(t, CNT);
+    /* globe sits under the clues, spinning (no hints), then comes forward for the reveal */
+    const mv = E.inout(prog(t, REV, REV + 1.0));
+    const r0 = 205, cy0 = Math.min(1440, stackBottom + 36 + r0);
+    const G = { cx: 540, cy: lerp(cy0 + 2000, cy0, E.settle(prog(t, 0, 1))), r: r0, alpha: 1 - out };
+    G.cy = lerp(t < 1 ? G.cy : cy0, 820, mv); G.r = lerp(r0, 400, mv);
+    const spin = [spinFrom[0] - (t * 22), spinFrom[1]];
+    const flyStart = [spinFrom[0] - REV * 22, spinFrom[1]];
+    G.rot = rotFor(t < REV ? spin : d3.geoInterpolate(flyStart, targetOf(it))(E.inout(prog(t, REV, REV + 1.1))));
+    if (t < REV) { G.alpha *= .9; }
+    if (t >= REV) { G.hi = [it.cca3]; G.hiA = prog(t, REV + .8, REV + 1.1); }
+    G.cy -= out * 90;
+    drawGlobe(G);
+    /* hide the timer's overlap with the globe until it's due */
+    enter(itsTag, t, REV + .95, END);
+    const ap = E.pop(prog(t, REV + 1.7, REV + 2.1)); css(ask, { op: clamp(ap * 2) * (1 - out), s: .7 + .3 * ap }); wordsIn(name, t, REV + 1.0, .07, END);
+    const fp = E.pop(prog(t, REV + 1.3, REV + 1.7)); css(flag, { op: clamp(fp * 2) * (1 - out), s: .6 + .4 * fp });
+    if (t >= REV + .9 && t < END) {
+      placeMark(mark, G, it, 120, 520, E.settle(prog(t, REV + 1.1, REV + 1.45)), 1 - out);
+    } else mark.style.display = 'none';
+    outro(t, OUT);
+  } };
+}
+
+
+/* ---------- format: Country story (cinematic) ---------- */
+function buildStory(ep) {
+  const it = ep.items[0], n = ep.facts.length;
+  $('#vig').style.display = 'block'; $('#bars').style.display = 'block';
+  $('#o1').textContent = `Explore ${ep.total || 80} country stories`; $('#o3').textContent = 'On Bhoogol. Free, nothing to install.';
+  const eb = h(`<div class="abs center eyebrow" style="top:220px">A country story</div>`); UI.append(eb);
+  const hook = h(`<div class="abs display" style="left:70px;width:940px;text-align:center;top:275px;font-size:80px;line-height:1.06">${splitWords(ep.q)}</div>`); UI.append(hook);
+  const flag = h(`<img class="abs" src="${flagSrc(it.cca2)}" style="left:470px;top:210px;width:140px;height:105px;border-radius:14px;box-shadow:0 0 0 3px rgba(247,245,239,.2)">`); UI.append(flag);
+  const name = h(`<div class="abs center display" style="top:335px;font-size:${it.name.length > 12 ? 92 : 116}px">${splitWords(it.name)}</div>`); UI.append(name);
+  const region = h(`<div class="abs center eyebrow" style="top:${it.name.length > 12 ? 445 : 465}px;font-size:30px">${esc(ep.region)}</div>`); UI.append(region);
+  const cards = ep.facts.map((f) => { const c = h(`<div class="clue" style="top:1215px"><div class="k">${esc(f.label)}</div><div class="t" style="font-size:48px">${esc(f.text)}</div></div>`); UI.append(c); return c; });
+  const mark = markEl('circle', 200, 160); UI.append(mark);
+  const PUSH = 4.2, F0 = 6.0, FL = 4.3, END = F0 + n * FL + .3, OUT = END + .2, DUR = OUT + 2.4;
+  sfx(2.6, 'rise', .8); sfx(PUSH - .02, 'hit', 1);
+  cards.forEach((_, i) => sfx(F0 + i * FL, 'drop', .45));
+  sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .8);
+  const target = targetOf(it), from = [target[0] + 140, 12];
+  return { DUR,
+    zoom: (t) => 1 + 1.4 * E.in(prog(t, .2, PUSH)) - .25 * E.inout(prog(t, 5.0, 5.9)),
+    seek(t) {
+      const out = E.in(prog(t, END, OUT));
+      /* letterbox for the cold open, opening at the reveal */
+      const bh = 150 * (1 - E.inout(prog(t, PUSH - .1, PUSH + .7)));
+      $('#barT').style.height = bh + 'px'; $('#barB').style.height = bh + 'px';
+      enter(eb, t, .3, 3.7); wordsIn(hook, t, .5, .09, 3.75);
+      /* the camera: a long push-in from deep space, then the globe steps back to make room */
+      const push = E.inout(prog(t, .1, PUSH)), settle = E.inout(prog(t, 5.0, 5.9));
+      const G = { cx: 540, alpha: 1 - out };
+      G.r = lerp(lerp(30, 470, push), 300, settle) * (1 + Math.max(0, t - F0) * .006);
+      G.cy = lerp(lerp(1060, 1040, push), 870, settle);
+      const drift = Math.max(0, t - 5.9) * 1.6;
+      const at = d3.geoInterpolate(from, target)(push);
+      G.rot = rotFor([at[0] + drift, at[1]]);
+      if (t >= PUSH - .05) { G.hi = [it.cca3]; G.hiA = prog(t, PUSH, PUSH + .4); }
+      G.cy -= out * 80; drawGlobe(G);
+      if (t >= PUSH + .25 && t < END) placeMark(mark, G, it, 110, 520, E.settle(prog(t, PUSH + .3, PUSH + .7)), 1 - out);
+      else mark.style.display = 'none';
+      const fp = E.pop(prog(t, PUSH + .2, PUSH + .6)); css(flag, { op: clamp(fp * 2) * (1 - out), s: .6 + .4 * fp });
+      wordsIn(name, t, PUSH + .3, .07, END); enter(region, t, PUSH + .7, END);
+      cards.forEach((c, i) => { const a = F0 + i * FL; enter(c, t, a, i === n - 1 ? END : a + FL - .35, { rise: 50 }); });
+      outro(t, OUT);
+    } };
+}
+
+/* ---------- background stars ---------- */
+function rnd(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+const bctx = $('#bg').getContext('2d');
+let STARS = [];
+function stars(t, zoom = 1) {
+  bctx.clearRect(0, 0, W, H);
+  for (const s of STARS) {
+    const y0 = ((s.y + t * 10 * s.z) % 2000 + 2000) % 2000 - 40, tw = .55 + .45 * Math.sin(t * 1.7 + s.ph);
+    const z = 1 + (zoom - 1) * s.z, x = 540 + (s.x - 540) * z, y = 960 + (y0 - 960) * z; /* nearer stars rush past faster */
+    bctx.globalAlpha = .1 + .5 * s.z * tw; bctx.fillStyle = '#F7F5EF';
+    bctx.beginPath(); bctx.arc(x, y, (.7 + s.sz * 1.6 * s.z) * Math.sqrt(z), 0, 6.283); bctx.fill();
+  }
+  bctx.globalAlpha = 1;
+}
+
+/* ---------- entry points (make.mjs drives these) ---------- */
+let SCENE = null;
+window.setup = async (ep) => {
+  await loadWorld();
+  $('#wordmark').src = '../../brand/identity/dist/logo/bhoogol-wordmark-night.svg';
+  $('#site').textContent = ep.site || 'bhoogol.netlify.app';
+  $('#bigworld').src = '../../brand/identity/dist/worlds/world-east.svg';
+  const R = rnd(ep.n * 7919 + 13); STARS = Array.from({ length: 170 }, () => ({ x: R() * W, y: R() * 2000, z: .2 + R() * .8, ph: R() * 6.28, sz: R() }));
+  UI.innerHTML = ''; SFX.length = 0;
+  /* fonts load lazily, so ask for each face up front; layout (line fitting, clue heights) depends on them */
+  await Promise.all(["800 96px 'Baloo 2'", "700 52px 'Baloo 2'", "500 34px Mukta", "600 38px Mukta", "500 30px 'JetBrains Mono'"].map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+  SCENE = ep.format === 'rank' ? buildRank(ep) : ep.format === 'thisthat' ? buildThisThat(ep) : ep.format === 'story' ? buildStory(ep) : buildGuess(ep);
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+  return { dur: SCENE.DUR, sfx: SFX };
+};
+window.seek = (t) => { stars(t, SCENE.zoom ? SCENE.zoom(t) : 1); SCENE.seek(t); };
+</script>
+</body></html>
