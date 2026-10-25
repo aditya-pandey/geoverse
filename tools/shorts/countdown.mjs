@@ -67,12 +67,20 @@ if (opt("still")) {
   const labels = ["[v]", "[b]"];
   sfx.forEach((s, i) => { inputs.push("-i", A(`${s.name}.wav`)); const ms = Math.round(s.t * 1000);
     f.push(`[${i + 3}:a]adelay=${ms}|${ms},volume=${(s.gain * 0.7).toFixed(2)}[s${i}]`); labels.push(`[s${i}]`); });
-  f.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95,loudnorm=I=-14:TP=-1.5:LRA=9[a]`);
-  const file = path.join(OUT, `${spec.id}.mp4`);
-  await new Promise((res, rej) => { const p = spawn("ffmpeg", ["-v", "error", "-y", ...inputs, "-filter_complex", f.join(";"), "-map", "0:v", "-map", "[a]",
-    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-t", dur.toFixed(3), "-movflags", "+faststart", file], { stdio: "inherit" });
-    p.on("close", (c) => (c ? rej(new Error("ffmpeg " + c)) : res())); });
-  fs.unlinkSync(silent); console.log("✓", file, dur.toFixed(1), "s");
+  f.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95[a]`);
+  const file = path.join(OUT, `${spec.id}.mp4`), mix = path.join(OUT, `.${spec.id}.mix.wav`);
+  const ff = (args, capture) => new Promise((res, rej) => { let err = "";
+    const p = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", capture ? "pipe" : "inherit"] });
+    if (capture) p.stderr.on("data", (d) => (err += d));
+    p.on("close", (c) => (c ? rej(new Error("ffmpeg " + c)) : res(err))); });
+  await ff(["-v", "error", "-y", ...inputs.slice(2), "-filter_complex", f.join(";").replaceAll(/\[(\d+):a\]/g, (_, n) => `[${n - 1}:a]`), "-map", "[a]", "-t", dur.toFixed(3), "-c:a", "pcm_f32le", mix]);
+  /* loudness in two passes: measure, then set it exactly (one pass lands a few dB short on short videos) */
+  const LN = "I=-14:TP=-1.5:LRA=11";
+  const m = JSON.parse((await ff(["-hide_banner", "-i", mix, "-af", `loudnorm=${LN}:print_format=json`, "-f", "null", "-"], true)).match(/\{[\s\S]*\}/)[0]);
+  await ff(["-v", "error", "-y", "-i", silent, "-i", mix, "-af",
+    `loudnorm=${LN}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true,aresample=48000,alimiter=limit=0.8:level=false`,
+    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-t", dur.toFixed(3), "-movflags", "+faststart", file]);
+  fs.unlinkSync(silent); fs.unlinkSync(mix); console.log("✓", file, dur.toFixed(1), "s");
 }
 if (errors.length) console.log("page errors:", errors.slice(0, 5));
 await browser.close(); server.close();

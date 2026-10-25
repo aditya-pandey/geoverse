@@ -80,7 +80,7 @@ python3 voice.py countdowns/smallest-countries.json take.m4a pickup.m4a   # a se
 node countdown.mjs countdowns/smallest-countries.json
 ```
 
-It cleans up the sound, finds each line with Whisper (on your computer, free), cuts out the gaps and retakes, and lays the lines out with the countdown's own pauses. Captions get your real word timings. `out/<id>.takes.txt` lists which take it used for every line and flags any it was unsure about. If Whisper mishears your accent, add `--model medium.en`.
+It cleans up the sound, finds each line with Whisper (on your computer, free), cuts out the gaps and retakes, and lays the lines out with the countdown's own pauses. Captions get your real word timings. `out/<id>.takes.txt` lists which take it used for every line and flags any it was unsure about. If Whisper mishears your accent, add `--model medium.en`. Long pauses inside a line are shortened to 0.35 s (`--max-pause`), and `--tempo 1.1` speeds the read up 10% without changing your pitch.
 
 Each countdown is a JSON file in `countdowns/`. It holds the script (one line per beat), the five countries, and the sources for every number. The voice is Kokoro's `am_michael` (open licence). The globe uses NASA's Blue Marble imagery (`assets/earth-blue-marble.jpg`, public domain).
 

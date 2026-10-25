@@ -17,6 +17,7 @@ Writes <id>.voice.wav and <id>.timing.json (the same files narrate.py makes, wit
 timings for the captions) plus <id>.takes.txt, which says what it picked.
 
 Options: --out DIR (default tools/shorts/out) · --model small.en|medium.en · --raw (skip the clean-up)
+         --tempo 1.1 (speed up without changing pitch) · --max-pause 0.35 (longest pause kept inside a line)
          --words a.json,b.json (word timings from another transcriber, one file per recording)
 """
 import json, pathlib, re, subprocess, sys
@@ -31,7 +32,8 @@ LEAD = 0.25
 CLEAN = ("highpass=f=80,afftdn=nr=12:nf=-45:tn=1,equalizer=f=220:t=q:w=1:g=-1.5,"
          "equalizer=f=3500:t=q:w=1.2:g=2,deesser=i=0.3,"
          "acompressor=threshold=0.1:ratio=3:attack=8:release=120:makeup=1.5")
-TARGET_RMS = 0.08     # matches the synthetic voice, so the music ducks the same way
+TARGET_ACTIVE = 0.075 # loudness of the speech itself (the synthetic voice's level), so the music ducks the same way
+MAX_PAUSE = 0.35      # a pause inside a line longer than this gets shortened to it
 
 # ---------- words → comparable tokens (Whisper writes "61", the script says "sixty-one") ----------
 ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
@@ -128,8 +130,9 @@ def place(lines_S, T):
 
 
 # ---------- audio ----------
-def load(path, raw):
-    cmd = ["ffmpeg", "-v", "error", "-i", str(path), *([] if raw else ["-af", CLEAN]), "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"]
+def load(path, raw, tempo=1.0):
+    chain = ([] if raw else [CLEAN]) + ([f"atempo={tempo}"] if tempo != 1 else [])   # atempo keeps the pitch
+    cmd = ["ffmpeg", "-v", "error", "-i", str(path), *(["-af", ",".join(chain)] if chain else []), "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"]
     return np.frombuffer(subprocess.run(cmd, check=True, capture_output=True).stdout, dtype=np.float32).copy()
 
 
@@ -149,6 +152,29 @@ def refine(y, env, floor, t0, t1, lo, hi):
     if not len(on): return t0, t1
     s, e = (a + on[0]) * hop, (a + on[-1] + 1) * hop
     return max(lo, s - .04), min(hi, e + .1)
+
+
+def tighten(clip, floor, max_pause):
+    """Shorten long pauses inside a line. Returns the clip and a function mapping old clip times to new ones."""
+    hop = int(.01 * SR); env = rms_frames(clip, hop)
+    if not len(env): return clip, lambda t: t
+    quiet = env < max(env.max() * .06, floor * 2.5)
+    cuts, k = [], 0                                   # (start, end) in seconds, removed
+    while k < len(quiet):
+        if not quiet[k]: k += 1; continue
+        e = k
+        while e < len(quiet) and quiet[e]: e += 1
+        if k > 0 and e < len(quiet) and (e - k) * .01 > max_pause:   # only gaps between words, not the edges
+            keep = max_pause / 2
+            cuts.append((k * .01 + keep, e * .01 - keep))
+        k = e
+    if not cuts: return clip, lambda t: t
+    parts, last = [], 0
+    for a, b in cuts: parts.append(clip[last:int(a * SR)]); last = int(b * SR)
+    parts.append(clip[last:])
+    def remap(t):
+        return t - sum(min(b, max(a, t)) - a for a, b in cuts)
+    return np.concatenate(parts), remap
 
 
 def fade(c, i=.012, o=.04):
@@ -187,8 +213,9 @@ def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     opt = lambda k, d=None: argv[argv.index("--" + k) + 1] if "--" + k in argv else d
     flag = lambda k: "--" + k in argv
-    for v in (opt("out"), opt("model"), opt("words")):
+    for v in (opt("out"), opt("model"), opt("words"), opt("tempo"), opt("max-pause")):
         if v in args: args.remove(v)
+    tempo, max_pause = float(opt("tempo", 1.0)), float(opt("max-pause", MAX_PAUSE))
     spec = json.loads(pathlib.Path(args[0]).read_text())
     files = [pathlib.Path(a).expanduser() for a in args[1:]]
     if not files: sys.exit("Give the script and at least one recording: voice.py <script.json> take.m4a")
@@ -207,9 +234,10 @@ def main(argv):
     best = [None] * len(script)                     # (file index, choice) — later files win
     audio, T_all = [], []
     for fi, f in enumerate(files):
-        y = load(f, flag("raw")); audio.append(y)
+        y = load(f, flag("raw"), tempo); audio.append(y)
         given = opt("words", "").split(",") if opt("words") else []
         words = json.loads(pathlib.Path(given[fi]).read_text()) if fi < len(given) else transcribe(f, opt("model", "small.en"), prompt)
+        words = [{**w, "start": w["start"] / tempo, "end": w["end"] / tempo} for w in words]   # Whisper heard the original speed
         T = flatten(words); T_all.append(T)
         for i, ch in enumerate(place(S_lines, T)):
             if ch: best[i] = (fi, ch)
@@ -233,13 +261,14 @@ def main(argv):
         lo = max([s[2] for s in same if s[2] <= spans[i][1]] + [0]) + .02
         hi = min([s[1] for s in same if s[1] >= spans[i][2]] + [len(y) / SR]) - .05
         c0, c1 = refine(y, env, floor, spans[i][1], spans[i][2], lo, hi)
-        clip = fade(y[int(c0 * SR):int(c1 * SR)])
+        clip, remap = tighten(y[int(c0 * SR):int(c1 * SR)], floor, max_pause)
+        clip = fade(clip)
         pre = script[i].get("pauseBefore", 0)
         if pre: voice.append(np.zeros(int(pre * SR), np.float32)); t += pre
         d = len(clip) / SR
         wt = word_times(display[i], S_owner[i], ch["pairs"], T_all[fi], c0, c1)
         lines.append({**script[i], "i": i, "t0": round(t, 3), "t1": round(t + d, 3),
-                      "words": [{"w": w, "t0": round(t + a - c0, 3), "t1": round(t + b - c0, 3)} for w, (a, b) in zip(display[i], wt)]})
+                      "words": [{"w": w, "t0": round(t + min(d, remap(a - c0)), 3), "t1": round(t + min(d, remap(b - c0)), 3)} for w, (a, b) in zip(display[i], wt)]})
         post = GAP + script[i].get("pauseAfter", 0)
         voice += [clip, np.zeros(int(post * SR), np.float32)]; t += d + post
         warn = "   ← check this one, Whisper only matched part of it" if ch["ratio"] < .85 else ""
@@ -247,9 +276,9 @@ def main(argv):
                       f"{int(c0 // 60)}:{c0 % 60:05.2f} · {d:4.1f}s · {round(ch['ratio'] * 100)}% · {script[i]['say']}{warn}")
 
     v = np.concatenate(voice)
-    speech = v[np.abs(v) > .01]
-    if len(speech): v = v * (TARGET_RMS / np.sqrt((speech ** 2).mean()))
-    v = np.clip(v, -.95, .95) if np.abs(v).max() <= .95 else v * (.95 / np.abs(v).max())
+    env = rms_frames(v, int(.05 * SR)); act = env[env > env.max() * .1]       # level of the speech itself, not the pauses
+    if len(act): v = v * (TARGET_ACTIVE / np.sqrt((act ** 2).mean()))
+    v = np.tanh(v / .9) * .9                                                  # soft-limit the odd loud syllable instead of turning everything down
     sf.write(out / f"{spec['id']}.voice.wav", v, SR)
     (out / f"{spec['id']}.timing.json").write_text(json.dumps({"dur": round(len(v) / SR, 3), "lines": lines, "voice": "recorded"}, indent=1))
     (out / f"{spec['id']}.takes.txt").write_text("\n".join(report) + "\n")
