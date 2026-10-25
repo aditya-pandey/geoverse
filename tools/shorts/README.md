@@ -69,6 +69,19 @@ node countdown.mjs countdowns/smallest-countries.json            # → out/bhoog
 node countdown.mjs countdowns/smallest-countries.json --still 4,12,30   # quick look
 ```
 
+### With your own voice
+
+Record the script in one go (Voice Memos is fine). If you stumble, pause and say the whole line again: the last good take of each line wins. Then use `voice.py` instead of `narrate.py`:
+
+```sh
+pip install faster-whisper                       # once; the Whisper model (~500 MB) downloads on first run
+python3 voice.py countdowns/smallest-countries.json ~/Downloads/take.m4a
+python3 voice.py countdowns/smallest-countries.json take.m4a pickup.m4a   # a second file redoes a few lines
+node countdown.mjs countdowns/smallest-countries.json
+```
+
+It cleans up the sound, finds each line with Whisper (on your computer, free), cuts out the gaps and retakes, and lays the lines out with the countdown's own pauses. Captions get your real word timings. `out/<id>.takes.txt` lists which take it used for every line and flags any it was unsure about. If Whisper mishears your accent, add `--model medium.en`.
+
 Each countdown is a JSON file in `countdowns/`. It holds the script (one line per beat), the five countries, and the sources for every number. The voice is Kokoro's `am_michael` (open licence). The globe uses NASA's Blue Marble imagery (`assets/earth-blue-marble.jpg`, public domain).
 
 Facts in a countdown are checked by hand before it's made, so countdowns aren't part of the weekly automation.
