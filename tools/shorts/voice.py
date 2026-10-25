@@ -70,7 +70,10 @@ def transcribe(path, model_name, prompt):
     from faster_whisper import WhisperModel
     print(f"transcribing {path.name} with Whisper {model_name} (first run downloads the model)…")
     model = WhisperModel(model_name, device="cpu", compute_type="int8")
-    segs, _ = model.transcribe(str(path), language="en", word_timestamps=True, initial_prompt=prompt,
+    # ffmpeg reads the file (Whisper's own reader breaks with newer PyAV versions); Whisper wants 16 kHz mono
+    pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+                         check=True, capture_output=True).stdout
+    segs, _ = model.transcribe(np.frombuffer(pcm, dtype=np.float32), language="en", word_timestamps=True, initial_prompt=prompt,
                                vad_filter=True, condition_on_previous_text=False, beam_size=5)
     return [{"w": w.word, "start": w.start, "end": w.end} for s in segs for w in (s.words or [])]
 
