@@ -85,3 +85,15 @@ It cleans up the sound, finds each line with Whisper (on your computer, free), c
 Each countdown is a JSON file in `countdowns/`. It holds the script (one line per beat), the five countries, and the sources for every number. The voice is Kokoro's `am_michael` (open licence). The globe uses NASA's Blue Marble imagery (`assets/earth-blue-marble.jpg`, public domain).
 
 Facts in a countdown are checked by hand before it's made, so countdowns aren't part of the weekly automation.
+
+## Explainers (narrated map stories)
+
+A shorter narrated story told on a flat map: real country shapes are carried across a Mercator map at their true size, so they grow and shrink as they move. Same tools as the countdowns, with the script in `explainers/`:
+
+```sh
+python3 voice.py explainers/africa-true-size.json ~/Downloads/take.m4a --tempo 1.1   # or narrate.py for the synthetic voice
+node countdown.mjs explainers/africa-true-size.json
+```
+
+The scene page is `explainer.html` (the script's `"page"`). Each line's `scene` (hook, compare, slide, size, stretch, ask, drop, spare, outro) tells the page what to show. Where the countries land inside Africa (`"places"`) was found by a search in an equal-area projection: every shape keeps its true size and only moves or turns.
+

@@ -9,38 +9,114 @@
     "Greenland 2,166,086 km²: Britannica, 'Greenland summary' (https://www.britannica.com/summary/Greenland). 30,365,000 / 2,166,086 = 14.0",
     "Contiguous United States 8,080,470 km²: Geography Realm, 'Continental vs. Contiguous United States'",
     "China 9.6 million km², India 3,287,263 km² (official figure, Survey of India boundary in data/india-official.geojson)",
-    "Placements inside Africa: found by search in an equal-area projection; each shape is moved on the sphere, so its true size is kept"
+    "Placements inside Africa: found by search in an equal-area projection. Each shape keeps its true size and only moves or turns; 97% of their area lands inside Africa (thin slivers at the coast), with under 0.2% overlap. By area they use 69% of Africa"
   ],
   "ratio": "×14",
-  "names": { "USA": "USA", "CHN": "China", "IND": "India" },
+  "names": {
+    "USA": "USA",
+    "CHN": "China",
+    "IND": "India"
+  },
   "meter": {
     "africa": "30.4M km²",
     "greenland": "2.2M km²",
     "africaArea": 30.37,
     "items": [
-      { "cca3": "USA", "area": 8.08, "label": "USA 8.1M" },
-      { "cca3": "CHN", "area": 9.6, "label": "China 9.6M" },
-      { "cca3": "IND", "area": 3.29, "label": "India 3.3M" }
+      {
+        "cca3": "USA",
+        "area": 8.08,
+        "label": "US mainland 8.1M"
+      },
+      {
+        "cca3": "CHN",
+        "area": 9.6,
+        "label": "China 9.6M"
+      },
+      {
+        "cca3": "IND",
+        "area": 3.29,
+        "label": "India 3.3M"
+      }
     ],
     "spare": "still free"
   },
   "places": {
-    "GRL": { "lon": -24, "lat": -2 },
-    "CHN": { "lon": 12, "lat": 18, "gam": -20 },
-    "USA": { "lon": 28.5, "lat": -4.5, "gam": 20 },
-    "IND": { "lon": 24, "lat": -25.5, "gam": 20 }
+    "GRL": {
+      "lon": -24,
+      "lat": -2
+    },
+    "CHN": {
+      "lon": 8.5,
+      "lat": 18.5,
+      "gam": -11
+    },
+    "USA": {
+      "lon": 29,
+      "lat": 1.5,
+      "gam": 54
+    },
+    "IND": {
+      "lon": 24.25,
+      "lat": -22.25,
+      "gam": 33
+    }
   },
   "script": [
-    { "say": "The map you grew up with has been lying to you.", "scene": "hook" },
-    { "say": "Look at Greenland. It looks as big as Africa.", "scene": "compare", "pauseAfter": 0.3 },
-    { "say": "Now slide it down to the equator.", "scene": "slide", "pauseAfter": 1.4 },
-    { "say": "Same island, real size. Africa is fourteen times bigger.", "scene": "size", "pauseAfter": 0.5 },
-    { "say": "Flat maps stretch everything near the poles.", "scene": "stretch", "pauseAfter": 0.8 },
-    { "say": "So how big is Africa, really?", "scene": "ask", "pauseAfter": 0.6 },
-    { "say": "Drop in the United States.", "scene": "drop", "cca3": "USA", "pauseAfter": 0.4 },
-    { "say": "China.", "scene": "drop", "cca3": "CHN", "pauseAfter": 0.4 },
-    { "say": "India.", "scene": "drop", "cca3": "IND", "pauseAfter": 0.5 },
-    { "say": "And there's still room to spare.", "scene": "spare", "pauseAfter": 0.8 },
-    { "say": "A globe never lies. Spin one yourself, on Bhoogol.", "scene": "outro" }
+    {
+      "say": "The map you grew up with has been lying to you.",
+      "scene": "hook"
+    },
+    {
+      "say": "Look at Greenland. It looks as big as Africa.",
+      "scene": "compare",
+      "pauseAfter": 0.3
+    },
+    {
+      "say": "Now slide it down to the equator.",
+      "scene": "slide",
+      "pauseAfter": 1.4
+    },
+    {
+      "say": "Same island, real size. Africa is fourteen times bigger.",
+      "scene": "size",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "Flat maps stretch everything near the poles.",
+      "scene": "stretch",
+      "pauseAfter": 0.8
+    },
+    {
+      "say": "So how big is Africa, really?",
+      "scene": "ask",
+      "pauseAfter": 0.6
+    },
+    {
+      "say": "Drop in the United States.",
+      "scene": "drop",
+      "cca3": "USA",
+      "pauseAfter": 0.4
+    },
+    {
+      "say": "China.",
+      "scene": "drop",
+      "cca3": "CHN",
+      "pauseAfter": 0.4
+    },
+    {
+      "say": "India.",
+      "scene": "drop",
+      "cca3": "IND",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "And there's still room to spare.",
+      "scene": "spare",
+      "pauseAfter": 0.8
+    },
+    {
+      "say": "A globe never lies. Spin one yourself, on Bhoogol.",
+      "scene": "outro"
+    }
   ]
 }
