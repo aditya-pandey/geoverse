@@ -1,0 +1,359 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Bhoogol explainer</title>
+<!-- A narrated map explainer: real country shapes dragged across a Mercator map, growing and shrinking
+     as they move, the way the real sizes are hidden by the projection. Driven frame by frame with seek(t);
+     the timing comes from the narration (narrate.py or voice.py), so the picture follows the voice. -->
+<style>
+@font-face{font-family:'Baloo 2';font-weight:800;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:'Baloo 2';font-weight:700;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2)}
+@font-face{font-family:'Mukta';font-weight:600;src:url(node_modules/@fontsource/mukta/files/mukta-latin-600-normal.woff2)}
+@font-face{font-family:'Kalam';font-weight:700;src:url(node_modules/@fontsource/kalam/files/kalam-latin-700-normal.woff2)}
+:root{--space:#12133A;--gold:#FFB020;--mint:#3DDC97;--chalk:#F7F5EF;--ink:#12133A}
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:radial-gradient(ellipse 85% 60% at 50% 45%,#1b1d4d 0%,#12133A 60%,#0b0c26 100%)}
+canvas{position:absolute;left:0;top:0}
+.abs{position:absolute}
+.w{display:inline-block}
+#card{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:50% 46%;overflow:hidden}
+.cap{position:absolute;left:0;width:1080px;top:1600px;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:76px;line-height:1.05;color:#fff;
+  paint-order:stroke fill;-webkit-text-stroke:12px #12133A;text-shadow:0 8px 0 rgba(18,19,58,.55)}
+.cap .on{color:var(--gold)}
+.title{position:absolute;left:60px;width:960px;text-align:center;font-family:'Baloo 2';font-weight:800;color:#fff;line-height:1.02;
+  paint-order:stroke fill;-webkit-text-stroke:10px #12133A;text-shadow:0 8px 0 rgba(18,19,58,.5)}
+.chip{position:absolute;white-space:nowrap;font-family:'Baloo 2';font-weight:800;font-size:46px;line-height:1;color:var(--ink);background:#fff;border-radius:999px;
+  padding:14px 28px 8px;box-shadow:0 6px 0 rgba(18,19,58,.85),0 14px 24px rgba(18,19,58,.25);transform-origin:50% 50%}
+.chip.gold{background:var(--gold);box-shadow:0 7px 0 #C47F00,0 14px 24px rgba(18,19,58,.3)}
+.stamp{position:absolute;white-space:nowrap;font-family:'Baloo 2';font-weight:800;font-size:150px;line-height:1;color:var(--gold);
+  paint-order:stroke fill;-webkit-text-stroke:16px #12133A;text-shadow:0 10px 0 rgba(18,19,58,.55);transform-origin:50% 60%}
+.pill{display:inline-block;font-family:'Baloo 2';font-weight:700;font-size:50px;color:#1a1300;background:var(--gold);border-radius:999px;padding:16px 52px 12px;box-shadow:0 7px 0 #C47F00}
+#meter{position:absolute;left:70px;top:96px;width:940px}
+#meter .row{display:flex;justify-content:space-between;font-family:'Baloo 2';font-weight:800;font-size:44px;color:var(--ink);margin-bottom:10px}
+#meter .bar{position:relative;height:58px;border-radius:16px;background:rgba(61,220,151,.55);border:5px solid var(--ink);overflow:hidden;box-shadow:0 8px 0 rgba(18,19,58,.25)}
+#meter .seg{position:absolute;top:0;height:100%;border-right:4px solid var(--ink);box-sizing:border-box;transform-origin:0 50%}
+#meter .lab{position:absolute;top:142px;font-family:'Baloo 2';font-weight:800;font-size:36px;color:var(--ink);white-space:nowrap}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1080" height="1920"></canvas>
+  <div id="card"><canvas id="map" width="1080" height="1920"></canvas></div>
+  <canvas id="earth" width="1080" height="1920"></canvas>
+  <canvas id="over" width="1080" height="1920"></canvas>
+  <div id="ui"></div>
+</div>
+<script src="node_modules/d3-array/dist/d3-array.min.js"></script>
+<script src="node_modules/d3-geo/dist/d3-geo.min.js"></script>
+<script src="node_modules/topojson-client/dist/topojson-client.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s), W = 1080, H = 1920, PI = Math.PI, RAD = PI / 180;
+/* ---------- motion helpers (brand: settle, pop) ---------- */
+function bez(x1, y1, x2, y2) { const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = t => ((ax * t + bx) * t + cx) * t, Y = t => ((ay * t + by) * t + cy) * t;
+  return x => { if (x <= 0) return 0; if (x >= 1) return 1; let lo = 0, hi = 1, t = x; for (let i = 0; i < 40; i++) { X(t) < x ? lo = t : hi = t; t = (lo + hi) / 2; } return Y(t); }; }
+const E = { settle: bez(.2, .9, .25, 1), pop: bez(.34, 1.56, .64, 1), inout: bez(.65, 0, .35, 1), in: bez(.55, 0, .9, .3), out: bez(.16, 1, .3, 1) };
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), prog = (t, a, b) => clamp((t - a) / (b - a)), lerp = (a, b, p) => a + (b - a) * p;
+function css(el, o) { const s = el.style; if ('op' in o) { s.opacity = o.op; s.visibility = o.op <= .001 ? 'hidden' : 'visible'; }
+  s.transform = `translate(${o.x || 0}px,${o.y || 0}px) rotate(${o.r || 0}deg) scale(${o.s ?? 1})`; s.filter = o.blur > .05 ? `blur(${o.blur}px)` : 'none'; }
+const h = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SFX = []; const sfx = (t, name, gain = 1) => SFX.push({ t: +Math.max(0, t).toFixed(3), name, gain });
+const merc = (lat) => Math.log(Math.tan(PI / 4 + lat * RAD / 2)), imerc = (y) => Math.atan(Math.sinh(y)) / RAD;
+
+/* ---------- geography ---------- */
+const mapCoords = (g, f) => ({ type: g.type, coordinates: g.type === 'Polygon' ? g.coordinates.map((r) => r.map(f)) : g.coordinates.map((p) => p.map((r) => r.map(f))) });
+/* carry a shape across the sphere without changing its true size: rotate its centre to the target (+ an optional turn) */
+function mover(from, to, gam = 0) { const r0 = d3.geoRotation([-from[0], -from[1]]), rg = d3.geoRotation([0, 0, gam]), r1 = d3.geoRotation([-to[0], -to[1]]);
+  return (g) => mapCoords(g, (p) => r1.invert(rg(r0(p)))); }
+let SPEC, TIM, LAND, SHAPE = {}, AFRICA, MERC;
+async function loadData() {
+  const [t, land, raw, ind] = await Promise.all(['node_modules/world-atlas/countries-50m.json', 'node_modules/world-atlas/land-50m.json',
+    'node_modules/world-countries/countries.json', '../../data/india-official.geojson'].map((u) => fetch(u).then((r) => r.json())));
+  const byN = new Map(raw.map((c) => [c.ccn3, c]));
+  const geoms = t.objects.countries.geometries; geoms.forEach((g) => { const c = byN.get(String(g.id).padStart(3, '0')); g.cca3 = c?.cca3; g.region = c?.region; });
+  LAND = topojson.feature(land, land.objects.land);
+  AFRICA = topojson.merge(t, geoms.filter((g) => g.region === 'Africa'));
+  const F = (c) => topojson.feature(t, geoms.find((g) => g.cca3 === c)).geometry;
+  for (const c of ['GRL', 'CHN']) SHAPE[c] = F(c);
+  const usa = F('USA');                       /* the lower 48 and Alaska as separate pieces (Hawaii is too small to see) */
+  SHAPE.USA = { type: 'MultiPolygon', coordinates: usa.coordinates.filter((p) => { const c = d3.geoCentroid({ type: 'Polygon', coordinates: p }); return c[0] > -128 && c[1] < 50 && c[1] > 24; }) };
+  SHAPE.ALASKA = { type: 'MultiPolygon', coordinates: usa.coordinates.filter((p) => { const c = d3.geoCentroid({ type: 'Polygon', coordinates: p }); return c[1] > 50; }) };
+  SHAPE.IND = ind.features[0].geometry;       /* India's official boundary, as in the app */
+}
+/* the Blue Marble image re-drawn in Mercator (rows stretched toward the poles), once */
+function mercatorRaster(img) {
+  const N = 4096, c = document.createElement('canvas'); c.width = N; c.height = N; const x = c.getContext('2d');
+  for (let j = 0; j < N; j++) { const lat = imerc(PI - 2 * PI * (j + .5) / N), sy = (90 - lat) / 180 * img.height; x.drawImage(img, 0, sy, img.width, 1, 0, j, N, 1); }
+  return c;
+}
+
+/* ---------- the satellite globe for the outro (WebGL, NASA Blue Marble) ---------- */
+const gl = $('#earth').getContext('webgl', { preserveDrawingBuffer: true, premultipliedAlpha: false, antialias: false });
+let PROG, U = {};
+function initGL(img) {
+  const vs = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
+  const fs = `precision highp float;
+  uniform sampler2D tex; uniform vec2 cen; uniform float r; uniform vec2 c0; uniform float alpha; uniform float H;
+  const float PI = 3.14159265;
+  void main(){
+    vec2 q = vec2(gl_FragCoord.x - cen.x, gl_FragCoord.y - (H - cen.y)) / r;
+    float rho = length(q);
+    float edge = 1.0 - smoothstep(1.0 - 1.5 / r, 1.0, rho);
+    if (rho > 1.0) { gl_FragColor = vec4(0.); return; }
+    float c = asin(min(rho, 1.0));
+    float lat0 = c0.y, lon0 = c0.x;
+    float lat = asin(clamp(cos(c) * sin(lat0) + (rho > 1e-6 ? q.y * sin(c) * cos(lat0) / rho : 0.0), -1.0, 1.0));
+    float lon = lon0 + atan(q.x * sin(c), rho * cos(c) * cos(lat0) - q.y * sin(c) * sin(lat0));
+    vec2 uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);
+    vec3 col = texture2D(tex, uv).rgb;
+    col = pow(col, vec3(0.92)) * 1.06;
+    vec3 n = vec3(q.x, q.y, sqrt(max(0.0, 1.0 - rho * rho)));
+    float lit = clamp(dot(n, normalize(vec3(-0.45, 0.5, 0.75))), 0.0, 1.0);
+    col *= mix(0.42, 1.12, lit);
+    col = mix(col, vec3(0.55, 0.72, 1.0), pow(rho, 8.0) * 0.55);
+    gl_FragColor = vec4(col, edge * alpha);
+  }`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  PROG = gl.createProgram(); gl.attachShader(PROG, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(PROG, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(PROG); gl.useProgram(PROG);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(PROG, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  for (const k of ['cen', 'r', 'c0', 'alpha', 'H']) U[k] = gl.getUniformLocation(PROG, k);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+}
+const octx = $('#over').getContext('2d');
+const oproj = d3.geoOrthographic().clipAngle(90).precision(.3), opath = d3.geoPath(oproj, octx);
+function drawEarth(C) {
+  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); octx.clearRect(0, 0, W, H);
+  if (C.alpha <= 0) return;
+  gl.uniform2f(U.cen, C.cx, C.cy); gl.uniform1f(U.r, C.r); gl.uniform1f(U.H, H);
+  gl.uniform2f(U.c0, C.lon * RAD, C.lat * RAD); gl.uniform1f(U.alpha, C.alpha);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  octx.save(); octx.globalAlpha = C.alpha;
+  const g = octx.createRadialGradient(C.cx, C.cy, C.r * .96, C.cx, C.cy, C.r * 1.16);
+  g.addColorStop(0, 'rgba(143,178,255,.45)'); g.addColorStop(1, 'rgba(143,178,255,0)');
+  octx.fillStyle = g; octx.beginPath(); octx.arc(C.cx, C.cy, C.r * 1.16, 0, 6.2832); octx.arc(C.cx, C.cy, C.r * .995, 0, 6.2832, true); octx.fill();
+  if (C.africa > 0) { oproj.scale(C.r).translate([C.cx, C.cy]).rotate([-C.lon, -C.lat]);
+    octx.globalAlpha = C.alpha * C.africa; octx.beginPath(); opath(AFRICA); octx.fillStyle = 'rgba(61,220,151,.35)'; octx.fill();
+    octx.strokeStyle = '#3DDC97'; octx.lineWidth = 5; octx.stroke(); }
+  octx.restore();
+}
+
+/* ---------- stars ---------- */
+const bctx = $('#bg').getContext('2d'); let STARS = [];
+function stars(t, zoom) { bctx.clearRect(0, 0, W, H);
+  for (const s of STARS) { const z = 1 + (zoom - 1) * s.z, x = 540 + (s.x - 540) * z, y = 960 + (((s.y + t * 6 * s.z) % 2000) - 960) * z, tw = .55 + .45 * Math.sin(t * 1.7 + s.ph);
+    bctx.globalAlpha = .12 + .55 * s.z * tw; bctx.fillStyle = '#F7F5EF'; bctx.beginPath(); bctx.arc(x, y, (.7 + 1.6 * s.sz * s.z) * Math.sqrt(z), 0, 6.283); bctx.fill(); }
+  bctx.globalAlpha = 1; }
+
+/* ---------- the flat map ---------- */
+const mctx = $('#map').getContext('2d'), mproj = d3.geoMercator().precision(.4), mpath = d3.geoPath(mproj, mctx);
+const VIEW = {                                    /* lon, lat at the centre, scale, where the centre sits on screen */
+  world: { lon: -12, lat: 52.7, k: 430, cy: 820 },
+  wide: { lon: -12, lat: 19.6, k: 300, cy: 960 },
+  africa: { lon: 17, lat: 1, k: 800, cy: 800 },
+};
+function setCam(c) { mproj.scale(c.k).center([c.lon, c.lat]).translate([540, c.cy]); }
+const PAL = { GRL: '#FFB020', AFR: '#3DDC97', USA: '#2E6BFF', CHN: '#FF7A59', IND: '#B07CE8' };
+function glowShape(g, color, a, { blur = 34, line = 3.5, cut = null } = {}) {
+  if (a <= 0) return;
+  mctx.save(); mctx.globalAlpha = a;
+  mctx.shadowColor = color; mctx.shadowBlur = blur; mctx.beginPath(); mpath(g); mctx.fillStyle = color; mctx.fill('evenodd');
+  mctx.shadowBlur = 0; mctx.lineJoin = 'round'; mctx.lineWidth = line; mctx.strokeStyle = 'rgba(255,255,255,.9)'; mctx.stroke();
+  mctx.restore();
+}
+function label(text, xy, size, a, rot = -6, color = '#fff') {
+  if (a <= 0 || !xy) return;
+  mctx.save(); mctx.globalAlpha = a; mctx.translate(xy[0], xy[1]); mctx.rotate(rot * RAD);
+  mctx.font = `800 ${size}px 'Baloo 2'`; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.lineJoin = 'round';
+  mctx.lineWidth = size * .2; mctx.strokeStyle = '#12133A'; mctx.strokeText(text, 0, 0); mctx.fillStyle = color; mctx.fillText(text, 0, 0);
+  mctx.restore();
+}
+
+/* ---------- timeline ---------- */
+const UI = $('#ui');
+let LINES, DUR, CAPS = [], CAM = [], T = {}, PLACED = {}, els = {};
+const L = (scene) => LINES.find((l) => l.scene === scene);
+const wordT = (l, re) => (l.words.find((w) => re.test(w.w)) || l.words[0]).t0;
+function buildTimeline() {
+  LINES = TIM.lines; DUR = TIM.dur + 2.2;
+  const hook = L('hook'), cmp = L('compare'), slide = L('slide'), size = L('size'), str = L('stretch'), ask = L('ask'), spare = L('spare'), outro = L('outro');
+  const drops = LINES.filter((l) => l.scene === 'drop');
+  T = { hook, cmp, slide, size, str, ask, spare, outro, drops,
+    grl: wordT(cmp, /Greenland/i), afr: wordT(cmp, /Africa/i), slideA: slide.t0 + .35, slideB: slide.t0 + .35 + Math.max(2.2, slide.t1 - slide.t0 + .6),
+    x14: wordT(size, /fourteen|14/i) };
+  /* camera keyframes [t, view] */
+  CAM = [[0, { ...VIEW.world, k: 360 }], [hook.t1 + .3, VIEW.world], [str.t0 - .05, VIEW.world], [str.t0 + 1.1, VIEW.wide], [ask.t0 - .1, VIEW.wide], [ask.t0 + 1.3, VIEW.africa]];
+  /* where each country lands inside Africa (found by search; see the JSON) */
+  for (const d of drops) { const p = SPEC.places[d.cca3]; const g = SHAPE[d.cca3];
+    const mv = mover(d3.geoCentroid(g), [p.lon, p.lat], p.gam || 0);
+    PLACED[d.cca3] = { g: mv(g), cut: d.cca3 === 'CHN' ? mv(SHAPE.IND) : null, at: [p.lon, p.lat], t: d.t0 };
+    if (d.cca3 === 'USA' && SPEC.places.ALASKA) { const a = SPEC.places.ALASKA; PLACED.ALASKA = { g: mover(d3.geoCentroid(SHAPE.ALASKA), [a.lon, a.lat], a.gam || 0)(SHAPE.ALASKA), at: [a.lon, a.lat], t: d.t0 + .45 }; } }
+  /* captions: chunks of up to 3 words, broken at punctuation */
+  for (const l of LINES) { let cur = [];
+    l.words.forEach((w, i) => { cur.push(w); if (cur.length === 3 || /[,.;:?!]$/.test(w.w) || i === l.words.length - 1) { CAPS.push(cur); cur = []; } }); }
+  /* sound */
+  sfx(.05, 'whoosh', .6); sfx(T.grl, 'pop', .8); sfx(T.afr, 'pop', .8);
+  sfx(T.slideA - .1, 'rise', .7); sfx(T.slideB - .05, 'drop', .8);
+  sfx(size.t0 + .15, 'pop', .6); sfx(size.t0 + .5, 'pop', .6); sfx(T.x14 - .05, 'hit', .9);
+  for (let i = 0; i < 10; i++) sfx(str.t0 + 1.0 + i * .14, 'tick', .3);
+  sfx(ask.t0, 'whoosh', .7);
+  for (const d of drops) { sfx(d.t0 - .05, 'whoosh', .45); sfx(d.t0 + .32, 'drop', .9); }
+  if (PLACED.ALASKA) sfx(PLACED.ALASKA.t + .32, 'drop', .6);
+  sfx(spare.t0 + .2, 'win', .8);
+  sfx(outro.t0 - .1, 'whoosh', .6); sfx(outro.t0 + .5, 'boom', .8);
+}
+function camAt(t) {
+  let i = 0; while (i < CAM.length - 1 && t >= CAM[i + 1][0]) i++;
+  const [ta, a] = CAM[i], [tb, b] = CAM[Math.min(i + 1, CAM.length - 1)];
+  const f = tb === ta ? 1 : E.inout(prog(t, ta, tb));
+  return { lon: lerp(a.lon, b.lon, f), lat: imerc(lerp(merc(a.lat), merc(b.lat), f)), k: Math.exp(lerp(Math.log(a.k), Math.log(b.k), f)), cy: lerp(a.cy, b.cy, f) };
+}
+
+/* ---------- UI ---------- */
+function buildUI() {
+  els.title = h(`<div class="title" style="top:150px;font-size:104px">Your map is<br><span style="color:#FFB020">lying to you</span></div>`);
+  els.cap = h(`<div class="cap"></div>`);
+  const m = SPEC.meter;
+  els.chipG = h(`<div class="chip">${esc(m.greenland)}</div>`);
+  els.chipA = h(`<div class="chip">${esc(m.africa)}</div>`);
+  els.x14 = h(`<div class="stamp">${esc(SPEC.ratio)}</div>`);
+  els.same = h(`<div class="chip gold" style="left:0;top:150px">Every circle: same real size</div>`);
+  els.meter = h(`<div id="meter"><div class="row"><span>Africa</span><span>${esc(m.africa)}</span></div><div class="bar"></div></div>`);
+  let x = 0; els.segs = {};
+  for (const it of m.items) { const w = 100 * it.area / m.africaArea;
+    const s = h(`<div class="seg" style="left:${x}%;width:${w}%;background:${PAL[it.cca3]}"></div>`); els.meter.querySelector('.bar').append(s);
+    const lab = h(`<div class="lab" style="left:${x + w / 2}%;transform:translateX(-50%)">${esc(it.label)}</div>`); els.meter.append(lab);
+    els.segs[it.cca3] = { s, lab }; x += w; }
+  els.spare = h(`<div class="lab" style="left:${(x + 100) / 2}%;transform:translateX(-50%);color:#0f7a4c">${esc(m.spare)}</div>`); els.meter.append(els.spare);
+  els.wm = h(`<img class="abs" src="../../brand/identity/dist/logo/bhoogol-wordmark-night.svg" style="left:170px;top:520px;width:740px">`);
+  els.pill = h(`<div class="abs" style="left:0;width:1080px;top:800px;text-align:center"><span class="pill">${esc(SPEC.site || 'bhoogol.netlify.app')}</span></div>`);
+  els.sub = h(`<div class="abs" style="left:0;width:1080px;top:930px;text-align:center;font-family:'Mukta';font-weight:600;font-size:38px;color:rgba(247,245,239,.75)">Every country, on a globe you can spin.</div>`);
+  UI.append(els.title, els.same, els.chipG, els.chipA, els.x14, els.meter, els.wm, els.pill, els.sub, els.cap);
+}
+function pinChip(el, ll, p, dy = 0, rot = -4) {          /* a DOM chip pinned to a map position */
+  const xy = mproj(ll); if (!xy) return css(el, { op: 0 });
+  const r = el.getBoundingClientRect(), w = el.offsetWidth, hh = el.offsetHeight;
+  el.style.left = (xy[0] - w / 2) + 'px'; el.style.top = (xy[1] - hh / 2 + dy) + 'px';
+  css(el, { op: clamp(p * 2), s: .6 + .4 * E.pop(p), r: rot });
+}
+
+/* ---------- per frame ---------- */
+function seek(t) {
+  const { hook, cmp, slide, size, str, ask, spare, outro, drops } = T;
+  stars(t, 1 + .3 * prog(t, 0, hook.t1));
+  /* the map card: tilted in space during the hook, then flat and full-screen */
+  const flat = E.inout(prog(t, hook.t0 + .5, hook.t1 + .3)), enter = E.settle(prog(t, 0, .9));
+  const cardOut = E.inout(prog(t, outro.t0 - .1, outro.t0 + .8));
+  const card = $('#card');
+  card.style.transform = `perspective(1900px) translateY(${(1 - flat) * 120 + (1 - enter) * 300}px) rotateX(${(1 - flat) * 52}deg) rotateZ(${(1 - flat) * -16}deg) scale(${lerp(.66, 1, flat) * (1 - .2 * cardOut)})`;
+  card.style.borderRadius = `${(1 - flat) * 40}px`;
+  card.style.boxShadow = flat < 1 ? `0 ${60 * (1 - flat)}px ${120 * (1 - flat)}px rgba(0,0,0,.55)` : 'none';
+  card.style.opacity = enter * (1 - cardOut); card.style.visibility = cardOut >= 1 ? 'hidden' : 'visible';
+  /* camera */
+  const C = camAt(t); setCam(C);
+  mctx.clearRect(0, 0, W, H);
+  const paper = E.inout(prog(t, cmp.t0 - .15, cmp.t0 + .55));
+  /* satellite Mercator */
+  if (paper < 1) { const S = 2 * PI * C.k, x0 = 540 - C.k * C.lon * RAD - C.k * PI, y0 = C.cy + C.k * merc(C.lat) - C.k * PI;
+    mctx.globalAlpha = 1; mctx.drawImage(MERC, x0, y0, S, S); mctx.drawImage(MERC, x0 - S, y0, S, S); mctx.drawImage(MERC, x0 + S, y0, S, S); }
+  /* the plain map: chalk land on a pale sea */
+  if (paper > 0) { mctx.globalAlpha = paper; mctx.fillStyle = '#D9E4F5'; mctx.fillRect(0, 0, W, H);
+    mctx.beginPath(); mpath(LAND); mctx.fillStyle = '#FBFAF6'; mctx.fill(); mctx.lineWidth = 2; mctx.strokeStyle = '#B8C4DA'; mctx.stroke(); mctx.globalAlpha = 1; }
+  /* the equator */
+  const eq = prog(t, slide.t0, slide.t0 + .6) * (1 - prog(t, ask.t0, ask.t0 + .5) * .6);
+  if (eq > 0) { const y = mproj([0, 0])[1]; mctx.save(); mctx.globalAlpha = .9 * Math.min(1, eq * 2); mctx.setLineDash([22, 16]); mctx.lineWidth = 5; mctx.strokeStyle = '#12133A';
+    mctx.beginPath(); mctx.moveTo(0, y); mctx.lineTo(W * E.inout(eq), y); mctx.stroke(); mctx.restore();
+    label('Equator', [150, y - 34], 42, clamp(eq * 2) * (1 - prog(t, str.t0, str.t0 + .4)), 0, '#fff'); }
+  /* Tissot's circles: the same real size everywhere, ballooning toward the poles */
+  const tis = prog(t, str.t0 + .9, str.t0 + 1.0) * (1 - prog(t, ask.t0 - .1, ask.t0 + .4));
+  if (tis > 0) { let i = 0;
+    for (const c of CIRCLES) { const p = E.pop(prog(t, str.t0 + .95 + c.order * .045, str.t0 + 1.35 + c.order * .045)); i++;
+      if (p <= 0) continue; mctx.save(); mctx.globalAlpha = clamp(p * 2) * (1 - prog(t, ask.t0 - .1, ask.t0 + .4));
+      const ctr = mproj(c.ll); mctx.translate(ctr[0], ctr[1]); mctx.scale(p, p); mctx.translate(-ctr[0], -ctr[1]);
+      mctx.beginPath(); mpath(c.g); mctx.fillStyle = 'rgba(255,176,32,.55)'; mctx.fill(); mctx.lineWidth = 3; mctx.strokeStyle = '#12133A'; mctx.stroke(); mctx.restore(); } }
+  /* Africa */
+  const fade = 1 - .7 * prog(t, str.t0, str.t0 + .5) * (1 - prog(t, ask.t0, ask.t0 + .6));
+  const pulse = t > spare.t0 ? .75 + .25 * Math.sin((t - spare.t0) * 6) : 1;
+  glowShape(AFRICA, PAL.AFR, E.settle(prog(t, T.afr - .05, T.afr + .3)) * fade * pulse * (1 - cardOut));
+  label('Africa', mproj([18, 8]), lerp(84, 64, prog(t, ask.t0, ask.t0 + 1)), E.settle(prog(t, T.afr, T.afr + .35)) * (1 - prog(t, str.t0, str.t0 + .4)) * (1 - cardOut), -8);
+  /* Greenland: where the map puts it (a ghost), then carried to the equator at its true size */
+  const g0 = d3.geoCentroid(SHAPE.GRL), gl1 = SPEC.places.GRL, sp = E.inout(prog(t, T.slideA, T.slideB));
+  const gOut = 1 - prog(t, str.t0, str.t0 + .5);
+  const ghost = prog(t, T.slideA, T.slideA + .3) * gOut;
+  if (ghost > 0) { mctx.save(); mctx.globalAlpha = ghost; mctx.beginPath(); mpath(SHAPE.GRL); mctx.fillStyle = 'rgba(255,176,32,.16)'; mctx.fill(); mctx.setLineDash([16, 12]); mctx.lineWidth = 5; mctx.strokeStyle = '#B86E00'; mctx.stroke(); mctx.restore();
+    label('what the map shows', mproj([-40, 76]), 40, ghost * prog(t, T.slideA + .6, T.slideA + 1), -6, '#FFE3A8'); }
+  const here = d3.geoInterpolate(g0, [gl1.lon, gl1.lat])(sp);
+  const gg = sp > 0 ? mover(g0, here, (gl1.gam || 0) * sp)(SHAPE.GRL) : SHAPE.GRL;
+  glowShape(gg, PAL.GRL, E.settle(prog(t, T.grl - .05, T.grl + .3)) * gOut);
+  label('Greenland', mproj(here), lerp(76, 40, sp), E.settle(prog(t, T.grl, T.grl + .35)) * gOut, -8);
+  /* chips + ×14 */
+  pinChip(els.chipG, [gl1.lon, gl1.lat - 15], prog(t, size.t0 + .15, size.t0 + .5) * gOut, 0, -5);
+  pinChip(els.chipA, [21, -6], prog(t, size.t0 + .5, size.t0 + .85) * gOut, 0, 4);
+  { const p = prog(t, T.x14 - .05, T.x14 + .35); const xy = mproj([21, 41]);
+    els.x14.style.left = (xy[0] - els.x14.offsetWidth / 2) + 'px'; els.x14.style.top = (xy[1] - 90) + 'px';
+    css(els.x14, { op: clamp(p * 3) * gOut, s: lerp(2.2, 1, E.settle(p)), r: -8 + 4 * (1 - p) }); }
+  /* countries dropped into Africa */
+  for (const [k, P] of Object.entries(PLACED)) {
+    const p = prog(t, P.t, P.t + .4); if (p <= 0) continue;
+    const land = E.settle(p), xy = mproj(P.at), lift = (1 - land) * 160, sc = 1 + (1 - land) * .25;
+    mctx.save(); mctx.translate(xy[0], xy[1] - lift); mctx.scale(sc, sc); mctx.translate(-xy[0], -xy[1]);
+    const col = PAL[k === 'ALASKA' ? 'USA' : k], a = clamp(p * 2.5) * (1 - cardOut);
+    if (P.cut) {                                    /* China drawn without the part India's official map shows as India */
+      const off = OFF.getContext('2d'); off.setTransform(1, 0, 0, 1, 0, 0); off.clearRect(0, 0, W, H); off.setTransform(mctx.getTransform());
+      const op = d3.geoPath(mproj, off); off.shadowColor = col; off.shadowBlur = 30; off.beginPath(); op(P.g); off.fillStyle = col; off.fill();
+      off.shadowBlur = 0; off.lineJoin = 'round'; off.lineWidth = 3.5; off.strokeStyle = 'rgba(255,255,255,.9)'; off.stroke();
+      off.globalCompositeOperation = 'destination-out'; off.beginPath(); op(P.cut); off.fill(); off.globalCompositeOperation = 'source-over';
+      off.save(); off.beginPath(); op(P.g); off.clip(); off.beginPath(); op(P.cut); off.stroke(); off.restore();
+      mctx.save(); mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.globalAlpha = a; mctx.drawImage(OFF, 0, 0); mctx.restore();
+    } else glowShape(P.g, col, a, { blur: 30 });
+    mctx.restore();
+    if (k !== 'ALASKA') label(SPEC.names[k], [xy[0], xy[1] - lift], 56, E.settle(prog(t, P.t + .25, P.t + .6)) * (1 - cardOut), -4);
+  }
+  { const p = prog(t, str.t0 + .5, str.t0 + .9) * (1 - prog(t, ask.t0 - .1, ask.t0 + .3)); els.same.style.left = (540 - els.same.offsetWidth / 2) + 'px'; css(els.same, { op: clamp(p * 2), s: .7 + .3 * E.pop(p), r: -2 }); }
+  /* the meter */
+  const mt = E.settle(prog(t, ask.t0 + .6, ask.t0 + 1.1)) * (1 - cardOut);
+  css(els.meter, { op: mt, y: (1 - mt) * -40 });
+  for (const d of drops) { const s = els.segs[d.cca3]; if (!s) continue; const p = E.out(prog(t, d.t0 + .3, d.t0 + .75));
+    s.s.style.transform = `scaleX(${p})`; css(s.lab, { op: clamp(p * 2), s: .8 + .2 * p }); s.lab.style.transform += ' translateX(-50%)'; s.lab.style.transform = `translateX(-50%) scale(${.8 + .2 * p})`; }
+  { const p = E.pop(prog(t, spare.t0 + .2, spare.t0 + .6)); els.spare.style.opacity = clamp(p * 2); els.spare.style.transform = `translateX(-50%) scale(${.6 + .4 * p})`; }
+  /* hook title */
+  const hp = E.pop(prog(t, .15, .6)), ho = E.in(prog(t, cmp.t0 - .2, cmp.t0 + .15));
+  css(els.title, { op: clamp(hp * 2) * (1 - ho), s: .8 + .2 * hp, y: -ho * 40, blur: ho * 10 });
+  /* the globe at the end */
+  const ou = t - outro.t0, gIn = E.settle(prog(ou, -.1, 1.0));
+  drawEarth({ cx: 540, cy: lerp(980, 860, gIn), r: lerp(1300, 430, gIn), lon: lerp(17, 30, gIn) + Math.sin(t * .15) * .6 + ou * 1.5, lat: lerp(2, 14, gIn), alpha: gIn * (1 - .55 * E.inout(prog(ou, .4, 1.2))), africa: 1 - prog(ou, .6, 1.2) });
+  css(els.wm, { op: E.settle(prog(ou, .5, 1.1)), y: (1 - E.settle(prog(ou, .5, 1.1))) * 50 });
+  const pp = E.pop(prog(ou, .9, 1.3)); css(els.pill, { op: clamp(pp * 2), s: .7 + .3 * pp });
+  css(els.sub, { op: E.settle(prog(ou, 1.2, 1.7)), y: (1 - E.settle(prog(ou, 1.2, 1.7))) * 20 });
+  /* captions */
+  let chunk = null; for (const ch of CAPS) if (t >= ch[0].t0 - .02 && t < ch[ch.length - 1].t1 + .25) chunk = ch;
+  if (chunk) { const p = E.pop(prog(t, chunk[0].t0 - .02, chunk[0].t0 + .18));
+    els.cap.innerHTML = chunk.map((w) => `<span class="w${t >= w.t0 - .02 && t < w.t1 + .1 ? ' on' : ''}">${esc(w.w)}</span>`).join(' ');
+    css(els.cap, { op: 1, s: .88 + .12 * p }); els.cap.style.top = (t >= outro.t0 ? 1352 : 1600) + 'px'; }
+  else css(els.cap, { op: 0 });
+}
+
+/* ---------- entry ---------- */
+let CIRCLES = [], OFF;
+window.setup = async ({ spec, timing, site }) => {
+  SPEC = { ...spec, site }; TIM = timing;
+  await loadData();
+  const img = new Image(); img.src = 'assets/earth-blue-marble.jpg'; await img.decode(); initGL(img); MERC = mercatorRaster(img);
+  OFF = document.createElement('canvas'); OFF.width = W; OFF.height = H;
+  for (const lat of [-60, -30, 0, 30, 60, 75]) for (const lon of [-90, -50, -10, 30, 70])
+    CIRCLES.push({ ll: [lon, lat], g: d3.geoCircle().center([lon, lat]).radius(4.5)(), order: Math.abs(lat) / 15 + (lon + 90) / 200 });
+  CIRCLES.sort((a, b) => a.order - b.order); CIRCLES.forEach((c, i) => (c.order = i * .5));
+  let seed = 11; const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  STARS = Array.from({ length: 200 }, () => ({ x: R() * W, y: R() * 2000, z: .2 + R() * .8, ph: R() * 6.28, sz: R() }));
+  await Promise.all(["800 92px 'Baloo 2'", "700 50px 'Baloo 2'", "700 60px Kalam", "600 38px Mukta"].map((f) => document.fonts.load(f)));
+  buildTimeline(); buildUI();
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+  return { dur: DUR, sfx: SFX };
+};
+window.seek = seek;
+</script>
+</body></html>

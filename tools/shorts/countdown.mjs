@@ -36,7 +36,7 @@ const GL_ARGS = process.platform === "linux" ? ["--use-angle=swiftshader", "--en
 const browser = await chromium.launch({ args: GL_ARGS });
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
 const errors = []; page.on("pageerror", (e) => errors.push(String(e))); page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-await page.goto(`http://127.0.0.1:${server.address().port}/tools/shorts/countdown.html`);
+await page.goto(`http://127.0.0.1:${server.address().port}/tools/shorts/${spec.page || "countdown.html"}`);  /* explainers use explainer.html */
 const { dur, sfx } = await page.evaluate((a) => window.setup(a), { spec, timing, site });
 const stage = page.locator("#stage");
 
