@@ -178,7 +178,8 @@ def tighten(clip, floor, max_pause):
 
 
 def fade(c, i=.012, o=.04):
-    c = c.copy(); ni, no = int(i * SR), int(o * SR)
+    c = c.copy(); ni, no = min(int(i * SR), len(c) // 2), min(int(o * SR), len(c) // 2)
+    if not ni or not no: return c
     c[:ni] *= np.linspace(0, 1, ni); c[-no:] *= np.linspace(1, 0, no)
     return c
 
@@ -220,6 +221,8 @@ def main(argv):
     files = [pathlib.Path(a).expanduser() for a in args[1:]]
     if not files: sys.exit("Give the script and at least one recording: voice.py <script.json> take.m4a")
     out = pathlib.Path(opt("out", HERE / "out")); out.mkdir(parents=True, exist_ok=True)
+    for old in (f"{spec['id']}.voice.wav", f"{spec['id']}.timing.json"):   # never leave an older voice for the render to pick up
+        (out / old).unlink(missing_ok=True)
     script = spec["script"]
     display = [l["say"].split() for l in script]
     S_lines, S_owner = [], []
@@ -261,6 +264,8 @@ def main(argv):
         lo = max([s[2] for s in same if s[2] <= spans[i][1]] + [0]) + .02
         hi = min([s[1] for s in same if s[1] >= spans[i][2]] + [len(y) / SR]) - .05
         c0, c1 = refine(y, env, floor, spans[i][1], spans[i][2], lo, hi)
+        odd = c1 - c0 < .15
+        if odd: c0, c1 = max(0, spans[i][1] - .05), min(len(y) / SR, spans[i][2] + .12)   # neighbours' times crossed: trust Whisper's span
         clip, remap = tighten(y[int(c0 * SR):int(c1 * SR)], floor, max_pause)
         clip = fade(clip)
         pre = script[i].get("pauseBefore", 0)
@@ -271,7 +276,7 @@ def main(argv):
                       "words": [{"w": w, "t0": round(t + min(d, remap(a - c0)), 3), "t1": round(t + min(d, remap(b - c0)), 3)} for w, (a, b) in zip(display[i], wt)]})
         post = GAP + script[i].get("pauseAfter", 0)
         voice += [clip, np.zeros(int(post * SR), np.float32)]; t += d + post
-        warn = "   ← check this one, Whisper only matched part of it" if ch["ratio"] < .85 else ""
+        warn = "   ← check this one, Whisper only matched part of it" if ch["ratio"] < .85 else "   ← check this one, its edges were unclear" if odd else ""
         report.append(f"{i + 1:2d}. take {ch['take']} of {ch['takes']}{f' in {files[fi].name}' if len(files) > 1 else ''} · "
                       f"{int(c0 // 60)}:{c0 % 60:05.2f} · {d:4.1f}s · {round(ch['ratio'] * 100)}% · {script[i]['say']}{warn}")
 
