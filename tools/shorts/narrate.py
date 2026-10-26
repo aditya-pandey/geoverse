@@ -35,7 +35,19 @@ def ensure_models():
     for f in FILES:
         p = MODELS / f
         if not p.exists() or p.stat().st_size < 1_000_000:
-            print('downloading', f); urllib.request.urlretrieve(REL + f, p)
+            print('downloading', f); fetch(REL + f, p)
+
+
+def fetch(url, dest):
+    """Download with certifi's certificates when they're there (python.org's Python on a Mac ships without any)."""
+    import ssl, shutil
+    try:
+        import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ctx = None
+    tmp = dest.with_suffix(dest.suffix + '.part')
+    with urllib.request.urlopen(url, context=ctx) as r, open(tmp, 'wb') as f: shutil.copyfileobj(r, f)
+    tmp.rename(dest)
 
 
 def trim(a, thresh=0.01):
