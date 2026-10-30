@@ -68,14 +68,23 @@ def aerial(box):
     except Exception as e: print("   BD ORTHO (France) failed:", str(e)[:160])
     if es is None and fr is None: raise RuntimeError("no aerial source answered")
     if es is None or fr is None: return es or fr
-    a, b = np.asarray(es).astype(np.int16), np.asarray(fr).astype(np.int16)
+    a, b = np.asarray(es).astype(np.float32), np.asarray(fr).astype(np.float32)
     def empty(img):                      # "no data" shows up as flat white or flat black
         return (img.min(2) > 247) | (img.max(2) < 6)
     e, f = empty(a), empty(b)
-    use_fr = e & ~f
-    # soften the seam a little
-    out = np.where(use_fr[..., None], b, a).astype(np.uint8)
-    print(f"   combined: {100 * use_fr.mean():.0f}% from France, {100 * (1 - use_fr.mean()):.0f}% from Spain")
+    both = ~e & ~f
+    if both.sum() > 2000:                # the two agencies grade their photos differently: match France's colours to Spain's
+        for c in range(3):
+            ma, sa, mb, sb = a[..., c][both].mean(), a[..., c][both].std() + 1e-3, b[..., c][both].mean(), b[..., c][both].std() + 1e-3
+            b[..., c] = (b[..., c] - mb) / sb * sa + ma
+    m = (e & ~f).astype(np.float32)
+    k = 9                                 # feather the join over ~20 px
+    for ax in (0, 1):
+        cs = np.cumsum(np.pad(m, [(k + 1, k) if i == ax else (0, 0) for i in (0, 1)], mode="edge"), axis=ax)
+        m = (np.take(cs, range(2 * k + 1, cs.shape[ax]), axis=ax) - np.take(cs, range(0, cs.shape[ax] - 2 * k - 1), axis=ax)) / (2 * k + 1)
+    m = np.where(e & ~f, 1, np.where(f, 0, m))[..., None]
+    out = np.clip(a * (1 - m) + b * m, 0, 255).astype(np.uint8)
+    print(f"   combined: {100 * (e & ~f).mean():.0f}% from France, the rest from Spain")
     return Image.fromarray(out)
 
 
@@ -118,9 +127,26 @@ def main(path):
         print("   outline failed, using the story's coordinates:", str(e)[:200])
         (out / "outline.geojson").unlink(missing_ok=True)
     man["center"] = [lon, lat]
-    def sat_or_aerial(box):                 # Sentinel-2 cloudless when EOX answers, otherwise the official aerial photos
-        try: return wms("https://tiles.maps.eox.at/wms", "s2cloudless", box, "1.1.1")
-        except Exception as e: print("   Sentinel-2 failed, using aerial photos:", str(e)[:120]); return aerial(box)
+    def sentinel(box):                     # EOX serves lat/lon; re-grid rows to Web Mercator
+        import numpy as np
+        from PIL import Image
+        (lo0, la0), (lo1, la1) = unmerc(box[0], box[1]), unmerc(box[2], box[3])
+        q = {"service": "WMS", "request": "GetMap", "version": "1.1.1", "layers": "s2cloudless", "styles": "", "srs": "EPSG:4326",
+             "bbox": f"{lo0},{la0},{lo1},{la1}", "width": W, "height": H, "format": "image/jpeg"}
+        body, ctype = get("https://tiles.maps.eox.at/wms?" + urllib.parse.urlencode(q))
+        if not ctype.startswith("image"): raise RuntimeError(body[:300].decode("utf8", "replace"))
+        src = np.asarray(Image.open(io.BytesIO(body)).convert("RGB"))
+        ys = np.linspace(box[3], box[1], H)                       # mercator y of each output row (top to bottom)
+        lat = np.degrees(np.arctan(np.sinh(ys / R)))
+        rows = np.clip(((la1 - lat) / (la1 - la0) * (H - 1)).round().astype(int), 0, H - 1)
+        return Image.fromarray(src[rows])
+    def nasa(box):                          # NASA Blue Marble Next Generation, 500 m, public domain
+        return wms("https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi", "BlueMarble_NextGeneration", box)
+    def sat_or_aerial(box):
+        for name, fn in (("Sentinel-2", sentinel), ("NASA", nasa), ("aerial photos", aerial)):
+            try: return fn(box)
+            except Exception as e: print(f"   {name} failed:", str(e)[:160])
+        raise RuntimeError("no imagery source answered")
     for i, (name, width, fn) in enumerate([("wide", 250000, sat_or_aerial), ("regional", 40000, sat_or_aerial), ("local", 2400, aerial), ("close", 550, aerial)]):
         print(f"{i + 2}/5 {name} ({width / 1000:g} km wide)…")
         try:

@@ -89,6 +89,7 @@ async function loadData() {
   PLACE = { center: MAN.center || [SPEC.place.lon, SPEC.place.lat] };
   for (const L of MAN.layers || []) { const img = await loadImg(base + L.file); if (img) LAYERS[L.name] = { ...L, img: feather(img, L.name === 'wide' || L.name === 'regional' ? .16 : .1) }; }
   OUTLINE = outl ? outl.geometry : fallbackIsland();
+  if (d3.geoArea(OUTLINE) > 2 * PI) OUTLINE = { type: 'Polygon', coordinates: OUTLINE.coordinates.map((r) => [...r].reverse()) };   /* OSM winds rings the other way round */
   /* the island's long axis, for laying out flags, rulers and pitches */
   const ring = OUTLINE.coordinates[0], c = PLACE.center, k = Math.cos(c[1] * RAD);
   const pts = ring.map((p) => [(p[0] - c[0]) * 111320 * k, (p[1] - c[1]) * 110540]);
@@ -97,7 +98,8 @@ async function loadData() {
   const proj = pts.map(([x, y]) => x * Math.cos(ang) + y * Math.sin(ang));
   PLACE.axisBearing = 90 - ang / RAD; PLACE.half = (Math.max(...proj) - Math.min(...proj)) / 2;
   PLACE.mid = Math.min(...proj) + PLACE.half;
-  for (const f of ['es', 'fr']) FLAG[f] = await loadImg(`node_modules/flag-icons/flags/4x3/${f}.svg`);
+  for (const f of ['es', 'fr']) { const im = await loadImg(`node_modules/flag-icons/flags/4x3/${f}.svg`), c = document.createElement('canvas');
+    c.width = 640; c.height = 480; c.getContext('2d').drawImage(im, 0, 0, 640, 480); FLAG[f] = c; }   /* bitmap, so the waving slices sample correctly */
   for (const n of ['soldier_es', 'soldier_fr', 'diplomat_es', 'diplomat_fr', 'viceroy_es', 'viceroy_fr'])
     CHAR[n] = (await loadImg(`assets/chars/${n}.png`))?.src || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(chibi(n));
 }
@@ -386,7 +388,7 @@ function seek(t) {
   const A = { countries: (1 - prog(t, dive.t0 + .4, dive.t0 + 1.2)) * prog(t, .2, 1.0) + E.inout(prog(t, war.t0 + .3, war.t0 + 1.1)) * (1 - prog(t, peace.t0 + .2, peace.t0 + .9)),
     dim: .1 + .25 * prog(t, war.t0 + .2, war.t0 + 1) * (1 - prog(t, peace.t0, peace.t0 + .6)),
     island: E.settle(prog(t, dive.t1 - .6, dive.t1)) * (1 - prog(t, war.t0 + .3, war.t0 + .8) * (1 - prog(t, peace.t0 + 1.4, peace.t0 + 1.9))),
-    flag: isFr ? 'fr' : 'es', flagFill: E.inout(prog(t, spain.t0, spain.t0 + .5)) * (1 - .9 * Math.sin(PI * flipP)) };
+    flag: isFr ? 'fr' : 'es', flagFill: E.inout(prog(t, spain.t0, spain.t0 + .5)) * (1 - .9 * Math.sin(PI * flipP)) * (1 - .75 * prog(t, size.t0 + 1.2, size.t0 + 1.5) * (1 - prog(t, viceroys.t0, viceroys.t0 + .4))) };
   drawMap(t, A);
   $('#map').style.opacity = 1 - outP; $('#map').style.visibility = outP >= 1 ? 'hidden' : 'visible';
   const ctr = scr(PLACE.center);
@@ -405,18 +407,18 @@ function seek(t) {
     put(els.len, [(p1[0] + p2[0]) / 2 + n[0] * 70, (p1[1] + p2[1]) / 2 + n[1] * 70]); css(els.len, { op: clamp(prog(t, size.t0 + 1.0, size.t0 + 1.3) * 2) * (rp > 0 ? 1 : 0), s: .7 + .3 * E.pop(prog(t, size.t0 + 1.0, size.t0 + 1.4)), r: -4 });
     /* two pitches end to end, to scale, laid on the water on the other side */
     for (let k = 0; k < 2; k++) { const pk = E.pop(prog(t, size.t0 + 1.4 + k * .4, size.t0 + 1.8 + k * .4)); if (pk <= 0) continue;
-      const along0 = PLACE.mid - 105 + k * 105, side = -1, mid = offset(offset(c, ab, along0 + 52.5), ab + 90 * side, 85);
+      const mid = offset(c, ab, PLACE.mid - 52.5 + k * 105);                                     /* laid over the island itself */
       const corner = (dx, dy) => scr(offset(offset(mid, ab, dx), ab + 90, dy));
       mctx.save(); mctx.globalAlpha = clamp(pk * 2) * (1 - prog(t, viceroys.t0, viceroys.t0 + .4)); mctx.strokeStyle = '#fff'; mctx.lineWidth = 4; mctx.fillStyle = 'rgba(61,170,90,.55)';
       const pts = [corner(-52.5, -34), corner(52.5, -34), corner(52.5, 34), corner(-52.5, 34)];
       mctx.beginPath(); pts.forEach(([x, y], i) => (i ? mctx.lineTo(x, y) : mctx.moveTo(x, y))); mctx.closePath(); mctx.fill(); mctx.stroke();
       const m1 = corner(0, -34), m2 = corner(0, 34); mctx.beginPath(); mctx.moveTo(m1[0], m1[1]); mctx.lineTo(m2[0], m2[1]); mctx.stroke();
       const cc = corner(0, 0); mctx.beginPath(); mctx.arc(cc[0], cc[1], 9.15 * CAM.s / Math.cos(c[1] * RAD), 0, 6.283); mctx.stroke(); mctx.restore(); }
-    const pc = scr(offset(offset(c, ab, PLACE.mid), ab - 90, 85)); put(els.pitch, [pc[0], pc[1] + 120]);
+    const pc = scr(offset(c, ab, PLACE.mid)); put(els.pitch, [pc[0] - n[0] * 150, pc[1] - n[1] * 150]);
     css(els.pitch, { op: clamp(prog(t, size.t0 + 2.2, size.t0 + 2.5) * 2) * (1 - prog(t, viceroys.t0, viceroys.t0 + .4)), s: .7 + .3 * E.pop(prog(t, size.t0 + 2.2, size.t0 + 2.6)), r: 3 });
   } else hide(els.len, els.pitch);
   /* labels on the map */
-  const labA = clamp(prog(t, dive.t0 + 1.0, dive.t0 + 1.8)) * (1 - prog(t, spain.t0 - .2, spain.t0 + .2)) ;
+  const labA = clamp(prog(t, dive.t0 + 1.0, dive.t0 + 1.8)) * (1 - prog(t, spain.t0 - .2, spain.t0 + .2)) * smooth(C.wkm, 14, 6);
   const dist = C.wkm * 1000 * .3, fb = SPEC.place.frenchBank || 40;
   put(els.fr, scr(offset(PLACE.center, fb, dist))); put(els.es, scr(offset(PLACE.center, fb + 180, dist)));
   css(els.fr, { op: clamp(labA) * .95 * (1 - outP), r: -6 }); css(els.es, { op: clamp(labA) * .95 * (1 - outP), r: -6 });

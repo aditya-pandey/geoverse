@@ -94,6 +94,12 @@ def chatterbox_voice(spec, ref):
     _load = torch.load
     torch.load = lambda *a, **kw: _load(*a, **{'map_location': torch.device(dev), **kw})   # checkpoints were saved on CUDA
     from chatterbox.tts import ChatterboxTTS
+    import perth
+    if getattr(perth, 'PerthImplicitWatermarker', None) is None:          # its import needs setuptools; fall back rather than crash
+        print('  (watermarker unavailable: pip install "setuptools<81" to restore it)')
+        class _NoMark:
+            def apply_watermark(self, wav, sample_rate=None): return wav
+        perth.PerthImplicitWatermarker = _NoMark
     try:
         model = ChatterboxTTS.from_pretrained(device=dev)
     except Exception as e:
