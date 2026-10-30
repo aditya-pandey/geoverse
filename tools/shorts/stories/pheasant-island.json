@@ -13,24 +13,75 @@
   "place": {
     "slug": "pheasant-island",
     "name": "Pheasant Island",
-    "lat": 43.3390,
-    "lon": -1.7590,
-    "osm": "Faisan|Pheasant|Konpantzia|Conférence|Conferencia",
+    "lat": 43.339,
+    "lon": -1.759,
+    "osm": "Faisan|Pheasant|Konpantzi",
     "frenchBank": 40,
     "lengthM": 210
   },
   "credit": "Aerial: PNOA © IGN España · BD ORTHO © IGN France · Sentinel-2 cloudless by EOX · © OpenStreetMap",
   "script": [
-    { "say": "This island changes country every six months.", "scene": "hook" },
-    { "say": "It's called Pheasant Island, in the river between France and Spain.", "scene": "dive", "pauseAfter": 0.5 },
-    { "say": "From February to July, it's Spanish.", "scene": "spain", "pauseAfter": 0.5 },
-    { "say": "From August to January, it's French.", "scene": "france", "pauseAfter": 0.6 },
-    { "say": "Why? In 1659, these two countries had been at war for twenty-four years.", "scene": "war", "pauseAfter": 0.4 },
-    { "say": "And they signed peace right here, on this island.", "scene": "peace", "pauseAfter": 0.6 },
-    { "say": "An island about two hundred meters long.", "scene": "size", "pauseAfter": 0.5 },
-    { "say": "Today it belongs to both, and each side sends a naval officer to govern it.", "scene": "viceroys", "pauseAfter": 0.3 },
-    { "say": "They're called viceroys.", "scene": "title", "pauseAfter": 0.3 },
-    { "say": "Viceroys of an island where nobody lives.", "scene": "punch", "pauseAfter": 0.8 },
-    { "say": "Spin the globe yourself, on Bhoogol.", "scene": "outro" }
-  ]
+    {
+      "say": "This island changes country every six months.",
+      "scene": "hook"
+    },
+    {
+      "say": "It's called Pheasant Island, in the river between France and Spain.",
+      "scene": "dive",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "From February to July, it's Spanish.",
+      "scene": "spain",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "From August to January, it's French.",
+      "scene": "france",
+      "pauseAfter": 0.6
+    },
+    {
+      "say": "Why? In 1659, these two countries had been at war for twenty-four years.",
+      "scene": "war",
+      "pauseAfter": 0.4,
+      "speakNatural": "Why? In sixteen fifty-nine, these two countries had been at war for twenty-four years.",
+      "speak": "Why? In sixteen fifty-nine, these two countries had been at war for twenty-four years."
+    },
+    {
+      "say": "And they signed peace right here, on this island.",
+      "scene": "peace",
+      "pauseAfter": 0.6
+    },
+    {
+      "say": "An island about two hundred meters long.",
+      "scene": "size",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "Today it belongs to both, and each side sends a naval officer to govern it.",
+      "scene": "viceroys",
+      "pauseAfter": 0.3
+    },
+    {
+      "say": "They're called viceroys.",
+      "scene": "title",
+      "pauseAfter": 0.3
+    },
+    {
+      "say": "Viceroys of an island where nobody lives.",
+      "scene": "punch",
+      "pauseAfter": 0.8
+    },
+    {
+      "say": "Spin the globe yourself, on Bhoogol.",
+      "scene": "outro",
+      "speakNatural": "Spin the globe yourself, on Boo-goal."
+    }
+  ],
+  "natural": {
+    "exaggeration": 0.6,
+    "cfg": 0.4,
+    "temperature": 0.75,
+    "seed": 7
+  }
 }

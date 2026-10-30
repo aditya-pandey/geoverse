@@ -87,7 +87,7 @@ async function loadData() {
     if (g.type === 'MultiPolygon') g.coordinates = g.coordinates.filter((p) => { const ce = d3.geoCentroid({ type: 'Polygon', coordinates: p }); return ce[0] > -12 && ce[0] < 12 && ce[1] > 35 && ce[1] < 52; }); }
   if (man) MAN = man;
   PLACE = { center: MAN.center || [SPEC.place.lon, SPEC.place.lat] };
-  for (const L of MAN.layers || []) { const img = await loadImg(base + L.file); if (img) LAYERS[L.name] = { ...L, img: feather(img, L.name === 'regional' ? .16 : .1) }; }
+  for (const L of MAN.layers || []) { const img = await loadImg(base + L.file); if (img) LAYERS[L.name] = { ...L, img: feather(img, L.name === 'wide' || L.name === 'regional' ? .16 : .1) }; }
   OUTLINE = outl ? outl.geometry : fallbackIsland();
   /* the island's long axis, for laying out flags, rulers and pitches */
   const ring = OUTLINE.coordinates[0], c = PLACE.center, k = Math.cos(c[1] * RAD);
@@ -263,7 +263,8 @@ function drawMap(t, A) {
   const w = CAM.wkm;
   /* Blue Marble, then Sentinel-2, then aerial photos as the camera comes down */
   geoImage(BM, -PI * R, -PI * R, PI * R, PI * R, 1);
-  if (LAYERS.regional) LAYERS.regional.a = smooth(w, 700, 160), layer(LAYERS.regional);
+  if (LAYERS.wide) LAYERS.wide.a = smooth(w, 1600, 420), layer(LAYERS.wide);
+  if (LAYERS.regional) LAYERS.regional.a = smooth(w, 230, 60), layer(LAYERS.regional);
   const loc = LAYERS.local, clo = LAYERS.close;
   if (loc) loc.a = smooth(w, 30, 7), layer(loc); else illustration(smooth(w, 30, 7));
   if (clo) clo.a = smooth(w, 3.2, 1.4), layer(clo);

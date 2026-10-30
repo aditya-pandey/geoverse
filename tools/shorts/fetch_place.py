@@ -5,7 +5,7 @@
 
 Reads the story's "place" (lat, lon, slug, osm name pattern) and writes assets/places/<slug>/:
   outline.geojson   the place's exact shape from OpenStreetMap (also re-centres everything on it)
-  regional.jpg      Sentinel-2 cloudless 2016 (EOX, CC BY 4.0), ~40 km wide
+  wide.jpg, regional.jpg   Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) or aerial photos, ~250 and ~40 km wide
   local.jpg         official aerial photo, ~2.4 km wide
   close.jpg         official aerial photo, ~0.55 km wide
   manifest.json     where each image sits on the map (the video page reads this)
@@ -80,24 +80,26 @@ def aerial(box):
 
 
 def outline(place):
+    """The place's exact shape from OpenStreetMap: a closed outline whose name matches, within 2 km of the given point."""
     lat, lon, d = place["lat"], place["lon"], 0.03
     q = f"""[out:json][timeout:30];
 (way["name"~"{place['osm']}",i]({lat - d},{lon - d},{lat + d},{lon + d});
- relation["name"~"{place['osm']}",i]({lat - d},{lon - d},{lat + d},{lon + d}););
+ way["name:en"~"{place['osm']}",i]({lat - d},{lon - d},{lat + d},{lon + d});
+ way["place"="islet"]({lat - d},{lon - d},{lat + d},{lon + d}););
 out geom;"""
     body, _ = get("https://overpass-api.de/api/interpreter", data=urllib.parse.urlencode({"data": q}).encode())
-    els = json.loads(body)["elements"]
     best = None
-    for el in els:
-        rings = []
-        if el["type"] == "way" and el.get("geometry"): rings = [[[p["lon"], p["lat"]] for p in el["geometry"]]]
-        if el["type"] == "relation":
-            rings = [[[p["lon"], p["lat"]] for p in m["geometry"]] for m in el.get("members", []) if m.get("role") == "outer" and m.get("geometry")]
-        for ring in rings:
-            if len(ring) < 4 or ring[0] != ring[-1]: continue
-            n = len(ring) if best is None else len(best["ring"])
-            if best is None or len(ring) > n: best = {"ring": ring, "name": el.get("tags", {}).get("name", "")}
-    if not best: raise RuntimeError(f"no closed outline named like {place['osm']!r} near {lat},{lon}")
+    for el in json.loads(body)["elements"]:
+        g = el.get("geometry") or []
+        ring = [[p["lon"], p["lat"]] for p in g]
+        if len(ring) < 4 or ring[0] != ring[-1]: continue
+        cx, cy = sum(p[0] for p in ring[:-1]) / (len(ring) - 1), sum(p[1] for p in ring[:-1]) / (len(ring) - 1)
+        km = math.hypot((cx - lon) * 111.3 * math.cos(math.radians(lat)), (cy - lat) * 110.5)
+        tags = el.get("tags", {}); named = any(__import__("re").search(place["osm"], tags.get(k, ""), __import__("re").I) for k in ("name", "name:en", "name:es", "name:fr", "name:eu"))
+        if km > 2: continue
+        score = (2 if named else 0) + (1 if tags.get("place") == "islet" else 0) - km / 10
+        if best is None or score > best["score"]: best = {"ring": ring, "name": tags.get("name", ""), "score": score, "km": km}
+    if not best: raise RuntimeError(f"no outline named like {place['osm']!r} within 2 km of {lat},{lon}")
     return best
 
 
@@ -106,18 +108,21 @@ def main(path):
     out = HERE / "assets" / "places" / place["slug"]; out.mkdir(parents=True, exist_ok=True)
     man = {"layers": [], "credit": story.get("credit", "")}
     lon, lat = place["lon"], place["lat"]
-    print("1/4 outline from OpenStreetMap…")
+    print("1/5 outline from OpenStreetMap…")
     try:
         o = outline(place); ring = o["ring"]
         lon = sum(p[0] for p in ring[:-1]) / (len(ring) - 1); lat = sum(p[1] for p in ring[:-1]) / (len(ring) - 1)
         (out / "outline.geojson").write_text(json.dumps({"type": "Feature", "properties": {"name": o["name"]}, "geometry": {"type": "Polygon", "coordinates": [ring]}}))
-        print(f"   found “{o['name']}” · centre {lat:.5f}, {lon:.5f}")
+        print(f"   found “{o['name']}” {o['km']:.2f} km from the given point · centre {lat:.5f}, {lon:.5f}")
     except Exception as e:
         print("   outline failed, using the story's coordinates:", str(e)[:200])
+        (out / "outline.geojson").unlink(missing_ok=True)
     man["center"] = [lon, lat]
-    for i, (name, width, fn) in enumerate([("regional", 40000, lambda b: wms("https://tiles.maps.eox.at/wms", "s2cloudless", b, "1.1.1")),
-                                           ("local", 2400, aerial), ("close", 550, aerial)]):
-        print(f"{i + 2}/4 {name} ({width / 1000:g} km wide)…")
+    def sat_or_aerial(box):                 # Sentinel-2 cloudless when EOX answers, otherwise the official aerial photos
+        try: return wms("https://tiles.maps.eox.at/wms", "s2cloudless", box, "1.1.1")
+        except Exception as e: print("   Sentinel-2 failed, using aerial photos:", str(e)[:120]); return aerial(box)
+    for i, (name, width, fn) in enumerate([("wide", 250000, sat_or_aerial), ("regional", 40000, sat_or_aerial), ("local", 2400, aerial), ("close", 550, aerial)]):
+        print(f"{i + 2}/5 {name} ({width / 1000:g} km wide)…")
         try:
             box = bbox(lon, lat, width); img = fn(box)
             img.save(out / f"{name}.jpg", quality=90)
@@ -127,7 +132,7 @@ def main(path):
         except Exception as e:
             print(f"   {name} failed:", str(e)[:200])
     (out / "manifest.json").write_text(json.dumps(man, indent=1))
-    print(f"\n✓ {out}  ·  {len(man['layers'])} of 3 images" + ("" if len(man["layers"]) == 3 else "  (the video draws an illustrated map where one is missing)"))
+    print(f"\n✓ {out}  ·  {len(man['layers'])} of 4 images" + ("" if len(man["layers"]) == 4 else "  (the video draws an illustrated map where one is missing)"))
 
 
 if __name__ == "__main__":
