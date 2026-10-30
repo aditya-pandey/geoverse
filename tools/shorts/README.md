@@ -97,3 +97,18 @@ node countdown.mjs explainers/africa-true-size.json
 
 The scene page is `explainer.html` (the script's `"page"`). Each line's `scene` (hook, compare, slide, size, stretch, ask, drop, spare, outro) tells the page what to show. Where the countries land inside Africa (`"places"`) was found by a search in an equal-area projection: every shape keeps its true size and only moves or turns.
 
+## Stories (narrated map stories in the history-Shorts style)
+
+A satellite map that dives from a continent down to one place, countries flooded with colour, little characters on the map, big years and stamps. Script in `stories/`, scene page `story.html`.
+
+```sh
+pip3 install pillow numpy certifi
+python3 fetch_place.py stories/pheasant-island.json      # real aerial photos + the exact outline (run on the Mac: needs open internet)
+python3 cutout.py                                        # optional: cut out character images you made into assets/chars/raw/
+python3 voice.py stories/pheasant-island.json ~/Downloads/<memo>.m4a --tempo 1.1 && node countdown.mjs stories/pheasant-island.json
+```
+
+`fetch_place.py` saves to `assets/places/<slug>/`: an outline from OpenStreetMap, a Sentinel-2 view (EOX, CC BY 4.0) and two aerial photos from Spain's PNOA (IGN España, CC BY 4.0) merged with France's BD ORTHO (IGN France, Licence Ouverte). Without them the page draws an illustrated map, so previews still work. Put the credit line from the story JSON in the video description.
+
+Characters: the page draws simple chibis. Rendered ones in `assets/chars/<name>.png` (transparent) replace them automatically: `soldier_es`, `soldier_fr`, `diplomat_es`, `diplomat_fr`, `viceroy_es`, `viceroy_fr`.
+

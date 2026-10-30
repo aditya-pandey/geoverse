@@ -1,0 +1,36 @@
+{
+  "id": "bhoogol-story-pheasant-island",
+  "page": "story.html",
+  "title": "This island changes country every 6 months",
+  "voice": "am_michael",
+  "music": "bed_bright.m4a",
+  "sources": [
+    "Spain 1 Feb – 31 Jul, France 1 Aug – 31 Jan; governed by a naval officer from each side, called viceroys; uninhabited and closed to the public; Treaty of the Pyrenees signed on the island 7 Nov 1659 after 24 meetings, ending a war begun in 1635; about 210 m long and 40 m wide: Connexion France, 'The tiny Basque island that is both French and Spanish' (https://www.connexionfrance.com/article/Mag/Explore-France/The-tiny-Basque-island-that-is-both-French-and-Spanish)",
+    "Spain February–July, France August–January; uninhabited, closed to the public: idealista, 'The island between Spain and France that changes countries every six months' (2025)",
+    "Joint status formalised in the Treaty of Bayonne, 1856 (Connexion). So the script dates the peace (1659), not the six-month swap",
+    "Aerial photos: PNOA © Instituto Geográfico Nacional de España (CC BY 4.0); BD ORTHO © IGN France (Licence Ouverte); Sentinel-2 cloudless 2016 by EOX IT Services GmbH (CC BY 4.0, contains modified Copernicus Sentinel data). Island outline © OpenStreetMap contributors (ODbL)"
+  ],
+  "place": {
+    "slug": "pheasant-island",
+    "name": "Pheasant Island",
+    "lat": 43.3390,
+    "lon": -1.7590,
+    "osm": "Faisan|Pheasant|Konpantzia|Conférence|Conferencia",
+    "frenchBank": 40,
+    "lengthM": 210
+  },
+  "credit": "Aerial: PNOA © IGN España · BD ORTHO © IGN France · Sentinel-2 cloudless by EOX · © OpenStreetMap",
+  "script": [
+    { "say": "This island changes country every six months.", "scene": "hook" },
+    { "say": "It's called Pheasant Island, in the river between France and Spain.", "scene": "dive", "pauseAfter": 0.5 },
+    { "say": "From February to July, it's Spanish.", "scene": "spain", "pauseAfter": 0.5 },
+    { "say": "From August to January, it's French.", "scene": "france", "pauseAfter": 0.6 },
+    { "say": "Why? In 1659, these two countries had been at war for twenty-four years.", "scene": "war", "pauseAfter": 0.4 },
+    { "say": "And they signed peace right here, on this island.", "scene": "peace", "pauseAfter": 0.6 },
+    { "say": "An island about two hundred meters long.", "scene": "size", "pauseAfter": 0.5 },
+    { "say": "Today it belongs to both, and each side sends a naval officer to govern it.", "scene": "viceroys", "pauseAfter": 0.3 },
+    { "say": "They're called viceroys.", "scene": "title", "pauseAfter": 0.3 },
+    { "say": "Viceroys of an island where nobody lives.", "scene": "punch", "pauseAfter": 0.8 },
+    { "say": "Spin the globe yourself, on Bhoogol.", "scene": "outro" }
+  ]
+}
