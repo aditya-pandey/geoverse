@@ -73,9 +73,9 @@
       "pauseAfter": 0.8
     },
     {
-      "say": "Spin the globe yourself, on Bhoogol.",
+      "say": "Follow Bhoogol for more stories like this.",
       "scene": "outro",
-      "speakNatural": "Spin the globe yourself, on Boo-goal."
+      "speakNatural": "Follow Boo-goal for more stories like this."
     }
   ],
   "natural": {
@@ -83,5 +83,9 @@
     "cfg": 0.4,
     "temperature": 0.75,
     "seed": 7
+  },
+  "outro": {
+    "pill": "Follow Bhoogol",
+    "sub": "More map stories like this, every week."
   }
 }

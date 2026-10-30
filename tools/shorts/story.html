@@ -368,8 +368,8 @@ function buildUI() {
   els.crownEs = h(`<div class="abs" style="width:110px;height:80px">${crown}</div>`); els.crownFr = h(`<div class="abs" style="width:110px;height:80px">${crown}</div>`);
   els.spark = h(`<div class="abs" style="width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#fff 0%,#FFD36B 30%,rgba(255,176,32,0) 70%)"></div>`);
   els.wm = h(`<img class="abs" src="../../brand/identity/dist/logo/bhoogol-wordmark-night.svg" style="left:170px;top:520px;width:740px">`);
-  els.pill = h(`<div class="abs" style="left:0;width:1080px;top:800px;text-align:center"><span class="pill">${esc(SPEC.site || 'bhoogol.netlify.app')}</span></div>`);
-  els.sub = h(`<div class="abs" style="left:0;width:1080px;top:930px;text-align:center;font-family:'Mukta';font-weight:600;font-size:38px;color:rgba(247,245,239,.75)">Every country, on a globe you can spin.</div>`);
+  els.pill = h(`<div class="abs" style="left:0;width:1080px;top:800px;text-align:center"><span class="pill">${esc(SPEC.outro?.pill || SPEC.site || 'bhoogol.netlify.app')}</span></div>`);
+  els.sub = h(`<div class="abs" style="left:0;width:1080px;top:930px;text-align:center;font-family:'Mukta';font-weight:600;font-size:38px;color:rgba(247,245,239,.75)">${esc(SPEC.outro?.sub || 'Every country, on a globe you can spin.')}</div>`);
   UI.append(els.fr, els.es, els.name, els.mon, els.year, els.war, els.span, els.sEs, els.sFr, els.spark, els.scroll, els.dEs, els.dFr, els.len, els.pitch,
     els.cEs, els.cFr, els.crownEs, els.crownFr, els.vEs, els.vFr, els.pop, els.title, els.credit, els.wm, els.pill, els.sub, els.cap);
 }
