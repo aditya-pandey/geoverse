@@ -39,7 +39,7 @@ MAX_PAUSE = 0.35      # a pause inside a line longer than this gets shortened to
 ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
 TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()
 SYN = {"kilometres": "kilometers", "kilometre": "kilometer", "km": "kilometers", "metres": "meters", "metre": "meter",
-       "m": "meters", "ok": "okay", "bugle": "bhoogol", "bhugol": "bhoogol", "boogle": "bhoogol", "googol": "bhoogol", "bhoogle": "bhoogol"}
+       "m": "meters", "ok": "okay", "bugle": "bhoogol", "bhugol": "bhoogol", "boogle": "bhoogol", "googol": "bhoogol", "bhoogle": "bhoogol", "google": "bhoogol", "bugol": "bhoogol", "boogol": "bhoogol"}
 DROP = {"and", "the", "a", "an", "uh", "um", "hmm", "er"}
 
 

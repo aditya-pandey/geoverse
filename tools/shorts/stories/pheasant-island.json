@@ -73,9 +73,9 @@
       "pauseAfter": 0.8
     },
     {
-      "say": "Follow Bhoogol for more stories like this.",
+      "say": "Follow Bhoogol for more such stories.",
       "scene": "outro",
-      "speakNatural": "Follow Boo-goal for more stories like this."
+      "speakNatural": "Follow Boo-goal for more such stories."
     }
   ],
   "natural": {
@@ -86,7 +86,7 @@
   },
   "outro": {
     "pill": "Follow Bhoogol",
-    "sub": "More map stories like this, every week."
+    "sub": "More map stories, every week."
   },
   "vocabulary": [
     "Pheasant Island",
