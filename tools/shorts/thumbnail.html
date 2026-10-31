@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Bhoogol thumbnail</title>
+<!-- A 1080×1920 cover for a story video: the place's real aerial photo, the place split between its two flags,
+     a big hook title. Everything that matters sits inside the middle 3:4, so Instagram's grid crop keeps it. -->
+<style>
+@font-face{font-family:'Baloo 2';font-weight:800;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+html,body{margin:0;background:#000}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#12133A}
+canvas{position:absolute;left:0;top:0}
+.t{position:absolute;left:30px;width:1020px;text-align:center;font-family:'Baloo 2';font-weight:800;line-height:.98;color:#fff;
+  paint-order:stroke fill;-webkit-text-stroke:16px #12133A;text-shadow:0 12px 0 rgba(18,19,58,.6)}
+.chip{position:absolute;display:flex;align-items:center;gap:18px;font-family:'Baloo 2';font-weight:800;font-size:58px;line-height:1;color:#12133A;background:#fff;
+  border-radius:999px;padding:16px 34px 10px 18px;box-shadow:0 8px 0 rgba(18,19,58,.85),0 16px 30px rgba(0,0,0,.4)}
+.chip img{width:86px;height:64px;border-radius:12px;box-shadow:0 0 0 4px #12133A;margin-top:-6px}
+</style></head><body>
+<div id="stage"><canvas id="c" width="1080" height="1920"></canvas><div id="ui"></div></div>
+<script>
+const W = 1080, H = 1920, R = 6378137, RAD = Math.PI / 180;
+const mx = (lon) => R * lon * RAD, my = (lat) => R * Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
+const load = (s) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = s; });
+window.make = async ({ spec }) => {
+  const base = `assets/places/${spec.place.slug}/`, T = spec.thumbnail || {};
+  const man = await (await fetch(base + 'manifest.json')).json(), L = man.layers.find((l) => l.name === 'close');
+  const outline = (await (await fetch(base + 'outline.geojson')).json()).geometry.coordinates[0];
+  const [img, es, fr] = await Promise.all([load(base + L.file), load('node_modules/flag-icons/flags/4x3/' + (T.flags?.[0] || 'es') + '.svg'), load('node_modules/flag-icons/flags/4x3/' + (T.flags?.[1] || 'fr') + '.svg')]);
+  await document.fonts.load("800 100px 'Baloo 2'");
+  /* image pixels per Mercator metre, and where the place's centre falls in the image */
+  const X0 = mx(L.west), X1 = mx(L.east), Y0 = my(L.south), Y1 = my(L.north), ppm = img.width / (X1 - X0);
+  const c = man.center, cx = (mx(c[0]) - X0) * ppm, cy = (Y1 - my(c[1])) * ppm;
+  const zoom = T.zoom || .95, ox = 540 - cx * zoom, oy = (T.y || 1090) - cy * zoom;
+  const P = ([lon, lat]) => [ox + (mx(lon) - X0) * ppm * zoom, oy + (Y1 - my(lat)) * ppm * zoom];
+  const x = document.getElementById('c').getContext('2d');
+  x.drawImage(img, ox, oy, img.width * zoom, img.height * zoom);
+  /* grade: darker top and bottom for the words, a soft vignette */
+  let g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(10,12,40,.82)'); g.addColorStop(.36, 'rgba(10,12,40,.15)'); g.addColorStop(.62, 'rgba(10,12,40,.1)'); g.addColorStop(1, 'rgba(10,12,40,.8)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  /* the island's long axis */
+  const pts = outline.map(P), mxp = pts.reduce((a, p) => a + p[0], 0) / pts.length, myp = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  let sxx = 0, syy = 0, sxy = 0; for (const [a, b] of pts) { sxx += (a - mxp) ** 2; syy += (b - myp) ** 2; sxy += (a - mxp) * (b - myp); }
+  const ang = .5 * Math.atan2(2 * sxy, sxx - syy), len = Math.max(...pts.map(([a, b]) => Math.abs((a - mxp) * Math.cos(ang) + (b - myp) * Math.sin(ang)))) * 2,
+    wid = Math.max(...pts.map(([a, b]) => Math.abs(-(a - mxp) * Math.sin(ang) + (b - myp) * Math.cos(ang)))) * 2;
+  const path = () => { x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.closePath(); };
+  x.save(); path(); x.shadowColor = '#FFE08A'; x.shadowBlur = 60; x.lineWidth = 14; x.strokeStyle = '#fff'; x.stroke(); x.restore();
+  /* half one flag, half the other, split across the middle */
+  x.save(); path(); x.clip(); x.translate(mxp, myp); x.rotate(ang);
+  const fh = wid * 1.08; x.drawImage(es, -len * .55, -fh / 2, len * .55, fh); x.drawImage(fr, 0, -fh / 2, len * .55, fh);   /* fitted to the island's width, so every stripe shows */
+  x.fillStyle = '#fff'; x.fillRect(-5, -fh, 10, fh * 2);
+  x.restore();
+  /* two arrows chasing each other round the island: it swaps */
+  x.save(); x.translate(mxp, myp); x.rotate(ang); x.strokeStyle = '#FFB020'; x.lineWidth = 18; x.lineCap = 'round'; x.shadowColor = 'rgba(0,0,0,.5)'; x.shadowBlur = 12;
+  const rx = len * .66, ry = Math.max(wid * 2.2, len * .26);
+  for (const [a0, a1] of [[Math.PI * 1.12, Math.PI * 1.88], [Math.PI * .12, Math.PI * .88]]) {
+    x.beginPath(); x.ellipse(0, 0, rx, ry, 0, a0, a1); x.stroke();
+    const ex = rx * Math.cos(a1), ey = ry * Math.sin(a1), tx = -rx * Math.sin(a1), ty = ry * Math.cos(a1), n = Math.hypot(tx, ty), ux = tx / n, uy = ty / n;
+    x.fillStyle = '#FFB020'; x.beginPath(); x.moveTo(ex + ux * 46, ey + uy * 46); x.lineTo(ex - uy * 30, ey + ux * 30); x.lineTo(ex + uy * 30, ey - ux * 30); x.closePath(); x.fill(); }
+  x.restore();
+  /* words */
+  const ui = document.getElementById('ui');
+  ui.innerHTML = `<div class="t" style="top:${T.titleTop || 300}px;font-size:${T.size || 110}px">${(T.lines || ['THIS ISLAND', '<span style="color:#FFB020">CHANGES COUNTRY</span>', 'EVERY 6 MONTHS']).join('<br>')}</div>
+    <div class="chip" style="left:70px;top:${T.chipTop || 1440}px;transform:rotate(-4deg)"><img src="${es.src}">${T.chips?.[0] || 'FEB–JUL'}</div>
+    <div class="chip" style="right:70px;top:${T.chipTop || 1440}px;transform:rotate(4deg)"><img src="${fr.src}">${T.chips?.[1] || 'AUG–JAN'}</div>
+    <img src="../../brand/identity/dist/logo/bhoogol-wordmark-night.svg" style="position:absolute;left:390px;top:${(T.chipTop || 1440) + 150}px;width:300px">`;
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+};
+</script></body></html>
