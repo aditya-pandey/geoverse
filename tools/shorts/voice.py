@@ -232,6 +232,8 @@ def main(argv):
             for t in tokens(w): S.append(t); own.append(k)
         S_lines.append(S); S_owner.append(own)
     names = {w for it in spec.get("items", []) for w in [it["name"]]} | {"Bhoogol", "Central Park", "Manhattan"}
+    if spec.get("place"): names |= {spec["place"]["name"]}
+    names |= set(spec.get("vocabulary", []))
     prompt = ", ".join(sorted(names)) + "."
 
     best = [None] * len(script)                     # (file index, choice) — later files win
