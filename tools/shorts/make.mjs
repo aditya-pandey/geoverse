@@ -99,7 +99,9 @@ async function renderOne(browser, ep) {
   return { ep, dur, errors, file };
 }
 
-let episodes = plan(start, count);
+let episodes = args.custom ? [] : plan(start, count);
+/* --custom quizzes/<name>.json: a hand-written episode (its own question, values, captions and ending) */
+if (args.custom) for (const f of String(args.custom).split(",")) episodes.push(JSON.parse(fs.readFileSync(path.resolve(f), "utf8")));
 /* --stories: a cinematic follow-up for each Guess video in the range · --story ISL,CHL: just those countries · --only-stories: skip the quizzes */
 const stories = [];
 if (args.stories) for (const ep of episodes) if (ep.format === "guess") stories.push(storyEpisode(ep.items[0].cca3, ep.date));

@@ -1,0 +1,28 @@
+{
+  "id": "bhoogol-quiz-china-russia-neighbours",
+  "date": "custom",
+  "n": 4114,
+  "format": "thisthat",
+  "metric": "neighbours",
+  "q": "Which has more neighbours?",
+  "items": [
+    { "cca3": "CHN", "cca2": "cn", "name": "China", "latlng": [35, 105], "value": 14, "label": "14 neighbours" },
+    { "cca3": "RUS", "cca2": "ru", "name": "Russia", "latlng": [60, 100], "value": 14, "label": "14 neighbours" }
+  ],
+  "winner": "tie",
+  "punch": "Trick question. It's a tie!",
+  "follow": "14 each. The most of any country on Earth.",
+  "ask": "Did you guess a tie? Comment below",
+  "source": "Land borders · Guinness World Records",
+  "outro": { "o1": "Follow for a new quiz every day", "pill": "Like · Share · Follow", "o3": "Bhoogol · every country, on a globe you can spin" },
+  "sources": [
+    "China and Russia both have 14 land boundaries, the most of any country: Guinness World Records, 'Most land boundaries' (https://www.guinnessworldrecords.com/world-records/65951-most-land-boundaries)",
+    "Russia: Azerbaijan, Belarus, China, Estonia, Finland, Georgia, Kazakhstan, Latvia, Lithuania, Mongolia, North Korea, Norway, Poland, Ukraine. China: Afghanistan, Bhutan, India, Kazakhstan, Kyrgyzstan, Laos, Mongolia, Myanmar, Nepal, North Korea, Pakistan, Russia, Tajikistan, Vietnam (WorldAtlas)"
+  ],
+  "caption": {
+    "title": "China or Russia: which has more neighbours? 🌍 #geography #quiz",
+    "youtube": "Make your pick before the reveal 👀\n\nChina and Russia each border 14 countries, the most of any country on Earth.\n\nFollow for a new geography quiz every day. Like and share if you got it right!\n\n🌍 bhoogol.netlify.app/?utm_source=youtube&utm_medium=shorts&utm_campaign=china-russia-neighbours\n\n#geography #quiz #maps #china #russia #shorts",
+    "instagram": "China or Russia: which has more neighbours? 🌍\n\nMake your pick before the reveal 👀\n\nDid you see that coming? Comment your guess 👇\n\nFollow @bhoogolapp for a new quiz every day. Share it with the friend who thinks they know geography 😄\n\n#geography #geographyquiz #maps #mapfacts #china #russia #quiz #trivia #bhoogol",
+    "pin": "Can you name all 14 of Russia's neighbours? 🤔 Best attempt gets pinned 👇"
+  }
+}

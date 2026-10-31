@@ -171,6 +171,9 @@ function drawGlobe(G) {
   for (const c of G.hi || []) { const f = WORLD.byCca3.get(c); if (!f) continue;
     gctx.beginPath(); path(f); gctx.strokeStyle = `rgba(247,245,239,${G.hiA ?? 1})`; gctx.lineWidth = lw * 3.2; gctx.stroke();
     gctx.fillStyle = f.fill; gctx.fill(); gctx.fillStyle = `rgba(255,176,32,${.95 * (G.hiA ?? 1)})`; gctx.fill(); }
+  /* India last, with its official boundary, so a highlighted neighbour never paints over it */
+  { const f = WORLD.byCca3.get('IND'); if (f && !G.hi?.includes('IND') && !G.tint?.includes('IND') && (G.hi?.includes('CHN') || G.tint?.includes('CHN') || G.hi?.includes('PAK'))) {
+    gctx.beginPath(); path(f); gctx.fillStyle = f.fill; gctx.fill(); gctx.strokeStyle = 'rgba(18,19,58,.42)'; gctx.lineWidth = lw; gctx.stroke(); } }
   /* light from the upper left, night side lower right (the brand's little worlds) */
   const sh = gctx.createRadialGradient(G.cx - G.r * .45, G.cy - G.r * .5, G.r * .1, G.cx, G.cy, G.r * 1.05);
   sh.addColorStop(0, 'rgba(255,255,255,.10)'); sh.addColorStop(.55, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(12,13,41,.42)');
@@ -380,14 +383,16 @@ function buildThisThat(ep) {
   const tickMarks = cards.map((c) => { const m = markEl('tick', 46, 46); m.style.left = '12px'; m.style.top = '12px'; c.querySelector('.tick').appendChild(m); return m; });
   const or = h(`<div class="or">or</div>`); UI.append(or);
   const tm = timer(540, 1090, 2.4);
-  const ask = askEl('Were you right? Comment yes or no', hd.bottom + 4);
-  const W_ = ep.winner, L_ = 1 - W_, wv = ep.items[W_].value, lv = ep.items[L_].value, ratio = wv / lv;
+  const ask = askEl(ep.ask || 'Were you right? Comment yes or no', hd.bottom + 4);
+  const tie = ep.winner === 'tie', W_ = tie ? 0 : ep.winner, L_ = 1 - W_, wv = ep.items[W_].value, lv = ep.items[L_].value, ratio = wv / lv;
   const noun = { pop: 'the people', rain: 'the rain', forest: 'the forest', area: 'the size', life: 'the years', neighbours: 'the neighbours' }[ep.metric];
-  const punch = ep.metric === 'neighbours' ? `${wv} neighbours against ${lv}.` : ratio >= 1.45 ? `${ep.items[W_].name} has ${fmtRatio(ratio)} ${noun}.` : `${ep.items[W_].name} wins by ${Math.round((ratio - 1) * 100)}%.`;
+  const punch = ep.punch ? ep.punch : ep.metric === 'neighbours' ? `${wv} neighbours against ${lv}.` : ratio >= 1.45 ? `${ep.items[W_].name} has ${fmtRatio(ratio)} ${noun}.` : `${ep.items[W_].name} wins by ${Math.round((ratio - 1) * 100)}%.`;
   const pl = h(`<div class="abs center display" style="top:1572px;font-size:52px;padding:0 60px;box-sizing:border-box">${splitWords(punch)}</div>`); UI.append(pl);
-  const src = h(`<div class="abs center sub" style="top:1660px;font-size:26px">${esc(METRIC_SRC(ep))}</div>`); UI.append(src);
+  const fl = ep.follow ? h(`<div class="abs center display" style="top:1652px;font-size:44px;color:#FFB020;padding:0 60px;box-sizing:border-box">${splitWords(ep.follow)}</div>`) : null; if (fl) UI.append(fl);
+  const src = h(`<div class="abs center sub" style="top:${fl ? 1770 : 1660}px;font-size:26px">${esc(ep.source || METRIC_SRC(ep))}</div>`); UI.append(src);
   const mark = markEl('circle', 200, 160); UI.append(mark);
-  const T = { cards: .4, count: 1.3, reveal: 3.8 }, END = 7.5, OUT = 7.7, DUR = 10.0;
+  const ex = fl ? 2.3 : 0, T = { cards: .4, count: 1.3, reveal: 3.8 }, END = 7.5 + ex, OUT = 7.7 + ex, DUR = 10.0 + ex;
+  if (fl) sfx(T.reveal + 2.3, 'pop', .8);
   sfx(T.cards, 'drop', .8); sfx(T.cards + .14, 'drop', .8); [0, 1, 2].forEach((i) => sfx(T.count + i * .8, 'tick'));
   sfx(T.reveal - .05, 'whoosh', .6); sfx(T.reveal + .55, 'win', 1); sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .9);
   return { DUR, seek(t) {
@@ -395,7 +400,7 @@ function buildThisThat(ep) {
     css(hd.e, { op: (1 - out) * E.settle(prog(t, 0, .4)) }); wordsIn(hd.t, t, .05, .06, END);
     const rv = prog(t, T.reveal + .5, T.reveal + .8), pp = E.pop(prog(t, T.reveal + .5, T.reveal + .9));
     cards.forEach((c, i) => {
-      const p = E.settle(prog(t, T.cards + i * .14, T.cards + i * .14 + .6)), win = i === W_;
+      const p = E.settle(prog(t, T.cards + i * .14, T.cards + i * .14 + .6)), win = tie || i === W_;
       css(c, { op: p * (1 - out) * (win ? 1 : 1 - .45 * rv), y: (1 - p) * 80 - out * 40, s: win ? 1 + .05 * pp - .05 * rv * 0 : 1 - .04 * rv, blur: (1 - p) * 10 + out * 8 });
       c.querySelector('.val').innerHTML = rv > 0 ? esc(ep.items[i].label) : '&nbsp;';
       c.querySelector('.val').style.opacity = rv; c.querySelector('.val').style.color = win ? '#FFB020' : 'rgba(247,245,239,.7)';
@@ -406,15 +411,15 @@ function buildThisThat(ep) {
     tickMarks.forEach((m) => { m.querySelectorAll('g[mask] path').forEach((p) => p.setAttribute('fill', '#12133A')); });
     const op = E.pop(prog(t, T.cards + .2, T.cards + .6)); css(or, { op: clamp(op * 2) * (1 - rv) * (1 - out), s: .6 + .4 * op });
     tm.set(t, T.count);
-    wordsIn(pl, t, T.reveal + 1.1, .05, END); enter(src, t, T.reveal + 1.3, END);
+    wordsIn(pl, t, T.reveal + 1.1, .05, END); if (fl) wordsIn(fl, t, T.reveal + 2.3, .06, END); enter(src, t, T.reveal + (fl ? 2.6 : 1.3), END);
     const ap = E.pop(prog(t, T.reveal + 1.6, T.reveal + 2.0)); css(ask, { op: clamp(ap * 2) * (1 - out), s: .7 + .3 * ap });
     /* globe: drift between the two, then fly to the winner */
     const A = targetOf(ep.items[0]), B = targetOf(ep.items[1]), mid = d3.geoInterpolate(A, B)(.5);
     const drift = d3.geoInterpolate(A, B)(clamp(.5 + .25 * Math.sin((t - 1) * .5)));
     const f = E.inout(prog(t, T.reveal, T.reveal + .75));
-    const at = t < T.reveal ? drift : d3.geoInterpolate(drift, targetOf(ep.items[W_]))(f);
+    const at = t < T.reveal ? drift : d3.geoInterpolate(drift, tie ? mid : targetOf(ep.items[W_]))(f);
     const G = { cx: 540, cy: 740, r: 290, alpha: 1 - out, rot: rotFor(at), tint: ep.items.map((i) => i.cca3), tintA: 1 - rv };
-    if (t >= T.reveal) { G.hi = [ep.items[W_].cca3]; G.hiA = prog(t, T.reveal + .45, T.reveal + .75); G.tint = [ep.items[L_].cca3]; G.tintA = .5; }
+    if (t >= T.reveal) { G.hi = tie ? ep.items.map((i) => i.cca3) : [ep.items[W_].cca3]; G.hiA = prog(t, T.reveal + .45, T.reveal + .75); G.tint = tie ? [] : [ep.items[L_].cca3]; G.tintA = .5; }
     G.cy -= out * 80; drawGlobe(G); void mid;
     if (t >= T.reveal + .6 && t < END) {
       placeMark(mark, G, ep.items[W_], 120, 340, E.settle(prog(t, T.reveal + .75, T.reveal + 1.1)), 1 - out);
@@ -544,7 +549,8 @@ let SCENE = null;
 window.setup = async (ep) => {
   await loadWorld();
   $('#wordmark').src = '../../brand/identity/dist/logo/bhoogol-wordmark-night.svg';
-  $('#site').textContent = ep.site || 'bhoogol.netlify.app';
+  $('#site').textContent = ep.outro?.pill || ep.site || 'bhoogol.netlify.app';
+  if (ep.outro?.o1) $('#o1').textContent = ep.outro.o1; if (ep.outro?.o3) $('#o3').textContent = ep.outro.o3;
   $('#bigworld').src = '../../brand/identity/dist/worlds/world-east.svg';
   const R = rnd(ep.n * 7919 + 13); STARS = Array.from({ length: 170 }, () => ({ x: R() * W, y: R() * 2000, z: .2 + R() * .8, ph: R() * 6.28, sz: R() }));
   UI.innerHTML = ''; SFX.length = 0;
