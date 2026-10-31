@@ -95,11 +95,11 @@ def candidates(S, T):
     """Every place a line seems to start: (start index, match ratio, [(s, t) pairs])."""
     found = []
     for j in range(len(T)):
-        if T[j][0] not in S[:2]: continue
+        if T[j][0] not in S[:3]: continue
         win = [t[0] for t in T[j:j + len(S) + 4]]
         blocks = SequenceMatcher(None, S, win, autojunk=False).get_matching_blocks()
         pairs = [(b.a + k, j + b.b + k) for b in blocks for k in range(b.size)]
-        if not pairs or pairs[0][1] != j or pairs[0][0] > 1: continue
+        if not pairs or pairs[0][1] != j or pairs[0][0] > 2: continue
         ratio = len(pairs) / len(S)
         if ratio >= 0.6 and (len(S) > 2 or ratio == 1): found.append((j, ratio, pairs))
     takes = []                                     # overlapping windows are the same take: keep the best
@@ -237,15 +237,32 @@ def main(argv):
     prompt = ", ".join(sorted(names)) + "."
 
     best = [None] * len(script)                     # (file index, choice) — later files win
-    audio, T_all = [], []
+    audio, T_all, heard = [], [], []
     for fi, f in enumerate(files):
         y = load(f, flag("raw"), tempo); audio.append(y)
         given = opt("words", "").split(",") if opt("words") else []
         words = json.loads(pathlib.Path(given[fi]).read_text()) if fi < len(given) else transcribe(f, opt("model", "small.en"), prompt)
         words = [{**w, "start": w["start"] / tempo, "end": w["end"] / tempo} for w in words]   # Whisper heard the original speed
-        T = flatten(words); T_all.append(T)
+        T = flatten(words); T_all.append(T); heard.append(words)
         for i, ch in enumerate(place(S_lines, T)):
             if ch: best[i] = (fi, ch)
+    (out / f"{spec['id']}.heard.json").write_text(json.dumps(heard, indent=0))     # what Whisper heard, for checking
+    # a line Whisper didn't recognise but that sits alone between two found lines (or after the last one) is taken by position
+    def span_of(fi, ch, i):
+        if "gap" in ch: return ch["gap"]
+        T = T_all[fi]; ts = [t for _, t in ch["pairs"]]
+        tail = len(S_lines[i]) - 1 - ch["pairs"][-1][0]
+        last = min(ts[-1] + tail, len(T) - 1) if tail else ts[-1]
+        return (T[ts[0]][1], T[last][2])
+    for i in range(len(script)):
+        if best[i] is not None: continue
+        prev = next((k for k in range(i - 1, -1, -1) if best[k] and best[k][0] == 0), None)
+        nxt = next((k for k in range(i + 1, len(script)) if best[k] and best[k][0] == 0), None)
+        between = [k for k in range(i + 1, nxt if nxt is not None else len(script)) if best[k] is None]
+        if prev is None or between: continue
+        a = span_of(0, best[prev][1], prev)[1] + .05
+        b = span_of(0, best[nxt][1], nxt)[0] - .05 if nxt is not None else len(audio[0]) / SR
+        if b - a > .5: best[i] = (0, {"take": 1, "takes": 1, "ratio": 0, "pairs": [], "gap": (a, b)})
     missing = [i for i, b in enumerate(best) if b is None]
     if missing:
         sys.exit("Couldn't find these lines in the recording:\n" + "\n".join(f"  {i + 1:2d}. {script[i]['say']}" for i in missing)
@@ -254,10 +271,7 @@ def main(argv):
     # where each chosen line sits in its recording, then snap to the real voice
     spans = []
     for i, (fi, ch) in enumerate(best):
-        T = T_all[fi]; ts = [t for _, t in ch["pairs"]]
-        tail = len(S_lines[i]) - 1 - ch["pairs"][-1][0]           # script words Whisper missed at the end
-        last = min(ts[-1] + tail, len(T) - 1) if tail else ts[-1]
-        spans.append([fi, T[ts[0]][1], T[last][2]])
+        spans.append([fi, *span_of(fi, ch, i)])
     report = []
     voice = [np.zeros(int(LEAD * SR), np.float32)]; t = LEAD; lines = []
     for i, (fi, ch) in enumerate(best):
@@ -278,7 +292,7 @@ def main(argv):
                       "words": [{"w": w, "t0": round(t + min(d, remap(a - c0)), 3), "t1": round(t + min(d, remap(b - c0)), 3)} for w, (a, b) in zip(display[i], wt)]})
         post = GAP + script[i].get("pauseAfter", 0)
         voice += [clip, np.zeros(int(post * SR), np.float32)]; t += d + post
-        warn = "   ← check this one, Whisper only matched part of it" if ch["ratio"] < .85 else "   ← check this one, its edges were unclear" if odd else ""
+        warn = "   ← check this one: found by its position, not its words" if "gap" in ch else "   ← check this one, Whisper only matched part of it" if ch["ratio"] < .85 else "   ← check this one, its edges were unclear" if odd else ""
         report.append(f"{i + 1:2d}. take {ch['take']} of {ch['takes']}{f' in {files[fi].name}' if len(files) > 1 else ''} · "
                       f"{int(c0 // 60)}:{c0 % 60:05.2f} · {d:4.1f}s · {round(ch['ratio'] * 100)}% · {script[i]['say']}{warn}")
 
