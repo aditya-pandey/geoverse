@@ -1,0 +1,370 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Bhoogol history</title>
+<!-- A narrated history story told on a satellite globe: lines drawn across the world, halves flooding with colour,
+     ships sailing their real routes, characters, big years. Built first for the Treaty of Tordesillas; scenes are
+     named in the story JSON and timed from the narration (narrate.py or voice.py). -->
+<style>
+@font-face{font-family:'Baloo 2';font-weight:800;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:'Baloo 2';font-weight:700;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2)}
+@font-face{font-family:'Mukta';font-weight:600;src:url(node_modules/@fontsource/mukta/files/mukta-latin-600-normal.woff2)}
+@font-face{font-family:'Kalam';font-weight:700;src:url(node_modules/@fontsource/kalam/files/kalam-latin-700-normal.woff2)}
+:root{--space:#12133A;--gold:#FFB020;--mint:#3DDC97;--chalk:#F7F5EF;--ink:#12133A}
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:radial-gradient(ellipse 85% 60% at 50% 45%,#1b1d4d 0%,#12133A 60%,#0b0c26 100%)}
+canvas{position:absolute;left:0;top:0}
+.abs{position:absolute}
+.w{display:inline-block}
+.cap{position:absolute;left:0;width:1080px;top:1610px;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:76px;line-height:1.05;color:#fff;
+  paint-order:stroke fill;-webkit-text-stroke:12px #12133A;text-shadow:0 8px 0 rgba(18,19,58,.55)}
+.cap .on{color:var(--gold)}
+.title{position:absolute;left:40px;width:1000px;text-align:center;font-family:'Baloo 2';font-weight:800;color:#fff;line-height:1.02;
+  paint-order:stroke fill;-webkit-text-stroke:11px #12133A;text-shadow:0 9px 0 rgba(18,19,58,.5)}
+.year{position:absolute;left:0;width:1080px;text-align:center;font-family:'Baloo 2';font-weight:800;font-size:230px;line-height:1;color:#fff;
+  paint-order:stroke fill;-webkit-text-stroke:18px #12133A;text-shadow:0 14px 0 rgba(18,19,58,.55);transform-origin:50% 55%}
+.chip{position:absolute;white-space:nowrap;font-family:'Baloo 2';font-weight:800;font-size:44px;line-height:1;color:var(--ink);background:#fff;border-radius:999px;
+  padding:14px 28px 8px;box-shadow:0 6px 0 rgba(18,19,58,.85),0 14px 24px rgba(0,0,0,.3);transform-origin:50% 50%}
+.chip.gold{background:var(--gold);box-shadow:0 7px 0 #C47F00,0 14px 24px rgba(0,0,0,.3)}
+.chip.green{background:#2FBF71;color:#fff;box-shadow:0 7px 0 #1C7F49,0 14px 24px rgba(0,0,0,.3)}
+.hand{position:absolute;font-family:'Kalam';font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 3px 0 rgba(18,19,58,.85),0 0 14px rgba(18,19,58,.6)}
+.char{position:absolute;transform-origin:50% 100%;filter:drop-shadow(0 14px 10px rgba(0,0,0,.45))}
+.bar{position:absolute;left:120px;height:96px;border-radius:18px;border:6px solid #12133A;box-sizing:border-box;transform-origin:0 50%;box-shadow:0 10px 0 rgba(18,19,58,.5)}
+.blab{position:absolute;left:120px;font-family:'Baloo 2';font-weight:800;font-size:46px;color:#fff;paint-order:stroke fill;-webkit-text-stroke:9px #12133A}
+.pill{display:inline-block;font-family:'Baloo 2';font-weight:700;font-size:50px;color:#1a1300;background:var(--gold);border-radius:999px;padding:16px 52px 12px;box-shadow:0 7px 0 #C47F00}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1080" height="1920"></canvas>
+  <canvas id="earth" width="1080" height="1920"></canvas>
+  <canvas id="over" width="1080" height="1920"></canvas>
+  <div id="ui"></div>
+</div>
+<script src="node_modules/d3-array/dist/d3-array.min.js"></script>
+<script src="node_modules/d3-geo/dist/d3-geo.min.js"></script>
+<script src="node_modules/topojson-client/dist/topojson-client.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s), W = 1080, H = 1920, PI = Math.PI, RAD = PI / 180;
+function bez(x1, y1, x2, y2) { const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = t => ((ax * t + bx) * t + cx) * t, Y = t => ((ay * t + by) * t + cy) * t;
+  return x => { if (x <= 0) return 0; if (x >= 1) return 1; let lo = 0, hi = 1, t = x; for (let i = 0; i < 40; i++) { X(t) < x ? lo = t : hi = t; t = (lo + hi) / 2; } return Y(t); }; }
+const E = { settle: bez(.2, .9, .25, 1), pop: bez(.34, 1.56, .64, 1), inout: bez(.65, 0, .35, 1), in: bez(.55, 0, .9, .3), out: bez(.16, 1, .3, 1) };
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), prog = (t, a, b) => clamp((t - a) / (b - a)), lerp = (a, b, p) => a + (b - a) * p;
+function css(el, o) { const s = el.style; if ('op' in o) { s.opacity = o.op; s.visibility = o.op <= .001 ? 'hidden' : 'visible'; }
+  s.transform = `translate(${o.x || 0}px,${o.y || 0}px) rotate(${o.r || 0}deg) scale(${o.s ?? 1})${o.sx != null ? ` scaleX(${o.sx})` : ''}`; s.filter = o.blur > .05 ? `blur(${o.blur}px)` : 'none'; }
+const h = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SFX = []; const sfx = (t, name, gain = 1) => SFX.push({ t: +Math.max(0, t).toFixed(3), name, gain });
+const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+
+/* ---------- characters ---------- */
+function chibi(name) {
+  const P = {
+    pope: { coat: '#F6F3EA', trim: '#D8B04A', hat: 'mitre', prop: 'scroll', cape: '#B3202F' },
+    king_es: { coat: '#B3202F', trim: '#F2C230', hat: 'crown', prop: 'sceptre', cape: '#7A1220' },
+    king_pt: { coat: '#1F7A45', trim: '#F2C230', hat: 'crown', prop: 'sceptre', cape: '#B3202F' },
+  }[name];
+  const skin = '#F3C9A2', ink = '#2A1E1A';
+  const hats = {
+    mitre: `<path d="M104 112 Q110 30 150 14 Q190 30 196 112Z" fill="#FAFAF6" stroke="#C9C3AE" stroke-width="5"/><path d="M150 18 L150 110 M126 62 L174 62" stroke="#D8B04A" stroke-width="9"/>`,
+    crown: `<path d="M92 112 L98 52 L124 84 L150 38 L176 84 L202 52 L208 112Z" fill="#FFC531" stroke="#9A6A00" stroke-width="6" stroke-linejoin="round"/><circle cx="150" cy="40" r="9" fill="#E0313D"/><circle cx="98" cy="54" r="7" fill="#3DDC97"/><circle cx="202" cy="54" r="7" fill="#3DDC97"/><rect x="92" y="100" width="116" height="16" rx="5" fill="#FFB020" stroke="#9A6A00" stroke-width="5"/>`,
+  };
+  const props = {
+    scroll: `<g transform="translate(214 262) rotate(-14)"><rect x="-6" y="-30" width="62" height="64" rx="6" fill="#F4E6C3" stroke="#8A6A35" stroke-width="4"/><rect x="-12" y="-36" width="74" height="12" rx="6" fill="#E2CC98" stroke="#8A6A35" stroke-width="3"/><path d="M6 -10 H42 M6 4 H42 M6 18 H30" stroke="#8A6A35" stroke-width="3"/></g>`,
+    sceptre: `<rect x="228" y="150" width="10" height="200" rx="4" fill="#C9A24A" transform="rotate(10 233 250)"/><circle cx="246" cy="146" r="16" fill="#FFC531" stroke="#9A6A00" stroke-width="4"/>`,
+  };
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 400" width="330" height="400">
+  <ellipse cx="150" cy="384" rx="86" ry="14" fill="rgba(0,0,0,.25)"/>
+  <path d="M70 250 Q150 210 230 250 L246 370 Q150 392 54 370Z" fill="${P.cape}"/>
+  <path d="M92 232 Q150 214 208 232 L222 362 Q150 386 78 362Z" fill="${P.coat}" stroke="rgba(0,0,0,.2)" stroke-width="4"/>
+  <path d="M150 232 L150 372" stroke="${P.trim}" stroke-width="8"/>
+  <path d="M84 236 Q150 262 216 236 Q214 252 150 268 Q86 252 84 236Z" fill="#FAFAF6" stroke="#CFCFCF" stroke-width="3"/>
+  <ellipse cx="86" cy="300" rx="20" ry="38" fill="${P.coat}" stroke="rgba(0,0,0,.2)" stroke-width="4" transform="rotate(14 86 300)"/>
+  <ellipse cx="214" cy="300" rx="20" ry="38" fill="${P.coat}" stroke="rgba(0,0,0,.2)" stroke-width="4" transform="rotate(-14 214 300)"/>
+  <circle cx="82" cy="334" r="15" fill="${skin}"/><circle cx="220" cy="334" r="15" fill="${skin}"/>
+  ${props[P.prop]}
+  <circle cx="150" cy="166" r="72" fill="${skin}" stroke="rgba(120,70,40,.25)" stroke-width="4"/>
+  ${name === 'pope' ? '' : `<path d="M84 154 Q90 104 150 100 Q210 104 216 154 Q200 126 150 124 Q100 126 84 154Z" fill="#4A2D17"/><path d="M112 206 Q150 240 188 206 Q176 222 150 224 Q124 222 112 206Z" fill="#4A2D17"/>`}
+  <ellipse cx="124" cy="170" rx="9" ry="12" fill="${ink}"/><ellipse cx="176" cy="170" rx="9" ry="12" fill="${ink}"/>
+  <circle cx="127" cy="165" r="3" fill="#fff"/><circle cx="179" cy="165" r="3" fill="#fff"/>
+  <ellipse cx="108" cy="194" rx="13" ry="8" fill="#F19C9C" opacity=".6"/><ellipse cx="192" cy="194" rx="13" ry="8" fill="#F19C9C" opacity=".6"/>
+  <path d="M138 198 Q150 208 162 198" stroke="${ink}" stroke-width="5" fill="none" stroke-linecap="round"/>
+  ${hats[P.hat]}
+</svg>`;
+}
+
+/* ---------- satellite globe (WebGL, NASA Blue Marble) ---------- */
+const gl = $('#earth').getContext('webgl', { preserveDrawingBuffer: true, premultipliedAlpha: false, antialias: false });
+let U = {};
+function initGL(img) {
+  const vs = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
+  const fs = `precision highp float;
+  uniform sampler2D tex; uniform vec2 cen; uniform float r; uniform vec2 c0; uniform float alpha; uniform float H; uniform float dim;
+  const float PI = 3.14159265;
+  void main(){
+    vec2 q = vec2(gl_FragCoord.x - cen.x, gl_FragCoord.y - (H - cen.y)) / r;
+    float rho = length(q);
+    float edge = 1.0 - smoothstep(1.0 - 1.5 / r, 1.0, rho);
+    if (rho > 1.0) { gl_FragColor = vec4(0.); return; }
+    float c = asin(min(rho, 1.0));
+    float lat0 = c0.y, lon0 = c0.x;
+    float lat = asin(clamp(cos(c) * sin(lat0) + (rho > 1e-6 ? q.y * sin(c) * cos(lat0) / rho : 0.0), -1.0, 1.0));
+    float lon = lon0 + atan(q.x * sin(c), rho * cos(c) * cos(lat0) - q.y * sin(c) * sin(lat0));
+    vec2 uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);
+    vec3 col = texture2D(tex, uv).rgb;
+    col = pow(col, vec3(0.92)) * 1.06;
+    vec3 n = vec3(q.x, q.y, sqrt(max(0.0, 1.0 - rho * rho)));
+    float lit = clamp(dot(n, normalize(vec3(-0.45, 0.5, 0.75))), 0.0, 1.0);
+    col *= mix(0.42, 1.12, lit) * (1.0 - dim);
+    col = mix(col, vec3(0.55, 0.72, 1.0), pow(rho, 8.0) * 0.55);
+    gl_FragColor = vec4(col, edge * alpha);
+  }`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const P = gl.createProgram(); gl.attachShader(P, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(P, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(P); gl.useProgram(P);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(P, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  for (const k of ['cen', 'r', 'c0', 'alpha', 'H', 'dim']) U[k] = gl.getUniformLocation(P, k);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+}
+const octx = $('#over').getContext('2d'), proj = d3.geoOrthographic().clipAngle(90).precision(.25), opath = d3.geoPath(proj, octx);
+function earth(C) {
+  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform2f(U.cen, C.cx, C.cy); gl.uniform1f(U.r, C.r); gl.uniform1f(U.H, H); gl.uniform1f(U.dim, C.dim || 0);
+  gl.uniform2f(U.c0, C.lon * RAD, C.lat * RAD); gl.uniform1f(U.alpha, C.alpha ?? 1);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  proj.scale(C.r).translate([C.cx, C.cy]).rotate([-C.lon, -C.lat]);
+}
+const visible = (ll, C) => d3.geoDistance(ll, [C.lon, C.lat]) < PI / 2 - .02;
+
+/* ---------- stars ---------- */
+const bctx = $('#bg').getContext('2d'); let STARS = [];
+function stars(t) { bctx.clearRect(0, 0, W, H);
+  for (const s of STARS) { const y = (s.y + t * 6 * s.z) % 2000, tw = .55 + .45 * Math.sin(t * 1.7 + s.ph);
+    bctx.globalAlpha = .12 + .55 * s.z * tw; bctx.fillStyle = '#F7F5EF'; bctx.beginPath(); bctx.arc(s.x, y, .7 + 1.6 * s.sz * s.z, 0, 6.283); bctx.fill(); }
+  bctx.globalAlpha = 1; }
+
+/* ---------- data ---------- */
+let SPEC, TIM, LAND, CO = {}, FLAG = {}, CHAR = {};
+const SPANISH = ['ARG', 'BOL', 'CHL', 'COL', 'ECU', 'PRY', 'PER', 'URY', 'VEN'], OTHER = ['GUY', 'SUR'];
+async function loadData() {
+  const [t, land, raw] = await Promise.all(['node_modules/world-atlas/countries-50m.json', 'node_modules/world-atlas/land-50m.json', 'node_modules/world-countries/countries.json'].map((u) => fetch(u).then((r) => r.json())));
+  const byN = new Map(raw.map((c) => [c.ccn3, c.cca3]));
+  for (const f of topojson.feature(t, t.objects.countries).features) { const c = byN.get(String(f.id).padStart(3, '0')); if (c) CO[c] = f; }
+  LAND = topojson.feature(land, land.objects.land);
+  /* French Guiana is part of France in the data: take just that piece */
+  const fra = CO.FRA.geometry; CO.GUF = { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: fra.coordinates.filter((p) => { const c = d3.geoCentroid({ type: 'Polygon', coordinates: p }); return c[0] < -40 && c[0] > -60 && c[1] > 0 && c[1] < 10; }) } };
+  for (const f of ['es', 'pt', 'br']) { const im = await loadImg(`node_modules/flag-icons/flags/4x3/${f}.svg`), c = document.createElement('canvas'); c.width = 640; c.height = 480; c.getContext('2d').drawImage(im, 0, 0, 640, 480); FLAG[f] = c; }
+  for (const n of ['pope', 'king_es', 'king_pt']) CHAR[n] = (await loadImg(`assets/chars/${n}.png`))?.src || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(chibi(n));
+}
+
+/* ---------- drawing on the globe ---------- */
+const half = (L, side) => d3.geoCircle().center([L + 90 * side, 0]).radius(90)();       /* side -1: west of the line (Spain), +1: east (Portugal) */
+function fillGeo(g, col, a, glow = 0) { if (a <= 0) return; octx.save(); octx.globalAlpha = a; if (glow) { octx.shadowColor = col; octx.shadowBlur = glow; }
+  octx.beginPath(); opath(g); octx.fillStyle = col; octx.fill(); octx.restore(); }
+function strokeGeo(g, col, a, w) { if (a <= 0) return; octx.save(); octx.globalAlpha = a; octx.beginPath(); opath(g); octx.lineJoin = 'round'; octx.lineWidth = w; octx.strokeStyle = col; octx.stroke(); octx.restore(); }
+function meridian(L, p, a) {                                       /* the line, drawn from north to south as p goes 0 → 1 */
+  if (a <= 0 || p <= 0) return; const lat1 = lerp(82, -80, p), pts = []; for (let la = 82; la >= lat1; la -= 1) pts.push([L, la]); pts.push([L, lat1]);
+  const g = { type: 'LineString', coordinates: pts };
+  octx.save(); octx.globalAlpha = a; octx.lineCap = 'round'; octx.shadowColor = '#FFE08A'; octx.shadowBlur = 26;
+  octx.beginPath(); opath(g); octx.lineWidth = 12; octx.strokeStyle = '#fff'; octx.stroke(); octx.shadowBlur = 0;
+  octx.setLineDash([26, 18]); octx.beginPath(); opath(g); octx.lineWidth = 5; octx.strokeStyle = '#12133A'; octx.stroke(); octx.restore();
+  const tip = proj([L, lat1]); if (tip && p < 1) { octx.fillStyle = '#FFB020'; octx.beginPath(); octx.arc(tip[0], tip[1], 14, 0, 6.283); octx.fill(); }
+}
+function label(text, ll, C, size, a, color = '#fff', rot = -4) {
+  if (a <= 0 || !visible(ll, C)) return; const p = proj(ll);
+  octx.save(); octx.globalAlpha = a; octx.translate(p[0], p[1]); octx.rotate(rot * RAD); octx.font = `800 ${size}px 'Baloo 2'`; octx.textAlign = 'center'; octx.textBaseline = 'middle';
+  octx.lineJoin = 'round'; octx.lineWidth = size * .2; octx.strokeStyle = '#12133A'; octx.strokeText(text, 0, 0); octx.fillStyle = color; octx.fillText(text, 0, 0); octx.restore();
+}
+/* a ship sailing a route of [lon, lat] waypoints; p = 0..1 along it */
+function routeAt(route, p) {
+  const segs = route.slice(1).map((b, i) => ({ a: route[i], b, d: d3.geoDistance(route[i], b) })), tot = segs.reduce((s, x) => s + x.d, 0);
+  let k = p * tot; for (const s of segs) { if (k <= s.d) return d3.geoInterpolate(s.a, s.b)(k / s.d); k -= s.d; } return route[route.length - 1];
+}
+function sail(route, p, C, flag, a, scale = 1) {
+  if (a <= 0 || p <= 0) return; const N = 80, pts = []; for (let i = 0; i <= N; i++) pts.push(routeAt(route, p * i / N));
+  octx.save(); octx.globalAlpha = a * .95; octx.setLineDash([16, 14]); octx.lineWidth = 6; octx.lineCap = 'round'; octx.strokeStyle = '#fff'; octx.shadowColor = 'rgba(0,0,0,.6)'; octx.shadowBlur = 6;
+  octx.beginPath(); opath({ type: 'LineString', coordinates: pts }); octx.stroke(); octx.restore();
+  const head = pts[pts.length - 1], prev = pts[Math.max(0, pts.length - 4)]; if (!visible(head, C)) return;
+  const [x, y] = proj(head), [px, py] = proj(prev) || [x - 1, y], dir = x >= px ? 1 : -1, bob = Math.sin(performance.now ? 0 : 0) * 0;
+  octx.save(); octx.globalAlpha = a; octx.translate(x, y - 6); octx.scale(dir * scale, scale);
+  octx.fillStyle = 'rgba(0,0,0,.3)'; octx.beginPath(); octx.ellipse(0, 30, 52, 10, 0, 0, 6.283); octx.fill();
+  octx.fillStyle = '#7A4A26'; octx.strokeStyle = '#3E2410'; octx.lineWidth = 4; octx.beginPath(); octx.moveTo(-50, 4); octx.lineTo(54, 4); octx.lineTo(38, 30); octx.lineTo(-38, 30); octx.closePath(); octx.fill(); octx.stroke();
+  octx.strokeStyle = '#3E2410'; octx.lineWidth = 5; octx.beginPath(); octx.moveTo(0, 4); octx.lineTo(0, -66); octx.stroke();
+  octx.fillStyle = '#FAF6EA'; octx.strokeStyle = '#B8AE93'; octx.lineWidth = 3; octx.beginPath(); octx.moveTo(-34, -56); octx.quadraticCurveTo(-4, -34, -34, -8); octx.lineTo(30, -8); octx.quadraticCurveTo(48, -34, 30, -56); octx.closePath(); octx.fill(); octx.stroke();
+  octx.strokeStyle = '#C8102E'; octx.lineWidth = 7; octx.beginPath(); octx.moveTo(-2, -48); octx.lineTo(-2, -16); octx.moveTo(-16, -32); octx.lineTo(12, -32); octx.stroke();
+  if (FLAG[flag]) octx.drawImage(FLAG[flag], 0, -92, 36, 26);
+  octx.restore();
+}
+
+/* ---------- timeline ---------- */
+const UI = $('#ui');
+let LINES, DUR, CAPS = [], KF = [], T = {}, els = {};
+const L = (scene) => LINES.find((l) => l.scene === scene);
+const wordT = (l, re) => (l.words.find((w) => re.test(w.w)) || l.words[0]).t0;
+const ROUTES = {
+  columbus: [[-6.95, 37.2], [-15.5, 28.1], [-45, 25], [-74.5, 24.1]],                 /* Palos → Canaries → the Bahamas, 1492 */
+  africa: [[-9.1, 38.7], [-17.5, 14.7], [-12, 2], [9, -8], [18.4, -34.4]],             /* Portuguese voyages down Africa to the Cape */
+  cabral: [[-9.1, 38.7], [-15.5, 28.1], [-23.5, 15.0], [-30, 0], [-36, -12], [-39.1, -16.4]],   /* Lisbon → Cape Verde → Brazil, 1500 */
+};
+function buildTimeline() {
+  LINES = TIM.lines; DUR = TIM.dur + 2.2;
+  for (const s of ['hook', 'race', 'pope', 'push', 'unknown', 'cabral', 'why', 'grew', 'ignored', 'today', 'outro']) T[s] = L(s);
+  const v = (lon, lat, r, cy = 900) => ({ lon, lat, r, cy });
+  KF = [[0, v(-10, 20, 380, 880)], [T.hook.t1, v(-30, 15, 470, 900)],
+    [T.race.t0, v(-30, 18, 470, 900)], [T.race.t0 + 1.2, v(-28, 22, 640, 960)],
+    [T.push.t1, v(-34, 10, 640, 960)], [T.unknown.t0 + 1.4, v(-48, -10, 1050, 980)],
+    [T.cabral.t0, v(-46, -8, 1000, 980)], [T.cabral.t0 + 1.0, v(-30, 8, 720, 960)], [T.cabral.t1 + .2, v(-40, -12, 1100, 980)],
+    [T.why.t0 + .2, v(-40, -12, 1100, 980)], [T.why.t0 + 1.2, v(-60, -20, 980, 980)],
+    [T.today.t0, v(-58, -18, 980, 980)], [T.today.t0 + 1.2, v(-35, -5, 560, 760)], [T.outro.t0, v(-30, 0, 520, 760)]];
+  for (const l of LINES) { let cur = [];
+    l.words.forEach((w, i) => { cur.push(w); if (cur.length === 3 || /[,.;:?!]$/.test(w.w) || i === l.words.length - 1) { CAPS.push(cur); cur = []; } }); }
+  sfx(.05, 'whoosh', .6); sfx(.4, 'boom', .7); sfx(.8, 'rise', .7); sfx(T.hook.t0 + 2.2, 'pop', .8);
+  sfx(T.race.t0 + .3, 'whoosh', .6); sfx(T.race.t0 + .9, 'drop', .7); sfx(T.race.t0 + 1.2, 'drop', .7);
+  sfx(T.pope.t0 + .1, 'pop', .9); sfx(wordT(T.pope, /line/) - .1, 'rise', .8); sfx(wordT(T.pope, /West/) + .1, 'pop', .7); sfx(wordT(T.pope, /East/) + .1, 'pop', .7);
+  sfx(wordT(T.push, /1494|fourteen/) - .05, 'boom', .8); sfx(wordT(T.push, /moved/) , 'whoosh', .8);
+  sfx(T.unknown.t0 + .2, 'whoosh', .6); sfx(wordT(T.unknown, /land/), 'win', .7);
+  sfx(T.cabral.t0 + .1, 'boom', .8); sfx(T.cabral.t1 - .2, 'drop', .9);
+  sfx(T.why.t0 + .4, 'pop', .8); for (let i = 0; i < 9; i++) sfx(T.why.t0 + .9 + i * .09, 'tick', .3);
+  sfx(T.grew.t0 + .2, 'rise', .6); sfx(T.ignored.t0 + .3, 'whoosh', .5);
+  sfx(T.today.t0 + .5, 'pop', .8); for (let i = 0; i < 10; i++) sfx(T.today.t0 + .9 + i * .12, 'tick', .3); sfx(T.today.t0 + 2.4, 'hit', .8);
+  sfx(T.outro.t0 - .1, 'whoosh', .6); sfx(T.outro.t0 + .5, 'boom', .8);
+}
+function camAt(t) {
+  let i = 0; while (i < KF.length - 1 && t >= KF[i + 1][0]) i++;
+  const [ta, a] = KF[i], [tb, b] = KF[Math.min(i + 1, KF.length - 1)], f = tb === ta ? 1 : E.inout(prog(t, ta, tb));
+  const ll = d3.geoInterpolate([a.lon, a.lat], [b.lon, b.lat])(f);
+  return { lon: ll[0] + Math.sin(t * .2) * .8, lat: ll[1], r: Math.exp(lerp(Math.log(a.r), Math.log(b.r), f)), cx: 540, cy: lerp(a.cy, b.cy, f) };
+}
+
+/* ---------- UI ---------- */
+function buildUI() {
+  const ht = SPEC.hookTitle || ['In 1494, two countries', '<span style="color:#FFB020">split the world in half</span>'];
+  els.title = h(`<div class="title" style="top:170px;font-size:84px">${ht.join('<br>')}</div>`);
+  els.year = h(`<div class="year" style="top:170px"></div>`);
+  els.cap = h(`<div class="cap"></div>`);
+  const ch = (n, wd) => h(`<img class="char" src="${CHAR[n]}" style="width:${wd}px">`);
+  els.pope = ch('pope', 300); els.kEs = ch('king_es', 270); els.kPt = ch('king_pt', 270);
+  els.es = h(`<div class="chip gold" style="font-size:40px">Spain</div>`); els.pt = h(`<div class="chip green" style="font-size:40px">Portugal</div>`);
+  els.leagues = h(`<div class="chip">370 leagues west of Cape Verde</div>`);
+  els.treaty = h(`<div class="chip gold">Treaty of Tordesillas</div>`);
+  els.legPt = h(`<div class="chip green">Portuguese</div>`); els.legEs = h(`<div class="chip gold">Spanish</div>`);
+  els.lineLab = h(`<div class="hand" style="font-size:52px">the 1494 line</div>`);
+  els.brazil = h(`<div class="hand" style="font-size:64px;color:#9CFFC4">Brazil today</div>`);
+  els.people = h(`<div class="chip" style="font-size:42px">Already home to millions</div>`);
+  els.barBr = h(`<div class="bar" style="top:1160px;width:840px;background:#2FBF71"></div>`); els.barPt = h(`<div class="bar" style="top:1350px;width:42px;background:#E0313D"></div>`);
+  els.labBr = h(`<div class="blab" style="top:1090px">Brazil · 213 million</div>`); els.labPt = h(`<div class="blab" style="top:1280px">Portugal · 10.7 million</div>`);
+  els.x20 = h(`<div class="year" style="top:1390px;font-size:170px;color:#FFB020">×20</div>`);
+  els.wm = h(`<img class="abs" src="../../brand/identity/dist/logo/bhoogol-wordmark-night.svg" style="left:170px;top:520px;width:740px">`);
+  els.pill = h(`<div class="abs" style="left:0;width:1080px;top:800px;text-align:center"><span class="pill">${esc(SPEC.outro?.pill || 'Follow Bhoogol')}</span></div>`);
+  els.sub = h(`<div class="abs" style="left:0;width:1080px;top:930px;text-align:center;font-family:'Mukta';font-weight:600;font-size:38px;color:rgba(247,245,239,.78)">${esc(SPEC.outro?.sub || 'History, told on a map.')}</div>`);
+  UI.append(els.year, els.lineLab, els.brazil, els.es, els.pt, els.leagues, els.treaty, els.legPt, els.legEs, els.people, els.pope, els.kEs, els.kPt,
+    els.barBr, els.barPt, els.labBr, els.labPt, els.x20, els.title, els.wm, els.pill, els.sub, els.cap);
+}
+function put(el, xy, ax = .5, ay = .5) { el.style.left = (xy[0] - el.offsetWidth * ax) + 'px'; el.style.top = (xy[1] - el.offsetHeight * ay) + 'px'; }
+const showChip = (el, t, a, b, xy, rot = -3) => { const p = E.pop(prog(t, a, a + .4)), o = 1 - prog(t, b, b + .3); if (xy) put(el, xy); css(el, { op: clamp(p * 2) * o, s: .7 + .3 * p, r: rot }); };
+const yearAt = (t) => { for (const [y, a, b] of YEARS) if (t >= a - .1 && t < b) return [y, a, b]; return null; };
+let YEARS = [];
+
+/* ---------- per frame ---------- */
+function seek(t) {
+  const { hook, race, pope, push, unknown, cabral, why, grew, ignored, today, outro } = T, Lp = SPEC.lines.papal, Lt = SPEC.lines.treaty;
+  stars(t);
+  const C = camAt(t), ou = t - outro.t0;
+  C.dim = .25 * prog(t, ignored.t0 + .2, ignored.t0 + .8) * (1 - prog(t, today.t0 + 1.2, today.t0 + 2)) + .45 * prog(t, today.t0 + .6, today.t0 + 1.2) * (1 - prog(ou, 0, .5)) + .5 * prog(ou, .4, 1.2);
+  earth(C); octx.clearRect(0, 0, W, H);
+  /* which line, where */
+  const slide = E.inout(prog(t, wordT(push, /moved/) - .1, wordT(push, /moved/) + 1.1));
+  const hookL = Lt, inHook = t < race.t0, Lnow = inHook ? hookL : t < push.t0 ? Lp : lerp(Lp, Lt, slide);
+  const lineDraw = inHook ? E.inout(prog(t, .7, 2.0)) : E.inout(prog(t, wordT(pope, /line/) - .1, wordT(pope, /line/) + 1.2));
+  const lineA = (inHook ? 1 - prog(t, race.t0 - .3, race.t0) : 1) * (1 - prog(t, ignored.t0, ignored.t0 + .5) * .6) * (1 - prog(ou, 0, .5));
+  /* halves */
+  const halfA = inHook ? E.settle(prog(t, hook.t0 + 1.8, hook.t0 + 2.6)) * (1 - prog(t, race.t0 - .3, race.t0))
+    : E.settle(prog(t, wordT(pope, /West/), wordT(pope, /West/) + .5)) * (1 - prog(t, unknown.t0 + .6, unknown.t0 + 1.4));
+  const halfB = inHook ? halfA : E.settle(prog(t, wordT(pope, /East/), wordT(pope, /East/) + .5)) * (1 - prog(t, unknown.t0 + .6, unknown.t0 + 1.4));
+  fillGeo(half(Lnow, -1), '#FFB020', .3 * halfA); fillGeo(half(Lnow, 1), '#2FBF71', .3 * halfB);
+  label('SPAIN', [Lnow - 20, 24], C, 66, halfA, '#FFD36B', -5); label('PORTUGAL', [Lnow + 21, 24], C, 66, halfB, '#9CFFC4', -5);
+  /* the unknown land on Portugal's side of the line */
+  const gl1 = E.settle(prog(t, wordT(unknown, /cut/) - .1, wordT(unknown, /cut/) + .6)) * (1 - prog(t, why.t0, why.t0 + .4));
+  if (gl1 > 0) { octx.save(); octx.beginPath(); opath(half(Lt, 1)); octx.clip(); fillGeo(LAND, '#2FBF71', .62 * gl1 * (.8 + .2 * Math.sin(t * 5)), 30); octx.restore(); }
+  /* language map */
+  const lang = E.inout(prog(t, why.t0 + .3, why.t0 + 1.0)) * (1 - .55 * prog(t, ignored.t0 + .2, ignored.t0 + .8) * (1 - prog(t, today.t0, today.t0 + .5))) * (1 - prog(t, today.t0 + .6, today.t0 + 1.1));
+  if (lang > 0) { SPANISH.forEach((c, i) => { const p = prog(t, why.t0 + .9 + i * .09, why.t0 + 1.2 + i * .09); fillGeo(CO[c], '#FFB020', .78 * lang * p); strokeGeo(CO[c], '#fff', lang * p, 2); });
+    for (const c of OTHER.concat('GUF')) { fillGeo(CO[c], '#9AA3B8', .7 * lang); strokeGeo(CO[c], '#fff', lang, 2); }
+    fillGeo(CO.BRA, '#2FBF71', .85 * lang, 28); strokeGeo(CO.BRA, '#fff', lang, 3); }
+  /* the line, on top */
+  meridian(Lnow, lineDraw, lineA);
+  /* ships */
+  const raceP = prog(t, race.t0 + .4, race.t1 + .3), raceA = 1 - prog(t, pope.t0 + .3, pope.t0 + .8);
+  sail(ROUTES.columbus, E.inout(raceP), C, 'es', raceA); sail(ROUTES.africa, E.inout(raceP), C, 'pt', raceA);
+  const cabP = E.inout(prog(t, cabral.t0 + .2, cabral.t1 - .1)), cabA = 1 - prog(t, why.t0 + .2, why.t0 + .6);
+  sail(ROUTES.cabral, cabP, C, 'pt', cabA, 1.25);
+  if (t > cabral.t1 - .2 && cabA > 0) { const p = proj([-39.1, -16.4]), k = (t - cabral.t1 + .2) % 1.2 / 1.2; if (p) { octx.save(); octx.globalAlpha = cabA * (1 - k); octx.strokeStyle = '#FFB020'; octx.lineWidth = 6; octx.beginPath(); octx.arc(p[0], p[1], 20 + 70 * k, 0, 6.283); octx.stroke(); octx.restore(); } }
+  /* labels pinned to the map */
+  const lp = proj([Lt, -24]); const ll = E.settle(prog(t, grew.t0 + .2, grew.t0 + .6)) * (1 - prog(t, ignored.t0, ignored.t0 + .4));
+  if (lp) { put(els.lineLab, [lp[0] + 30, lp[1]], 0, .5); css(els.lineLab, { op: ll * (visible([Lt, -24], C) ? 1 : 0), r: -4 }); }
+  const bp = proj([-58, -8]); const bl = E.settle(prog(t, grew.t0 + .5, grew.t0 + 1.0)) * (1 - prog(t, ignored.t0, ignored.t0 + .4));
+  if (bp) { put(els.brazil, bp); css(els.brazil, { op: bl, r: -6 }); }
+  if (grew && t > grew.t0 && t < ignored.t0 + .4) strokeGeo(CO.BRA, '#9CFFC4', .9 * bl * (.7 + .3 * Math.sin(t * 6)), 7);
+  /* chips */
+  const cl = proj([Lnow, 34]);
+  showChip(els.treaty, t, wordT(push, /Tordesillas|Tor/) - .1, unknown.t0, [540, 470], -3);
+  showChip(els.leagues, t, wordT(push, /moved/) + .6, unknown.t0, [540, 560], 2);
+  showChip(els.legPt, t, why.t0 + .6, grew.t0, proj([-48, -9]), -4); showChip(els.legEs, t, why.t0 + 1.0, grew.t0, proj([-66, -27]), 4);
+  showChip(els.people, t, ignored.t0 + .7, today.t0, [540, 470], -2);
+  /* characters */
+  { const k1 = E.pop(prog(t, race.t0 + .5, race.t0 + .9)), k2 = E.pop(prog(t, race.t0 + .8, race.t0 + 1.2)), kOut = 1 - prog(t, pope.t0 - .1, pope.t0 + .3), kBack = E.pop(prog(t, push.t0 + .1, push.t0 + .5)) * (1 - prog(t, unknown.t0 - .1, unknown.t0 + .3));
+    const s1 = Math.max(k1 * kOut, kBack), s2 = Math.max(k2 * kOut, kBack), bob = Math.sin(t * 4) * 5;
+    put(els.kEs, [190, 1560], .5, 1); put(els.kPt, [890, 1560], .5, 1);
+    css(els.kEs, { op: clamp(s1 * 2), s: s1, y: bob, r: -4 }); css(els.kPt, { op: clamp(s2 * 2), s: s2, y: -bob, r: 4, sx: -1 });
+    const pp = E.pop(prog(t, pope.t0, pope.t0 + .45)) * (1 - prog(t, push.t0 - .1, push.t0 + .25));
+    put(els.pope, [540, 1580], .5, 1); css(els.pope, { op: clamp(pp * 2), s: pp, y: Math.sin(t * 3) * 4 }); }
+  /* half labels as chips near the characters during the race */
+  showChip(els.es, t, race.t0 + .7, pope.t0, [190, 1200], -4); showChip(els.pt, t, race.t0 + 1.0, pope.t0, [890, 1200], 4);
+  /* years */
+  const y = yearAt(t);
+  if (y) { const [txt, a, b] = y, p = E.settle(prog(t, a - .1, a + .3)), o = 1 - prog(t, b - .3, b); els.year.textContent = txt; css(els.year, { op: clamp(p * 3) * o, s: lerp(2.3, 1, p), blur: (1 - p) * 8 }); }
+  else css(els.year, { op: 0 });
+  /* hook title */
+  const hp = E.pop(prog(t, 1.6, 2.1)), ho = E.in(prog(t, race.t0 - .2, race.t0 + .2));
+  css(els.title, { op: clamp(hp * 2) * (1 - ho), s: .8 + .2 * hp, y: -ho * 40, blur: ho * 10 });
+  /* today: the two populations */
+  { const a = prog(t, today.t0 + .7, today.t0 + 1.0) * (1 - prog(ou, 0, .4)), g = E.out(prog(t, today.t0 + .9, today.t0 + 2.1));
+    css(els.barBr, { op: a, s: 1 }); els.barBr.style.transform = `scaleX(${g})`; css(els.barPt, { op: a }); els.barPt.style.transform = `scaleX(${E.out(prog(t, today.t0 + 1.0, today.t0 + 1.5))})`;
+    css(els.labBr, { op: a }); css(els.labPt, { op: a });
+    const xp = E.settle(prog(t, today.t0 + 2.3, today.t0 + 2.7)); css(els.x20, { op: clamp(xp * 3) * (1 - prog(ou, 0, .4)), s: lerp(2, 1, xp), r: -6 }); }
+  /* outro */
+  css(els.wm, { op: E.settle(prog(ou, .5, 1.1)), y: (1 - E.settle(prog(ou, .5, 1.1))) * 50 });
+  const pq = E.pop(prog(ou, .9, 1.3)); css(els.pill, { op: clamp(pq * 2), s: .7 + .3 * pq });
+  css(els.sub, { op: E.settle(prog(ou, 1.2, 1.7)), y: (1 - E.settle(prog(ou, 1.2, 1.7))) * 20 });
+  /* captions */
+  let chunk = null; for (const c of CAPS) if (t >= c[0].t0 - .02 && t < c[c.length - 1].t1 + .25) chunk = c;
+  const capTop = t >= outro.t0 ? 1352 : t >= today.t0 + .6 ? 1640 : 1610;
+  if (chunk) { const p = E.pop(prog(t, chunk[0].t0 - .02, chunk[0].t0 + .18));
+    els.cap.innerHTML = chunk.map((w) => `<span class="w${t >= w.t0 - .02 && t < w.t1 + .1 ? ' on' : ''}">${esc(w.w)}</span>`).join(' ');
+    css(els.cap, { op: 1, s: .88 + .12 * p }); els.cap.style.top = capTop + 'px'; }
+  else css(els.cap, { op: 0 });
+  if (SPEC.coverAt != null && Math.abs(t - SPEC.coverAt) < 1e-6) css(els.cap, { op: 0 });   /* the cover frame: no caption */
+}
+
+/* ---------- entry ---------- */
+window.setup = async ({ spec, timing, site }) => {
+  SPEC = { ...spec, site }; TIM = timing;
+  await loadData();
+  const img = new Image(); img.src = 'assets/earth-blue-marble.jpg'; await img.decode(); initGL(img);
+  let seed = 11; const Rn = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  STARS = Array.from({ length: 200 }, () => ({ x: Rn() * W, y: Rn() * 2000, z: .2 + Rn() * .8, ph: Rn() * 6.28, sz: Rn() }));
+  await Promise.all(["800 92px 'Baloo 2'", "700 50px 'Baloo 2'", "700 60px Kalam", "600 38px Mukta"].map((f) => document.fonts.load(f)));
+  buildTimeline();
+  const { race, pope, push, cabral } = T;
+  YEARS = [['1494', .15, 1.55], ['1492', race.t0 + .1, race.t0 + 2.0], ['1493', pope.t0 + .05, pope.t0 + 1.8], ['1494', wordT(push, /1494|fourteen/), wordT(push, /1494|fourteen/) + 1.6], ['1500', cabral.t0 + .05, cabral.t0 + 1.8]];
+  buildUI();
+  await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+  return { dur: DUR, sfx: SFX };
+};
+window.seek = seek;
+</script>
+</body></html>

@@ -1,0 +1,103 @@
+{
+  "id": "bhoogol-story-tordesillas",
+  "page": "history.html",
+  "title": "In 1494, two countries split the world in half",
+  "voice": "am_michael",
+  "music": "bed_bright.m4a",
+  "sources": [
+    "Treaty of Tordesillas signed 7 June 1494 by Spain (Ferdinand II and Isabella I) and Portugal (John II); line moved to 370 leagues west of Cape Verde, about 46°30′W; the 1493 papal line (Pope Alexander VI) ran 100 leagues west of the Cape Verde Islands; Brazil juts across the line; local populations were not considered at all: World History Encyclopedia, 'Treaty of Tordesillas' (https://worldhistory.org/Treaty_of_Tordesillas)",
+    "Cabral's fleet of thirteen ships reached Brazil on 22 April 1500, near today's Porto Seguro, and claimed it for Portugal: History Today, 'Cabral Discovers Brazil'",
+    "Brazil 213.4 million people (IBGE estimate, July 2025); Portugal about 10.7 million: 213.4 / 10.7 ≈ 20",
+    "Most of South America speaks Spanish; Guyana (English), Suriname (Dutch) and French Guiana (French) are the other exceptions, so the script says 'most'",
+    "The 1493 line is drawn at about 38°W, as on common reconstructions; its exact position is debated, so the video doesn't state it"
+  ],
+  "lines": {
+    "papal": -38,
+    "treaty": -46.5
+  },
+  "script": [
+    {
+      "say": "In 1494, two countries split the whole world in half.",
+      "scene": "hook",
+      "speak": "In fourteen ninety-four, two countries split the whole world in half.",
+      "speakNatural": "In fourteen ninety-four, two countries split the whole world in half."
+    },
+    {
+      "say": "Spain and Portugal were racing to claim new lands across the ocean.",
+      "scene": "race",
+      "pauseAfter": 0.4
+    },
+    {
+      "say": "So the Pope drew a line down the Atlantic. West of it, Spain. East of it, Portugal.",
+      "scene": "pope",
+      "pauseAfter": 0.4
+    },
+    {
+      "say": "Portugal pushed back. And in 1494, at a town called Tordesillas, they moved the line further west.",
+      "scene": "push",
+      "pauseAfter": 0.6,
+      "speak": "Portugal pushed back. And in fourteen ninety-four, at a town called Tordesillas, they moved the line further west.",
+      "speakNatural": "Portugal pushed back. And in fourteen ninety-four, at a town called Tor-de-see-yas, they moved the line further west."
+    },
+    {
+      "say": "Nobody in Europe knew it yet, but that new line cut through a land they had never seen.",
+      "scene": "unknown",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "Six years later, a Portuguese fleet landed right there.",
+      "scene": "cabral",
+      "pauseAfter": 0.6
+    },
+    {
+      "say": "That's why Brazil speaks Portuguese, while most of South America speaks Spanish.",
+      "scene": "why",
+      "pauseAfter": 0.5
+    },
+    {
+      "say": "Brazil later grew far beyond the line.",
+      "scene": "grew",
+      "pauseAfter": 0.4
+    },
+    {
+      "say": "And the people already living there? Nobody asked them.",
+      "scene": "ignored",
+      "pauseAfter": 0.6
+    },
+    {
+      "say": "Today, Brazil has over two hundred million people. Twenty times the population of Portugal.",
+      "scene": "today",
+      "pauseAfter": 0.7
+    },
+    {
+      "say": "Follow Bhoogol for more such stories.",
+      "scene": "outro",
+      "speakNatural": "Follow Boo-goal for more such stories."
+    }
+  ],
+  "vocabulary": [
+    "Tordesillas",
+    "Spain",
+    "Portugal",
+    "Brazil",
+    "South America",
+    "Atlantic",
+    "Pope",
+    "Bhoogol"
+  ],
+  "natural": {
+    "exaggeration": 0.6,
+    "cfg": 0.4,
+    "temperature": 0.75,
+    "seed": 11
+  },
+  "outro": {
+    "pill": "Follow Bhoogol",
+    "sub": "History, told on a map."
+  },
+  "hookTitle": [
+    "In 1494, two countries",
+    "<span style=\"color:#FFB020\">split the world in half</span>"
+  ],
+  "coverAt": 3.61
+}
