@@ -447,7 +447,7 @@ function buildGuess(ep) {
   let y = 470; clues.forEach((c) => { c.style.top = y + 'px'; y += c.offsetHeight + 26; });
   const stackBottom = y;
   const tm = timer(540, Math.min(1440, stackBottom + 36 + 205), 2.4);
-  const ask = askEl('Which clue gave it away? 1, 2 or 3', 240);
+  const ask = askEl(ep.ask || 'Which clue gave it away? 1, 2 or 3', 240);
   const name = h(`<div class="abs center display" id="reveal" style="top:1330px">${splitWords(it.name)}</div>`); UI.append(name);
   const flag = h(`<img class="abs" src="${flagSrc(it.cca2)}" style="left:450px;top:1470px;width:180px;height:135px;border-radius:16px;box-shadow:0 0 0 3px rgba(247,245,239,.2)">`); UI.append(flag);
   const itsTag = h(`<div class="abs center eyebrow" style="top:1280px">It's</div>`); UI.append(itsTag);

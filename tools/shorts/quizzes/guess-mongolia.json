@@ -1,0 +1,27 @@
+{
+  "id": "bhoogol-quiz-guess-mongolia",
+  "date": "custom",
+  "n": 5122,
+  "format": "guess",
+  "q": "Guess the country",
+  "items": [ { "cca3": "MNG", "cca2": "mn", "name": "Mongolia", "latlng": [46, 105] } ],
+  "status": "reviewed",
+  "clues": [
+    "It has more horses than people.",
+    "Its capital is the coldest in the world.",
+    "It's sandwiched between Russia and China."
+  ],
+  "ask": "Which clue gave it away? 1, 2 or 3",
+  "outro": { "o1": "Follow for a new quiz every day", "pill": "Like · Share · Follow", "o3": "Bhoogol · every country, on a globe you can spin" },
+  "sources": [
+    "About 4.8 million horses at end-2023 (preliminary livestock census, National Statistics Office via Montsame): AKIpress, 22 Jan 2024 (https://m.akipress.com/news:755491:Number_of_livestock_in_Mongolia_reaches_64_7_million). Population about 3.5 million.",
+    "Ulaanbaatar is widely cited as the coldest national capital",
+    "Mongolia borders only Russia and China"
+  ],
+  "caption": {
+    "title": "Guess the country in 3 clues 🌍 #geography #quiz",
+    "youtube": "Can you get it from the first clue? 👀\n\nMongolia has about 4.8 million horses and only about 3.5 million people. Ulaanbaatar is the coldest capital city on Earth.\n\nFollow for a new geography quiz every day. Like and share if you got it on clue 1!\n\n#geography #quiz #guessthecountry #mongolia #shorts",
+    "instagram": "Guess the country in 3 clues 🌍\n\nWhich clue gave it away? Comment 1, 2 or 3 👇\n\nFollow @bhoogolapp for a new quiz every day. Send it to the friend who always guesses first 😄\n\n#geography #geographyquiz #guessthecountry #maps #mapfacts #mongolia #quiz #trivia #bhoogol",
+    "pin": "Mongolia is the most sparsely populated country on Earth 🐎 Did you get it on clue 1?"
+  }
+}
