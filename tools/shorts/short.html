@@ -293,7 +293,7 @@ function buildRank(ep) {
   const hd = header('Rank these 4', ep.q);
   const subTop = Math.max(392, hd.bottom + 8);
   const sub = h(`<div class="abs center sub" style="top:${subTop}px;font-size:34px">Rank them in your head. Most at the top.</div>`); UI.append(sub);
-  const ask = askEl('How many did you get right?', subTop - 6);
+  const ask = askEl(ep.ask || 'How many did you get right?', subTop - 6);
   const top0 = 1010, step = 132;
   const cards = ep.items.map((it, i) => {
     const c = h(`<div class="card" style="top:${top0 + i * step}px"><div class="bar"></div><div class="badge">?</div>
@@ -303,7 +303,7 @@ function buildRank(ep) {
   const max = Math.max(...ep.items.map((i) => i.value));
   const tm = timer(540, 730, 2.4);
   const mark = markEl('circle', 200, 160); UI.append(mark);
-  const src = h(`<div class="abs center sub" style="top:1560px;font-size:26px">${esc(METRIC_SRC(ep))}</div>`); UI.append(src);
+  const src = h(`<div class="abs center sub" style="top:1560px;font-size:26px">${esc(ep.source || METRIC_SRC(ep))}</div>`); UI.append(src);
   const T = { cards: .45, count: 1.45, reveal: 4.0, step: 1.2 };
   const revealAt = [3, 2, 1, 0].map((rank, k) => ({ rank, t: T.reveal + k * T.step })); // 4th first, winner last
   const END = T.reveal + 4 * T.step + 1.1, OUT = END + .2, DUR = OUT + 2.3, ASK = T.reveal + 3 * T.step + .9;

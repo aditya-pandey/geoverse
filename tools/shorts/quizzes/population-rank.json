@@ -1,0 +1,25 @@
+{
+  "id": "bhoogol-quiz-population-rank",
+  "date": "custom",
+  "n": 5121,
+  "format": "rank",
+  "metric": "pop",
+  "q": "Which has the most people?",
+  "items": [
+    { "cca3": "RUS", "cca2": "ru", "name": "Russia", "latlng": [60, 100], "value": 145, "label": "145M" },
+    { "cca3": "BRA", "cca2": "br", "name": "Brazil", "latlng": [-10, -55], "value": 212, "label": "212M" },
+    { "cca3": "BGD", "cca2": "bd", "name": "Bangladesh", "latlng": [24, 90], "value": 174, "label": "174M" },
+    { "cca3": "NGA", "cca2": "ng", "name": "Nigeria", "latlng": [10, 8], "value": 233, "label": "233M" }
+  ],
+  "order": [3, 1, 2, 0],
+  "ask": "Did you put Russia first? Comment below",
+  "source": "Population, 2024 · UN World Population Prospects",
+  "outro": { "o1": "Follow for a new quiz every day", "pill": "Like · Share · Follow", "o3": "Bhoogol · every country, on a globe you can spin" },
+  "sources": ["Nigeria 232.7M, Brazil 212.0M, Bangladesh 173.6M, Russia 144.8M (2024): Worldometer, 'Most Populous Countries', from UN World Population Prospects (https://www.worldometers.info/population/most-populous-countries/)"],
+  "caption": {
+    "title": "Rank these 4 by population 🌍 Most people get Russia wrong #geography #quiz",
+    "youtube": "Rank them in your head before the reveal 👀\n\nRussia is the biggest country on Earth, but it has the fewest people here. Nigeria 233M, Brazil 212M, Bangladesh 174M, Russia 145M (UN, 2024).\n\nFollow for a new geography quiz every day. Like and share if you got all 4!\n\n#geography #quiz #population #maps #shorts",
+    "instagram": "Rank these 4 by population 🌍\n\nHow many did you get right? Comment your score 👇\n\nFollow @bhoogolapp for a new quiz every day. Send it to the friend who'd put Russia first 😄\n\n#geography #geographyquiz #population #maps #mapfacts #nigeria #brazil #bangladesh #russia #quiz #trivia #bhoogol",
+    "pin": "Bangladesh is smaller than Uttar Pradesh by area, but has more people than Russia 🤯"
+  }
+}
