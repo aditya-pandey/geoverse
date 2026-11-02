@@ -1,0 +1,27 @@
+{
+  "id": "bhoogol-quiz-guess-canada",
+  "date": "custom",
+  "n": 5123,
+  "format": "guess",
+  "q": "Guess the country",
+  "items": [ { "cca3": "CAN", "cca2": "ca", "name": "Canada", "latlng": [58, -100] } ],
+  "status": "reviewed",
+  "clues": [
+    "It has more lakes than the rest of the world combined.",
+    "It has the longest coastline on Earth.",
+    "It borders just one country: the USA."
+  ],
+  "ask": "Which clue gave it away? 1, 2 or 3",
+  "outro": { "o1": "Follow for a new quiz every day", "pill": "Like · Share · Follow", "o3": "Bhoogol · every country, on a globe you can spin" },
+  "sources": [
+    "Canada holds about 62% of the world's lakes (larger than 10 hectares): McGill University / HydroLAKES study (Messager et al., Nature Communications, 2016), McGill Newsroom (https://www.mcgill.ca/newsroom/node/26501)",
+    "Longest coastline of any country, about 202,000 km: CIA World Factbook",
+    "Canada's only land neighbour is the United States"
+  ],
+  "caption": {
+    "title": "Guess the country in 3 clues 🌍 #geography #quiz",
+    "youtube": "Can you get it from the first clue? 👀\n\nCanada holds about 62% of the world's lakes, more than everywhere else combined. It also has the longest coastline on Earth.\n\nFollow for a new geography quiz every day. Like and share if you got it on clue 1!\n\n#geography #quiz #guessthecountry #canada #shorts",
+    "instagram": "Guess the country in 3 clues 🌍\n\nWhich clue gave it away? Comment 1, 2 or 3 👇\n\nFollow @bhoogolapp for a new quiz every day. Send it to the friend who always guesses first 😄\n\n#geography #geographyquiz #guessthecountry #maps #mapfacts #canada #lakes #quiz #trivia #bhoogol",
+    "pin": "About 62% of all the world's lakes are in Canada 🤯 Did you get it on clue 1?"
+  }
+}

@@ -455,7 +455,7 @@ function buildGuess(ep) {
   const C1 = .6, C2 = 2.8, C3 = 5.0, CNT = 6.4, REV = 8.9, END = 12.4, OUT = 12.6, DUR = 14.9;
   [C1, C2, C3].forEach((a) => sfx(a, 'drop', .9)); [0, 1, 2].forEach((i) => sfx(CNT + i * .8, 'tick'));
   sfx(REV - .05, 'whoosh', .7); sfx(REV + .75, 'win', 1); sfx(OUT - .3, 'whoosh', .7); sfx(OUT + .05, 'boom', .9);
-  const spinFrom = [targetOf(it)[0] + 150, 10];
+  const spinFrom = [targetOf(it)[0] + 180, 10];   /* start on the far side and spin away, so the answer never faces the camera before the reveal */
   return { DUR, seek(t) {
     const out = E.in(prog(t, END, OUT)), up = E.in(prog(t, REV - .2, REV + .25));
     css(hd.e, { op: (1 - up) * E.settle(prog(t, 0, .4)) }); wordsIn(hd.t, t, .05, .05, REV - .3);
@@ -466,8 +466,8 @@ function buildGuess(ep) {
     const r0 = 205, cy0 = Math.min(1440, stackBottom + 36 + r0);
     const G = { cx: 540, cy: lerp(cy0 + 2000, cy0, E.settle(prog(t, 0, 1))), r: r0, alpha: 1 - out };
     G.cy = lerp(t < 1 ? G.cy : cy0, 820, mv); G.r = lerp(r0, 400, mv);
-    const spin = [spinFrom[0] - (t * 22), spinFrom[1]];
-    const flyStart = [spinFrom[0] - REV * 22, spinFrom[1]];
+    const spin = [spinFrom[0] + (t * 10), spinFrom[1]];
+    const flyStart = [spinFrom[0] + REV * 10, spinFrom[1]];
     G.rot = rotFor(t < REV ? spin : d3.geoInterpolate(flyStart, targetOf(it))(E.inout(prog(t, REV, REV + 1.1))));
     if (t < REV) { G.alpha *= .9; }
     if (t >= REV) { G.hi = [it.cca3]; G.hiA = prog(t, REV + .8, REV + 1.1); }
